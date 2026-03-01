@@ -4,6 +4,7 @@
 //! and the stats handler are fully implemented; all others remain stubs to be
 //! filled in during later phases.
 
+use std::collections::HashMap;
 use std::io::IsTerminal as _;
 use std::time::Duration;
 
@@ -590,10 +591,119 @@ async fn goals(cmd: GoalsCommands, global: &GlobalOpts) -> Result<()> {
             let output = GoalRenderer::render_detail(goal, &opts);
             print!("{output}");
         }
-        GoalsCommands::Watch { .. } => bail!("not yet implemented: goals watch"),
+        GoalsCommands::Watch { notify, interval } => {
+            goals_watch(&client, global, &opts, notify, interval).await?;
+        }
     }
 
     Ok(())
+}
+
+// ─── goals_watch helper ───────────────────────────────────────────────────────
+
+/// Polls `client.goals()` every `interval` seconds, printing a refreshed table
+/// to stdout on each tick.  Exits cleanly on Ctrl+C.
+///
+/// When `notify` is `true` and a goal transitions from a non-`"success"` status
+/// to `"success"`, a desktop notification is sent via the system `notify-send`
+/// binary (Linux/freedesktop).  The call fails silently when `notify-send` is
+/// unavailable.
+async fn goals_watch(
+    client: &WakaClient,
+    global: &GlobalOpts,
+    opts: &RenderOptions,
+    notify: bool,
+    interval: u64,
+) -> Result<()> {
+    use std::io::Write as _;
+    let is_tty = std::io::stdout().is_terminal();
+    let interval_dur = Duration::from_secs(interval);
+
+    // Map: goal_id → last known range_status.  Populated on first fetch.
+    let mut prev_statuses: HashMap<String, String> = HashMap::new();
+
+    let interval_display = if interval >= 60 {
+        format!("{}m", interval / 60)
+    } else {
+        format!("{interval}s")
+    };
+
+    eprintln!("Watching goals… (refreshing every {interval_display}, Ctrl+C to stop)");
+
+    loop {
+        // ── fetch ─────────────────────────────────────────────────────────
+        let resp = match client.goals().await {
+            Ok(r) => r,
+            Err(e) => {
+                eprintln!("waka: failed to fetch goals: {e}");
+                // Wait before retrying rather than tight-looping on network error.
+                tokio::select! {
+                    () = tokio::time::sleep(interval_dur) => continue,
+                    _ = tokio::signal::ctrl_c() => break,
+                }
+            }
+        };
+
+        // ── notifications ─────────────────────────────────────────────────
+        if notify {
+            for goal in &resp.data {
+                let was = prev_statuses.get(&goal.id).map(String::as_str);
+                if goal.range_status == "success" && !matches!(was, Some("success")) {
+                    goals_notify_success(&goal.title);
+                }
+            }
+        }
+
+        // Update tracked statuses.
+        for goal in &resp.data {
+            prev_statuses.insert(goal.id.clone(), goal.range_status.clone());
+        }
+
+        // ── render ────────────────────────────────────────────────────────
+        if is_tty && !global.quiet {
+            // Clear screen + move cursor to top-left.
+            print!("\x1b[2J\x1b[H");
+        }
+
+        let timestamp = Local::now().format("%H:%M");
+        let header = if global.quiet {
+            String::new()
+        } else {
+            format!(
+                "[{timestamp}] Goals — refreshing every {interval_display} (Ctrl+C to stop)\n\n"
+            )
+        };
+
+        let body = GoalRenderer::render_list(&resp, opts);
+        print!("{header}{body}");
+
+        // Flush stdout so the output appears immediately, even when piped.
+        let _ = std::io::stdout().flush();
+
+        // use std::io::Write as _; — moved to top of function
+
+        // ── wait ──────────────────────────────────────────────────────────
+        tokio::select! {
+            () = tokio::time::sleep(interval_dur) => {},
+            _ = tokio::signal::ctrl_c() => break,
+        }
+    }
+
+    if !global.quiet {
+        eprintln!("\nStopped watching goals.");
+    }
+    Ok(())
+}
+
+/// Sends a desktop notification via `notify-send` (silently ignored when
+/// `notify-send` is not installed).
+fn goals_notify_success(title: &str) {
+    let _ = std::process::Command::new("notify-send")
+        .arg("waka: Goal Reached! ✓")
+        .arg(format!("{title} — target met"))
+        .arg("--app-name=waka")
+        .arg("--urgency=normal")
+        .status();
 }
 
 // ─── leaderboard ──────────────────────────────────────────────────────────────
