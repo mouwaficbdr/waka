@@ -127,7 +127,7 @@ Accepts `--page N` for pagination.
 | `report generate --from DATE --to DATE` | Generate a productivity report |
 | `report summary`                        | Brief productivity summary     |
 
-`report generate` accepts `-f/--format md|html|json|csv` and `-o FILE`.  
+`report generate` accepts `-F/--output-format md|html|json|csv` and `-o FILE`.  
 `report summary` accepts `--period week|month`.
 
 ### `waka dashboard` — Interactive TUI

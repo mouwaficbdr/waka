@@ -47,6 +47,8 @@ Register-ArgumentCompleter -Native -CommandName 'waka' -ScriptBlock {
             [CompletionResult]::new('completions', 'completions', [CompletionResultType]::ParameterValue, 'Generate shell completions')
             [CompletionResult]::new('config', 'config', [CompletionResultType]::ParameterValue, 'Manage waka configuration')
             [CompletionResult]::new('cache', 'cache', [CompletionResultType]::ParameterValue, 'Manage the local response cache')
+            [CompletionResult]::new('update', 'update', [CompletionResultType]::ParameterValue, 'Update waka to the latest version')
+            [CompletionResult]::new('changelog', 'changelog', [CompletionResultType]::ParameterValue, 'Show the changelog from the installed version to the latest')
             [CompletionResult]::new('help', 'help', [CompletionResultType]::ParameterValue, 'Print this message or the help of the given subcommand(s)')
             break
         }
@@ -727,10 +729,12 @@ Register-ArgumentCompleter -Native -CommandName 'waka' -ScriptBlock {
             [CompletionResult]::new('--to', '--to', [CompletionResultType]::ParameterName, 'End date (YYYY-MM-DD)')
             [CompletionResult]::new('-o', '-o', [CompletionResultType]::ParameterName, 'Output file path')
             [CompletionResult]::new('--output', '--output', [CompletionResultType]::ParameterName, 'Output file path')
-            [CompletionResult]::new('-f', '-f', [CompletionResultType]::ParameterName, 'Report format')
-            [CompletionResult]::new('--format', '--format', [CompletionResultType]::ParameterName, 'Report format')
+            [CompletionResult]::new('-F', '-F ', [CompletionResultType]::ParameterName, 'Report format')
+            [CompletionResult]::new('--output-format', '--output-format', [CompletionResultType]::ParameterName, 'Report format')
             [CompletionResult]::new('-p', '-p', [CompletionResultType]::ParameterName, 'Use a specific profile')
             [CompletionResult]::new('--profile', '--profile', [CompletionResultType]::ParameterName, 'Use a specific profile')
+            [CompletionResult]::new('-f', '-f', [CompletionResultType]::ParameterName, 'Output format: table, json, csv, plain')
+            [CompletionResult]::new('--format', '--format', [CompletionResultType]::ParameterName, 'Output format: table, json, csv, plain')
             [CompletionResult]::new('--no-cache', '--no-cache', [CompletionResultType]::ParameterName, 'Skip the cache and force a fresh API request')
             [CompletionResult]::new('--no-color', '--no-color', [CompletionResultType]::ParameterName, 'Disable colors (equivalent to `NO_COLOR=1`)')
             [CompletionResult]::new('--quiet', '--quiet', [CompletionResultType]::ParameterName, 'Suppress non-essential output')
@@ -1061,6 +1065,38 @@ Register-ArgumentCompleter -Native -CommandName 'waka' -ScriptBlock {
         'waka;cache;help;help' {
             break
         }
+        'waka;update' {
+            [CompletionResult]::new('-p', '-p', [CompletionResultType]::ParameterName, 'Use a specific profile')
+            [CompletionResult]::new('--profile', '--profile', [CompletionResultType]::ParameterName, 'Use a specific profile')
+            [CompletionResult]::new('-f', '-f', [CompletionResultType]::ParameterName, 'Output format: table, json, csv, plain')
+            [CompletionResult]::new('--format', '--format', [CompletionResultType]::ParameterName, 'Output format: table, json, csv, plain')
+            [CompletionResult]::new('--no-cache', '--no-cache', [CompletionResultType]::ParameterName, 'Skip the cache and force a fresh API request')
+            [CompletionResult]::new('--no-color', '--no-color', [CompletionResultType]::ParameterName, 'Disable colors (equivalent to `NO_COLOR=1`)')
+            [CompletionResult]::new('--quiet', '--quiet', [CompletionResultType]::ParameterName, 'Suppress non-essential output')
+            [CompletionResult]::new('--verbose', '--verbose', [CompletionResultType]::ParameterName, 'Enable verbose mode (shows HTTP requests)')
+            [CompletionResult]::new('--csv-bom', '--csv-bom', [CompletionResultType]::ParameterName, 'Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)')
+            [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help')
+            [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help')
+            [CompletionResult]::new('-V', '-V ', [CompletionResultType]::ParameterName, 'Print version')
+            [CompletionResult]::new('--version', '--version', [CompletionResultType]::ParameterName, 'Print version')
+            break
+        }
+        'waka;changelog' {
+            [CompletionResult]::new('-p', '-p', [CompletionResultType]::ParameterName, 'Use a specific profile')
+            [CompletionResult]::new('--profile', '--profile', [CompletionResultType]::ParameterName, 'Use a specific profile')
+            [CompletionResult]::new('-f', '-f', [CompletionResultType]::ParameterName, 'Output format: table, json, csv, plain')
+            [CompletionResult]::new('--format', '--format', [CompletionResultType]::ParameterName, 'Output format: table, json, csv, plain')
+            [CompletionResult]::new('--no-cache', '--no-cache', [CompletionResultType]::ParameterName, 'Skip the cache and force a fresh API request')
+            [CompletionResult]::new('--no-color', '--no-color', [CompletionResultType]::ParameterName, 'Disable colors (equivalent to `NO_COLOR=1`)')
+            [CompletionResult]::new('--quiet', '--quiet', [CompletionResultType]::ParameterName, 'Suppress non-essential output')
+            [CompletionResult]::new('--verbose', '--verbose', [CompletionResultType]::ParameterName, 'Enable verbose mode (shows HTTP requests)')
+            [CompletionResult]::new('--csv-bom', '--csv-bom', [CompletionResultType]::ParameterName, 'Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)')
+            [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help')
+            [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help')
+            [CompletionResult]::new('-V', '-V ', [CompletionResultType]::ParameterName, 'Print version')
+            [CompletionResult]::new('--version', '--version', [CompletionResultType]::ParameterName, 'Print version')
+            break
+        }
         'waka;help' {
             [CompletionResult]::new('auth', 'auth', [CompletionResultType]::ParameterValue, 'Manage API key and authentication')
             [CompletionResult]::new('stats', 'stats', [CompletionResultType]::ParameterValue, 'Show coding statistics')
@@ -1075,6 +1111,8 @@ Register-ArgumentCompleter -Native -CommandName 'waka' -ScriptBlock {
             [CompletionResult]::new('completions', 'completions', [CompletionResultType]::ParameterValue, 'Generate shell completions')
             [CompletionResult]::new('config', 'config', [CompletionResultType]::ParameterValue, 'Manage waka configuration')
             [CompletionResult]::new('cache', 'cache', [CompletionResultType]::ParameterValue, 'Manage the local response cache')
+            [CompletionResult]::new('update', 'update', [CompletionResultType]::ParameterValue, 'Update waka to the latest version')
+            [CompletionResult]::new('changelog', 'changelog', [CompletionResultType]::ParameterValue, 'Show the changelog from the installed version to the latest')
             [CompletionResult]::new('help', 'help', [CompletionResultType]::ParameterValue, 'Print this message or the help of the given subcommand(s)')
             break
         }
@@ -1247,6 +1285,12 @@ Register-ArgumentCompleter -Native -CommandName 'waka' -ScriptBlock {
             break
         }
         'waka;help;cache;path' {
+            break
+        }
+        'waka;help;update' {
+            break
+        }
+        'waka;help;changelog' {
             break
         }
         'waka;help;help' {

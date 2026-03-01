@@ -22,6 +22,9 @@ _waka() {
             waka,cache)
                 cmd="waka__cache"
                 ;;
+            waka,changelog)
+                cmd="waka__changelog"
+                ;;
             waka,completions)
                 cmd="waka__completions"
                 ;;
@@ -57,6 +60,9 @@ _waka() {
                 ;;
             waka,stats)
                 cmd="waka__stats"
+                ;;
+            waka,update)
+                cmd="waka__update"
                 ;;
             waka__auth,help)
                 cmd="waka__auth__help"
@@ -208,6 +214,9 @@ _waka() {
             waka__help,cache)
                 cmd="waka__help__cache"
                 ;;
+            waka__help,changelog)
+                cmd="waka__help__changelog"
+                ;;
             waka__help,completions)
                 cmd="waka__help__completions"
                 ;;
@@ -243,6 +252,9 @@ _waka() {
                 ;;
             waka__help,stats)
                 cmd="waka__help__stats"
+                ;;
+            waka__help,update)
+                cmd="waka__help__update"
                 ;;
             waka__help__auth,login)
                 cmd="waka__help__auth__login"
@@ -464,7 +476,7 @@ _waka() {
 
     case "${cmd}" in
         waka)
-            opts="-p -f -h -V --profile --format --no-cache --no-color --quiet --verbose --csv-bom --help --version auth stats projects languages editors goals leaderboard report dashboard prompt completions config cache help"
+            opts="-p -f -h -V --profile --format --no-cache --no-color --quiet --verbose --csv-bom --help --version auth stats projects languages editors goals leaderboard report dashboard prompt completions config cache update changelog help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -926,6 +938,36 @@ _waka() {
         waka__cache__path)
             opts="-p -f -h -V --profile --format --no-cache --no-color --quiet --verbose --csv-bom --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                --profile)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                -p)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --format)
+                    COMPREPLY=($(compgen -W "table json csv plain" -- "${cur}"))
+                    return 0
+                    ;;
+                -f)
+                    COMPREPLY=($(compgen -W "table json csv plain" -- "${cur}"))
+                    return 0
+                    ;;
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        waka__changelog)
+            opts="-p -f -h -V --profile --format --no-cache --no-color --quiet --verbose --csv-bom --help --version"
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
@@ -1688,7 +1730,7 @@ _waka() {
             return 0
             ;;
         waka__help)
-            opts="auth stats projects languages editors goals leaderboard report dashboard prompt completions config cache help"
+            opts="auth stats projects languages editors goals leaderboard report dashboard prompt completions config cache update changelog help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1830,6 +1872,20 @@ _waka() {
         waka__help__cache__path)
             opts=""
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 4 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        waka__help__changelog)
+            opts=""
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
@@ -2348,6 +2404,20 @@ _waka() {
         waka__help__stats__yesterday)
             opts=""
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 4 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        waka__help__update)
+            opts=""
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
@@ -2886,7 +2956,7 @@ _waka() {
             return 0
             ;;
         waka__report__generate)
-            opts="-o -f -p -h -V --from --to --output --format --profile --no-cache --no-color --quiet --verbose --csv-bom --help --version"
+            opts="-o -F -p -f -h -V --from --to --output --output-format --profile --format --no-cache --no-color --quiet --verbose --csv-bom --help --version"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -2908,11 +2978,11 @@ _waka() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
-                --format)
+                --output-format)
                     COMPREPLY=($(compgen -W "md html json csv" -- "${cur}"))
                     return 0
                     ;;
-                -f)
+                -F)
                     COMPREPLY=($(compgen -W "md html json csv" -- "${cur}"))
                     return 0
                     ;;
@@ -2922,6 +2992,14 @@ _waka() {
                     ;;
                 -p)
                     COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --format)
+                    COMPREPLY=($(compgen -W "table json csv plain" -- "${cur}"))
+                    return 0
+                    ;;
+                -f)
+                    COMPREPLY=($(compgen -W "table json csv plain" -- "${cur}"))
                     return 0
                     ;;
                 *)
@@ -3376,6 +3454,36 @@ _waka() {
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
+                --profile)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                -p)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --format)
+                    COMPREPLY=($(compgen -W "table json csv plain" -- "${cur}"))
+                    return 0
+                    ;;
+                -f)
+                    COMPREPLY=($(compgen -W "table json csv plain" -- "${cur}"))
+                    return 0
+                    ;;
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        waka__update)
+            opts="-p -f -h -V --profile --format --no-cache --no-color --quiet --verbose --csv-bom --help --version"
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
                 --profile)
                     COMPREPLY=($(compgen -f "${cur}"))
                     return 0
