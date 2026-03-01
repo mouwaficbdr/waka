@@ -44,6 +44,7 @@ impl View {
 }
 
 /// Application state for the TUI dashboard.
+#[allow(clippy::struct_excessive_bools)]
 pub struct App {
     /// The `WakaTime` API client.
     pub client: WakaClient,
@@ -73,6 +74,10 @@ pub struct App {
     pub show_help: bool,
     /// List selection index (for navigating projects/languages/goals).
     pub list_index: usize,
+    /// Whether the app is in offline mode (last fetch failed).
+    pub offline: bool,
+    /// Spinner animation state (0-9 for 10 frames).
+    pub spinner_state: usize,
 }
 
 impl App {
@@ -93,6 +98,8 @@ impl App {
             loading: false,
             show_help: false,
             list_index: 0,
+            offline: false,
+            spinner_state: 0,
         }
     }
 

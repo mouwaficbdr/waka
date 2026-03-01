@@ -129,7 +129,15 @@ fn render_main_view(f: &mut Frame, area: Rect, app: &App) {
         || "Never".to_string(),
         |_instant| Local::now().format("%H:%M:%S").to_string(),
     );
-    status_bar::render_status_bar(f, status_area, time_until_refresh, &last_update_str);
+    status_bar::render_status_bar(
+        f,
+        status_area,
+        time_until_refresh,
+        &last_update_str,
+        app.offline,
+        app.loading,
+        app.spinner_state,
+    );
 }
 
 /// Renders the Projects detail view (View 2).

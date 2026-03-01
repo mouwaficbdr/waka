@@ -49,7 +49,7 @@ pub async fn run(client: WakaClient, refresh_interval: Duration) -> Result<(), i
     // Spawn background tasks.
     event::spawn_input_handler(tx.clone());
     event::spawn_ticker(tx.clone(), Duration::from_millis(250));
-    event::spawn_data_fetcher(tx, client, refresh_interval);
+    event::spawn_data_fetcher(tx.clone(), client.clone(), refresh_interval);
 
     // Main event loop.
     while app.running {
@@ -57,25 +57,33 @@ pub async fn run(client: WakaClient, refresh_interval: Duration) -> Result<(), i
 
         if let Some(ev) = rx.recv().await {
             match ev {
-                Event::Tick => { /* no-op for now */ }
-                Event::Key(key) => event::handle_key_event(&mut app, key),
+                Event::Tick => {
+                    // Advance spinner animation
+                    app.spinner_state = (app.spinner_state + 1) % 10;
+                }
+                Event::Key(key) => event::handle_key_event(&mut app, key, &tx, &client),
                 Event::SummaryUpdate(summary) => {
                     app.summary_today = Some(*summary);
                     app.last_update = Some(std::time::Instant::now());
                     app.loading = false;
+                    app.offline = false;
                 }
                 Event::WeeklyUpdate(summary) => {
                     app.summary_week = Some(*summary);
+                    app.offline = false;
                 }
                 Event::ActivityUpdate(summary) => {
                     app.activity_30d = Some(*summary);
+                    app.offline = false;
                 }
                 Event::GoalsUpdate(goals) => {
                     app.goals = Some(*goals);
+                    app.offline = false;
                 }
                 Event::Error(msg) => {
                     app.error = Some(msg);
                     app.loading = false;
+                    app.offline = true;
                 }
             }
         }
