@@ -230,6 +230,7 @@ Color output respects `NO_COLOR`, `TERM=dumb`, and `--no-color`.
 See [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) for the full phased roadmap.
 
 **Phase 2 (v0.3.0) — Complete:**
+
 - ✅ Shell prompt integration (`waka prompt`)
 - ✅ Update checker (runs in background on every command)
 - ✅ Goals list, show, and watch with notifications
@@ -238,6 +239,7 @@ See [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) for the full phased roadmap.
 - ✅ Standardized error messages
 
 **Phase 3 (v0.4.0) — Next:**
+
 - Report generation (Markdown, HTML, JSON, CSV)
 - `waka update` command for self-update
 - Man pages and mdBook documentation
