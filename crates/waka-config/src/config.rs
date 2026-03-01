@@ -44,6 +44,8 @@ pub enum OutputFormat {
     Csv,
     /// Plain text, no ANSI, no borders.
     Plain,
+    /// TSV (tab-separated values).
+    Tsv,
 }
 
 /// Which day the week begins on for weekly summaries.

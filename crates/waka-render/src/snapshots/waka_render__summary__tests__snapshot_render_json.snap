@@ -1,0 +1,172 @@
+---
+source: crates/waka-render/src/summary.rs
+expression: output
+---
+{
+  "data": [
+    {
+      "categories": [
+        {
+          "digital": "6:42",
+          "hours": 6,
+          "minutes": 42,
+          "name": "Coding",
+          "percent": 100.0,
+          "seconds": 0,
+          "text": "6 hrs 42 mins",
+          "total_seconds": 24120.0
+        }
+      ],
+      "dependencies": [
+        {
+          "digital": "2:15",
+          "hours": 2,
+          "minutes": 15,
+          "name": "tokio",
+          "percent": 33.5,
+          "seconds": 0,
+          "text": "2 hrs 15 mins",
+          "total_seconds": 8100.0
+        },
+        {
+          "digital": "1:47",
+          "hours": 1,
+          "minutes": 47,
+          "name": "serde",
+          "percent": 26.5,
+          "seconds": 0,
+          "text": "1 hr 47 mins",
+          "total_seconds": 6420.0
+        }
+      ],
+      "editors": [
+        {
+          "digital": "5:58",
+          "hours": 5,
+          "minutes": 58,
+          "name": "Neovim",
+          "percent": 89.1,
+          "seconds": 0,
+          "text": "5 hrs 58 mins",
+          "total_seconds": 21480.0
+        },
+        {
+          "digital": "0:44",
+          "hours": 0,
+          "minutes": 44,
+          "name": "VS Code",
+          "percent": 10.9,
+          "seconds": 0,
+          "text": "44 mins",
+          "total_seconds": 2640.0
+        }
+      ],
+      "grand_total": {
+        "digital": "6:42",
+        "hours": 6,
+        "minutes": 42,
+        "seconds": 0,
+        "text": "6 hrs 42 mins",
+        "total_seconds": 24120.0
+      },
+      "languages": [
+        {
+          "digital": "3:30",
+          "hours": 3,
+          "minutes": 30,
+          "name": "Rust",
+          "percent": 52.3,
+          "seconds": 0,
+          "text": "3 hrs 30 mins",
+          "total_seconds": 12600.0
+        },
+        {
+          "digital": "1:52",
+          "hours": 1,
+          "minutes": 52,
+          "name": "TypeScript",
+          "percent": 27.9,
+          "seconds": 0,
+          "text": "1 hr 52 mins",
+          "total_seconds": 6720.0
+        },
+        {
+          "digital": "0:48",
+          "hours": 0,
+          "minutes": 48,
+          "name": "Bash",
+          "percent": 12.0,
+          "seconds": 0,
+          "text": "48 mins",
+          "total_seconds": 2880.0
+        },
+        {
+          "digital": "0:32",
+          "hours": 0,
+          "minutes": 32,
+          "name": "TOML",
+          "percent": 7.8,
+          "seconds": 0,
+          "text": "32 mins",
+          "total_seconds": 1920.0
+        }
+      ],
+      "machines": [
+        {
+          "digital": "6:42",
+          "hours": 6,
+          "machine_name_id": "thinkpad-x1",
+          "minutes": 42,
+          "name": "thinkpad",
+          "percent": 100.0,
+          "seconds": 0,
+          "text": "6 hrs 42 mins",
+          "total_seconds": 24120.0
+        }
+      ],
+      "operating_systems": [
+        {
+          "digital": "6:42",
+          "hours": 6,
+          "minutes": 42,
+          "name": "Linux",
+          "percent": 100.0,
+          "seconds": 0,
+          "text": "6 hrs 42 mins",
+          "total_seconds": 24120.0
+        }
+      ],
+      "projects": [
+        {
+          "digital": "4:20",
+          "hours": 4,
+          "minutes": 20,
+          "name": "my-saas",
+          "percent": 64.7,
+          "seconds": 0,
+          "text": "4 hrs 20 mins",
+          "total_seconds": 15600.0
+        },
+        {
+          "digital": "2:22",
+          "hours": 2,
+          "minutes": 22,
+          "name": "dotfiles",
+          "percent": 35.3,
+          "seconds": 0,
+          "text": "2 hrs 22 mins",
+          "total_seconds": 8520.0
+        }
+      ],
+      "range": {
+        "date": "2025-01-13",
+        "end": "2025-01-13T23:00:00Z",
+        "start": "2025-01-13T00:00:00Z",
+        "text": "today",
+        "timezone": "Europe/Berlin"
+      }
+    }
+  ],
+  "end": "2025-01-13T23:00:00Z",
+  "start": "2025-01-13T00:00:00Z"
+}
