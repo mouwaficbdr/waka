@@ -83,6 +83,9 @@ indicatif = "0.17"
 console = "0.15"
 owo-colors = "4"
 
+# Credentials obfuscation
+base64 = "0.22"
+
 # System notifications
 notify-rust = "4"
 

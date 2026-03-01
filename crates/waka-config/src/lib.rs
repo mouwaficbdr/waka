@@ -4,10 +4,12 @@
 //! the credential priority chain (env var → keychain → credentials file).
 
 pub mod config;
+pub mod credentials;
 pub mod error;
 
 pub use config::{
     CacheConfig, ColorMode, Config, CoreConfig, DisplayConfig, OutputConfig, OutputFormat,
     ProfileConfig, WeekStart,
 };
-pub use error::ConfigError;
+pub use credentials::{CredentialStore, Sensitive};
+pub use error::{ConfigError, CredentialError};
