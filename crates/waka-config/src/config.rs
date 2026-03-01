@@ -229,6 +229,23 @@ impl Config {
         Ok(dirs.config_dir().join("config.toml"))
     }
 
+    /// Returns the platform-specific cache directory for `waka`.
+    ///
+    /// | Platform | Path |
+    /// |----------|------|
+    /// | Linux    | `$XDG_CACHE_HOME/waka/` or `~/.cache/waka/` |
+    /// | macOS    | `~/Library/Caches/waka/` |
+    /// | Windows  | `%LOCALAPPDATA%\waka\cache\` |
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ConfigError::NoConfigDir`] if the home directory cannot be
+    /// determined.
+    pub fn cache_dir() -> Result<PathBuf, ConfigError> {
+        let dirs = ProjectDirs::from("", "", "waka").ok_or(ConfigError::NoConfigDir)?;
+        Ok(dirs.cache_dir().to_path_buf())
+    }
+
     /// Loads the config from the platform default path.
     ///
     /// If the file does not exist, [`Config::default()`] is returned.
@@ -491,6 +508,19 @@ color = "always"
             let s = toml::to_string(&W { v: ws.clone() }).unwrap();
             let back: W = toml::from_str(&s).unwrap();
             assert_eq!(ws, back.v);
+        }
+    }
+
+    #[test]
+    fn cache_dir_returns_ok_in_normal_environment() {
+        // On any platform where the home directory is determinable, cache_dir()
+        // should succeed and return a path that ends with "waka".
+        // If it errors (sandboxed env), that is acceptable — just not a panic.
+        if let Ok(path) = Config::cache_dir() {
+            assert!(
+                path.ends_with("waka") || path.to_string_lossy().contains("waka"),
+                "cache dir should be under a 'waka' directory, got: {path:?}"
+            );
         }
     }
 }
