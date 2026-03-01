@@ -28,7 +28,7 @@ waka changelog --all
 ## Sample output
 
 ```
-## v0.5.0 — 2025-04-01
+## v1.1.0 — 2025-06-01
 
 ### Features
 - feat(tui): add language pie chart to dashboard
@@ -37,7 +37,7 @@ waka changelog --all
 ### Fixes
 - fix(cache): handle corrupted sled database gracefully
 
-## v0.4.0 — 2025-03-15
+## v1.0.0 — 2025-05-01
 
 ### Features
 - feat(report): implement report generation in md/html/json/csv

@@ -27,14 +27,14 @@ waka update
 Output:
 
 ```
-Current version: 0.4.0
-Latest version:  0.5.0
+Current version: 1.0.0
+Latest version:  1.1.0
 Updating via Homebrew...
-✓ waka updated to 0.5.0
+✓ waka updated to 1.1.0
 ```
 
 If already up to date:
 
 ```
-waka 0.4.0 is already the latest version.
+waka 1.0.0 is already the latest version.
 ```
