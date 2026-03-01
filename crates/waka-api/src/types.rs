@@ -174,6 +174,10 @@ pub struct GrandTotal {
     /// Whole minutes component (0–59).
     pub minutes: u32,
     /// Whole seconds component (0–59).
+    ///
+    /// The `WakaTime` API omits this field from `grand_total` (it is present on
+    /// per-language/project entries). Defaults to `0` when absent.
+    #[serde(default)]
     pub seconds: u32,
     /// Full human-readable duration (e.g. `"6 hrs 42 mins"`).
     pub text: String,
