@@ -7,7 +7,7 @@ The WakaTime CLI you always deserved. Fast, beautiful, composable.
 [![Crates.io Downloads](https://img.shields.io/crates/d/waka-cli.svg)](https://crates.io/crates/waka-cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-<!-- SCREENSHOT: insert demo.gif here once generated -->
+![waka — WakaTime CLI](demo.gif)
 
 ---
 
@@ -49,36 +49,36 @@ waka dashboard           # launch the interactive TUI
 
 ### `waka auth` — Authentication
 
-| Command                   | Description                                                     |
-| ------------------------- | --------------------------------------------------------------- |
-| `auth login`              | Log in with your WakaTime API key (interactive or `--api-key`) |
-| `auth logout`             | Remove the stored API key                                       |
-| `auth status`             | Show whether you are currently logged in                        |
-| `auth show-key`           | Display the stored API key (masked by default)                  |
-| `auth switch <PROFILE>`   | Switch to a different profile                                   |
+| Command                 | Description                                                    |
+| ----------------------- | -------------------------------------------------------------- |
+| `auth login`            | Log in with your WakaTime API key (interactive or `--api-key`) |
+| `auth logout`           | Remove the stored API key                                      |
+| `auth status`           | Show whether you are currently logged in                       |
+| `auth show-key`         | Display the stored API key (masked by default)                 |
+| `auth switch <PROFILE>` | Switch to a different profile                                  |
 
 API keys are stored in the OS keychain (macOS Keychain, GNOME Keyring, Windows Credential Manager) with a `0600` plain-text fallback. Multi-profile support: use `-p work` or `-p personal` on any command.
 
 ### `waka stats` — Coding Statistics
 
-| Command                                 | Description                    |
-| --------------------------------------- | ------------------------------ |
-| `stats today`                           | Today's coding activity        |
-| `stats yesterday`                       | Yesterday's coding activity    |
-| `stats week`                            | Last 7 days                    |
-| `stats month`                           | Last 30 days                   |
-| `stats year`                            | Last 365 days                  |
-| `stats range --from DATE --to DATE`     | Custom date range (YYYY-MM-DD) |
+| Command                             | Description                    |
+| ----------------------------------- | ------------------------------ |
+| `stats today`                       | Today's coding activity        |
+| `stats yesterday`                   | Yesterday's coding activity    |
+| `stats week`                        | Last 7 days                    |
+| `stats month`                       | Last 30 days                   |
+| `stats year`                        | Last 365 days                  |
+| `stats range --from DATE --to DATE` | Custom date range (YYYY-MM-DD) |
 
 All stats subcommands accept `--project <NAME>` and `--language <LANG>` filters.
 
 ### `waka projects` — Projects
 
-| Command                      | Description                           |
-| ---------------------------- | ------------------------------------- |
-| `projects list`              | List all projects with coding time    |
-| `projects top`               | Show the most active projects         |
-| `projects show <PROJECT>`    | Detailed stats for one project        |
+| Command                   | Description                        |
+| ------------------------- | ---------------------------------- |
+| `projects list`           | List all projects with coding time |
+| `projects top`            | Show the most active projects      |
+| `projects show <PROJECT>` | Detailed stats for one project     |
 
 `projects list` accepts `--sort-by time|name` and `--limit N`.  
 `projects top` accepts `--period 7d|30d|1y`.  
@@ -86,46 +86,46 @@ All stats subcommands accept `--project <NAME>` and `--language <LANG>` filters.
 
 ### `waka languages` — Languages
 
-| Command              | Description                          |
-| -------------------- | ------------------------------------ |
-| `languages list`     | List all languages with coding time  |
-| `languages top`      | Show top languages                   |
+| Command          | Description                         |
+| ---------------- | ----------------------------------- |
+| `languages list` | List all languages with coding time |
+| `languages top`  | Show top languages                  |
 
 `languages list` accepts `--period 7d|30d|1y`. `languages top` accepts `--limit N`.
 
 ### `waka editors` — Editors
 
-| Command            | Description                        |
-| ------------------ | ---------------------------------- |
-| `editors list`     | List all editors with coding time  |
-| `editors top`      | Show top editors                   |
+| Command        | Description                       |
+| -------------- | --------------------------------- |
+| `editors list` | List all editors with coding time |
+| `editors top`  | Show top editors                  |
 
 `editors list` accepts `--period 7d|30d|1y`. `editors top` accepts `--limit N`.
 
 ### `waka goals` — Goals
 
-| Command                  | Description                                    |
-| ------------------------ | ---------------------------------------------- |
-| `goals list`             | List all active goals                          |
-| `goals show <GOAL_ID>`   | Show details for a specific goal               |
-| `goals watch`            | Refresh goals periodically (`--interval SECS`) |
+| Command                | Description                                    |
+| ---------------------- | ---------------------------------------------- |
+| `goals list`           | List all active goals                          |
+| `goals show <GOAL_ID>` | Show details for a specific goal               |
+| `goals watch`          | Refresh goals periodically (`--interval SECS`) |
 
 `goals watch --notify` sends a desktop notification when a goal is reached (requires `notify-send` on Linux).
 
 ### `waka leaderboard` — Leaderboard
 
-| Command              | Description                        |
-| -------------------- | ---------------------------------- |
-| `leaderboard show`   | Show the public leaderboard        |
+| Command            | Description                 |
+| ------------------ | --------------------------- |
+| `leaderboard show` | Show the public leaderboard |
 
 Accepts `--page N` for pagination.
 
 ### `waka report` — Reports
 
-| Command                                   | Description                    |
-| ----------------------------------------- | ------------------------------ |
-| `report generate --from DATE --to DATE`   | Generate a productivity report |
-| `report summary`                          | Brief productivity summary     |
+| Command                                 | Description                    |
+| --------------------------------------- | ------------------------------ |
+| `report generate --from DATE --to DATE` | Generate a productivity report |
+| `report summary`                        | Brief productivity summary     |
 
 `report generate` accepts `-f/--format md|html|json|csv` and `-o FILE`.  
 `report summary` accepts `--period week|month`.
@@ -168,22 +168,22 @@ waka completions elvish      # Elvish
 
 ### `waka config` — Configuration
 
-| Command                      | Description                          |
-| ---------------------------- | ------------------------------------ |
-| `config get <KEY>`           | Get the value of a config key        |
-| `config set <KEY> <VALUE>`   | Set the value of a config key        |
-| `config edit`                | Open the config file in `$EDITOR`    |
-| `config path`                | Print the path to the config file    |
-| `config reset`               | Reset config to defaults             |
-| `config doctor`              | Run a full diagnostic check          |
+| Command                    | Description                       |
+| -------------------------- | --------------------------------- |
+| `config get <KEY>`         | Get the value of a config key     |
+| `config set <KEY> <VALUE>` | Set the value of a config key     |
+| `config edit`              | Open the config file in `$EDITOR` |
+| `config path`              | Print the path to the config file |
+| `config reset`             | Reset config to defaults          |
+| `config doctor`            | Run a full diagnostic check       |
 
 ### `waka cache` — Cache Management
 
-| Command        | Description                         |
-| -------------- | ----------------------------------- |
-| `cache info`   | Entry count, disk usage, last write |
-| `cache path`   | Print the cache directory path      |
-| `cache clear`  | Remove all cached entries           |
+| Command       | Description                         |
+| ------------- | ----------------------------------- |
+| `cache info`  | Entry count, disk usage, last write |
+| `cache path`  | Print the cache directory path      |
+| `cache clear` | Remove all cached entries           |
 
 `cache clear --older <DURATION>` removes only entries older than a given duration (e.g. `24h`, `7d`).
 
@@ -217,12 +217,12 @@ Shows the changelog from the installed version to the latest.
 
 Every tabular command supports `--format`:
 
-| Format | Flag             | Notes                                                       |
-| ------ | ---------------- | ----------------------------------------------------------- |
-| Table  | `--format table` | Default when stdout is a TTY                                |
-| Plain  | `--format plain` | Default when piped                                          |
-| JSON   | `--format json`  | Machine-readable                                            |
-| CSV    | `--format csv`   | Spreadsheet-friendly; add `--csv-bom` for Excel on Windows  |
+| Format | Flag             | Notes                                                      |
+| ------ | ---------------- | ---------------------------------------------------------- |
+| Table  | `--format table` | Default when stdout is a TTY                               |
+| Plain  | `--format plain` | Default when piped                                         |
+| JSON   | `--format json`  | Machine-readable                                           |
+| CSV    | `--format csv`   | Spreadsheet-friendly; add `--csv-bom` for Excel on Windows |
 
 TSV is also supported and can be set as the default via `output.format = "tsv"` in the config file.
 
