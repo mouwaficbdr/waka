@@ -125,7 +125,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - name: Publish waka-api
-        run: cargo publish -p waka-api
+        run: cargo publish -p waka-api || true
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
 
@@ -139,14 +139,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install git-cliff
         uses: kenji-miyake/setup-git-cliff@v2
       - name: Generate CHANGELOG
-        run: git cliff --output CHANGELOG.md --offline
-      - name: Commit CHANGELOG
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "chore(changelog): update CHANGELOG for ${{ github.ref_name }}"
-          file_pattern: CHANGELOG.md
-          commit_options: "--no-verify"
+        run: git cliff --output CHANGELOG.md
+      - name: Commit and push CHANGELOG
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git diff --staged --quiet || git commit --no-verify \
+            -m "chore(changelog): update CHANGELOG for ${{ github.ref_name }}"
+          git push origin main
