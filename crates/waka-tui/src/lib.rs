@@ -6,6 +6,7 @@
 mod app;
 mod event;
 mod ui;
+mod widgets;
 
 use std::io;
 use std::time::Duration;
@@ -62,6 +63,12 @@ pub async fn run(client: WakaClient, refresh_interval: Duration) -> Result<(), i
                     app.summary_today = Some(*summary);
                     app.last_update = Some(std::time::Instant::now());
                     app.loading = false;
+                }
+                Event::WeeklyUpdate(summary) => {
+                    app.summary_week = Some(*summary);
+                }
+                Event::ActivityUpdate(summary) => {
+                    app.activity_30d = Some(*summary);
                 }
                 Event::GoalsUpdate(goals) => {
                     app.goals = Some(*goals);

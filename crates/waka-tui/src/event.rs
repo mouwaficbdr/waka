@@ -13,8 +13,12 @@ pub enum Event {
     Tick,
     /// User keyboard input.
     Key(KeyEvent),
-    /// Summary data fetched successfully.
+    /// Summary data (today) fetched successfully.
     SummaryUpdate(Box<SummaryResponse>),
+    /// Weekly summary data fetched successfully.
+    WeeklyUpdate(Box<SummaryResponse>),
+    /// 30-day activity data fetched successfully.
+    ActivityUpdate(Box<SummaryResponse>),
     /// Goals data fetched successfully.
     GoalsUpdate(Box<GoalsResponse>),
     /// API fetch failed.
@@ -49,7 +53,7 @@ pub fn spawn_ticker(tx: mpsc::Sender<Event>, tick_rate: Duration) {
 }
 
 /// Spawns a task that fetches summary data every `interval` and sends
-/// `Event::SummaryUpdate` or `Event::Error` to the given channel.
+/// various update events to the given channel.
 pub fn spawn_data_fetcher(
     tx: mpsc::Sender<Event>,
     client: waka_api::WakaClient,
@@ -68,6 +72,49 @@ pub fn spawn_data_fetcher(
             match summary_res {
                 Ok(resp) => {
                     if tx.send(Event::SummaryUpdate(Box::new(resp))).await.is_err() {
+                        break;
+                    }
+                }
+                Err(e) => {
+                    let msg = format_api_error(&e);
+                    if tx.send(Event::Error(msg)).await.is_err() {
+                        break;
+                    }
+                }
+            }
+
+            // Fetch summary for the last 7 days.
+            let today = chrono::Local::now().date_naive();
+            let week_start = today - chrono::Duration::days(6);
+            let week_res = client
+                .summaries(waka_api::SummaryParams::for_range(week_start, today))
+                .await;
+            match week_res {
+                Ok(resp) => {
+                    if tx.send(Event::WeeklyUpdate(Box::new(resp))).await.is_err() {
+                        break;
+                    }
+                }
+                Err(e) => {
+                    let msg = format_api_error(&e);
+                    if tx.send(Event::Error(msg)).await.is_err() {
+                        break;
+                    }
+                }
+            }
+
+            // Fetch activity for the last 30 days.
+            let activity_start = today - chrono::Duration::days(29);
+            let activity_res = client
+                .summaries(waka_api::SummaryParams::for_range(activity_start, today))
+                .await;
+            match activity_res {
+                Ok(resp) => {
+                    if tx
+                        .send(Event::ActivityUpdate(Box::new(resp)))
+                        .await
+                        .is_err()
+                    {
                         break;
                     }
                 }

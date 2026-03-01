@@ -55,8 +55,12 @@ pub struct App {
     pub last_update: Option<Instant>,
     /// Auto-refresh interval.
     pub refresh_interval: Duration,
-    /// Main summary data.
+    /// Main summary data (today).
     pub summary_today: Option<SummaryResponse>,
+    /// Weekly summary data (last 7 days, one entry per day).
+    pub summary_week: Option<SummaryResponse>,
+    /// 30-day activity history (one entry per day).
+    pub activity_30d: Option<SummaryResponse>,
     /// Goals data.
     pub goals: Option<GoalsResponse>,
     /// Leaderboard data (optional — fetched lazily).
@@ -81,6 +85,8 @@ impl App {
             last_update: None,
             refresh_interval,
             summary_today: None,
+            summary_week: None,
+            activity_30d: None,
             goals: None,
             leaderboard: None,
             error: None,
@@ -123,5 +129,15 @@ impl App {
     /// Resets the list selection.
     pub fn reset_list(&mut self) {
         self.list_index = 0;
+    }
+
+    /// Returns the time remaining until the next auto-refresh.
+    ///
+    /// If no data has been fetched yet, returns `Duration::ZERO`.
+    pub fn time_until_refresh(&self) -> Duration {
+        self.last_update.map_or(Duration::ZERO, |last| {
+            let elapsed = last.elapsed();
+            self.refresh_interval.saturating_sub(elapsed)
+        })
     }
 }

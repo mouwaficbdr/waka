@@ -1,59 +1,193 @@
 //! Rendering for the TUI application.
-//!
-//! This module contains all `ratatui` widget code. It is currently a stub
-//! and will be populated in Task 2.7.
 
+use chrono::Local;
 use ratatui::{
-    layout::{Constraint, Layout, Rect},
+    layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
 
-use crate::app::App;
+use crate::app::{App, View};
+use crate::widgets::{activity, goals_panel, languages, projects, status_bar, today, week};
 
 /// Renders the entire TUI screen.
 pub fn render(f: &mut Frame, app: &App) {
     let size = f.area();
 
-    // For now, just show a placeholder message.
+    // If we have an error and no data, show error message
+    if app.error.is_some() && app.summary_today.is_none() {
+        render_error_state(f, size, app);
+    } else if app.loading && app.summary_today.is_none() {
+        render_loading_state(f, size);
+    } else if app.view == View::Main {
+        render_main_view(f, size, app);
+    } else {
+        // Other views (Projects, Languages, Goals, Activity) are placeholders for now
+        render_placeholder(f, size, app);
+    }
+
+    // Render help overlay if visible.
+    if app.show_help {
+        render_help_overlay(f, size);
+    }
+}
+
+/// Renders the main dashboard view.
+fn render_main_view(f: &mut Frame, area: Rect, app: &App) {
+    // Overall layout: main content + status bar at bottom
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(1), Constraint::Length(1)])
+        .split(area);
+
+    let main_area = chunks[0];
+    let status_area = chunks[1];
+
+    // Split main area into rows:
+    // - Row 1: Today (left) + This Week (right)
+    // - Row 2: Top Projects (full width)
+    // - Row 3: Languages (left) + Goals (right)
+    // - Row 4: Activity (full width)
+
+    let rows = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(5), // Row 1
+            Constraint::Length(7), // Row 2 (projects table)
+            Constraint::Length(6), // Row 3
+            Constraint::Min(1),    // Row 4 (activity)
+        ])
+        .split(main_area);
+
+    // Row 1: Today (left) + This Week (right)
+    let today_week_cols = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .split(rows[0]);
+
+    // Row 2: Top Projects (full width)
+    let projects_area = rows[1];
+
+    // Row 3: Languages (left) + Goals (right)
+    let langs_goals_cols = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
+        .split(rows[2]);
+
+    // Row 4: Activity
+    let activity_area = rows[3];
+
+    // Render each widget if data is available
+    if let Some(ref summary_today) = app.summary_today {
+        if let Some(ref goals) = app.goals {
+            today::render_today(f, today_week_cols[0], summary_today, goals);
+        } else {
+            render_placeholder_block(f, today_week_cols[0], "Today", "No goals data");
+        }
+
+        if let Some(ref summary_week) = app.summary_week {
+            week::render_week(f, today_week_cols[1], summary_week);
+        } else {
+            render_placeholder_block(f, today_week_cols[1], "This Week", "No weekly data");
+        }
+
+        projects::render_projects(f, projects_area, summary_today);
+        languages::render_languages(f, langs_goals_cols[0], summary_today);
+
+        if let Some(ref goals) = app.goals {
+            goals_panel::render_goals_panel(f, langs_goals_cols[1], goals);
+        } else {
+            render_placeholder_block(f, langs_goals_cols[1], "Goals", "No goals data");
+        }
+    } else {
+        render_placeholder_block(f, today_week_cols[0], "Today", "No data");
+        render_placeholder_block(f, today_week_cols[1], "This Week", "No data");
+        render_placeholder_block(f, projects_area, "Top Projects", "No data");
+        render_placeholder_block(f, langs_goals_cols[0], "Languages", "No data");
+        render_placeholder_block(f, langs_goals_cols[1], "Goals", "No data");
+    }
+
+    if let Some(ref activity_30d) = app.activity_30d {
+        activity::render_activity(f, activity_area, activity_30d);
+    } else {
+        render_placeholder_block(
+            f,
+            activity_area,
+            "Activity (last 30 days)",
+            "No activity data",
+        );
+    }
+
+    // Render status bar
+    let time_until_refresh = app.time_until_refresh();
+    let last_update_str = app.last_update.map_or_else(
+        || "Never".to_string(),
+        |_instant| Local::now().format("%H:%M:%S").to_string(),
+    );
+    status_bar::render_status_bar(f, status_area, time_until_refresh, &last_update_str);
+}
+
+/// Renders a placeholder view for non-main views.
+fn render_placeholder(f: &mut Frame, area: Rect, app: &App) {
     let title = format!("waka dashboard — view: {:?}", app.view);
     let block = Block::default()
         .title(title.as_str())
         .borders(Borders::ALL)
         .style(Style::default().fg(Color::Cyan));
 
-    let mut text_lines = vec![];
-    text_lines.push(Line::from("Dashboard skeleton loaded."));
-    text_lines.push(Line::from(""));
-    if let Some(ref summary) = app.summary_today {
-        let total = summary.data.first().map_or_else(
-            || "No data".to_owned(),
-            |d| format!("Total today: {:?}", d.grand_total.text),
-        );
-        text_lines.push(Line::from(total));
-    } else if app.loading {
-        text_lines.push(Line::from("Loading..."));
-    } else if let Some(ref err) = app.error {
-        text_lines.push(Line::from(Span::styled(
-            format!("Error: {err}"),
+    let text = vec![
+        Line::from("This view is not yet implemented."),
+        Line::from("(Task 2.8)"),
+    ];
+
+    let paragraph = Paragraph::new(text).block(block);
+    f.render_widget(paragraph, area);
+}
+
+/// Renders an error state.
+fn render_error_state(f: &mut Frame, area: Rect, app: &App) {
+    let block = Block::default()
+        .title("Error")
+        .borders(Borders::ALL)
+        .style(Style::default().fg(Color::Red));
+
+    let text = vec![
+        Line::from(Span::styled(
+            app.error.as_deref().unwrap_or("Unknown error"),
             Style::default().fg(Color::Red),
-        )));
-    } else {
-        text_lines.push(Line::from("No data yet."));
-    }
+        )),
+        Line::from(""),
+        Line::from("Press r to retry, q to quit."),
+    ];
 
-    text_lines.push(Line::from(""));
-    text_lines.push(Line::from("Press q to quit, ? for help."));
+    let paragraph = Paragraph::new(text).block(block);
+    f.render_widget(paragraph, area);
+}
 
-    let paragraph = Paragraph::new(text_lines).block(block);
-    f.render_widget(paragraph, size);
+/// Renders a loading state.
+fn render_loading_state(f: &mut Frame, area: Rect) {
+    let block = Block::default()
+        .title("Loading...")
+        .borders(Borders::ALL)
+        .style(Style::default().fg(Color::Yellow));
 
-    // Render help overlay if visible.
-    if app.show_help {
-        render_help_overlay(f, size);
-    }
+    let text = vec![Line::from("Fetching data from WakaTime API...")];
+
+    let paragraph = Paragraph::new(text).block(block);
+    f.render_widget(paragraph, area);
+}
+
+/// Renders a placeholder block with a message.
+fn render_placeholder_block(f: &mut Frame, area: Rect, title: &str, message: &str) {
+    let block = Block::default()
+        .title(format!(" {title} "))
+        .borders(Borders::ALL)
+        .style(Style::default().fg(Color::Gray));
+
+    let paragraph = Paragraph::new(message).block(block);
+    f.render_widget(paragraph, area);
 }
 
 /// Renders the help overlay popup.
