@@ -1,0 +1,26 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH waka-config 1  "config " 
+.SH NAME
+waka\-config \- Manage waka configuration
+.SH SYNOPSIS
+\fBwaka config\fR [\fB\-h\fR|\fB\-\-help\fR] [\fIsubcommands\fR]
+.SH DESCRIPTION
+Manage waka configuration
+.SH OPTIONS
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.SH SUBCOMMANDS
+.TP
+waka\-config\-show(1)
+Print the current configuration
+.TP
+waka\-config\-edit(1)
+Open the config file in $EDITOR
+.TP
+waka\-config\-set(1)
+Set a configuration value
+.TP
+waka\-config\-reset(1)
+Reset configuration to defaults

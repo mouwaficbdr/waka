@@ -40,3 +40,7 @@ workspace = true
 [dev-dependencies]
 wiremock = { workspace = true }
 tokio = { workspace = true }
+
+[build-dependencies]
+clap = { workspace = true }
+clap_mangen = { workspace = true }

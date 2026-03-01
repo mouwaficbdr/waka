@@ -1,0 +1,26 @@
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH waka-auth 1  "auth " 
+.SH NAME
+waka\-auth \- Manage API key and authentication
+.SH SYNOPSIS
+\fBwaka auth\fR [\fB\-h\fR|\fB\-\-help\fR] [\fIsubcommands\fR]
+.SH DESCRIPTION
+Manage API key and authentication
+.SH OPTIONS
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.SH SUBCOMMANDS
+.TP
+waka\-auth\-login(1)
+Log in with your WakaTime API key
+.TP
+waka\-auth\-logout(1)
+Remove the stored API key
+.TP
+waka\-auth\-status(1)
+Show current authentication status
+.TP
+waka\-auth\-whoami(1)
+Display the authenticated user info
