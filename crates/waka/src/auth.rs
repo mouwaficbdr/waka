@@ -238,6 +238,7 @@ mod tests {
             no_color: false,
             quiet: false,
             verbose: false,
+            csv_bom: false,
         }
     }
 

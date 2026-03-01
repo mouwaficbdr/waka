@@ -1,0 +1,9 @@
+---
+source: crates/waka-render/src/summary.rs
+expression: out
+---
+date,language,total_seconds,time,percent
+2025-01-13,Rust,12600,3h 30m,52.2
+2025-01-13,TypeScript,6720,1h 52m,27.9
+2025-01-13,Bash,2880,48m,11.9
+2025-01-13,TOML,1920,32m,8.0

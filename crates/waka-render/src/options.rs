@@ -39,6 +39,11 @@ pub struct RenderOptions {
     pub width: u16,
     /// Desired output format.
     pub format: OutputFormat,
+    /// Prepend a UTF-8 BOM (`\u{FEFF}`) to CSV output.
+    ///
+    /// When `true`, the byte-order mark is prepended so that Windows Excel
+    /// auto-detects UTF-8 encoding when opening the file directly.
+    pub csv_bom: bool,
 }
 
 impl Default for RenderOptions {
@@ -47,6 +52,7 @@ impl Default for RenderOptions {
             color: std::io::stdout().is_terminal(),
             width: terminal_width(),
             format: OutputFormat::default(),
+            csv_bom: false,
         }
     }
 }
@@ -84,7 +90,12 @@ pub fn detect_output_format(configured: OutputFormat) -> OutputFormat {
         configured
     } else {
         // Piped or redirected — degrade gracefully to plain text.
-        OutputFormat::Plain
+        // CSV and TSV are machine-readable formats; they must not be degraded
+        // because they are explicitly requested for piped consumption.
+        match configured {
+            OutputFormat::Csv | OutputFormat::Tsv | OutputFormat::Json => configured,
+            _ => OutputFormat::Plain,
+        }
     }
 }
 

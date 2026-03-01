@@ -1,0 +1,8 @@
+---
+source: crates/waka-render/src/breakdown.rs
+expression: out
+---
+rank,language,total_seconds,time,percent
+1,Rust,10800,3h 0m,50.0
+2,Python,7200,2h 0m,33.3
+3,TypeScript,3600,1h 0m,16.7

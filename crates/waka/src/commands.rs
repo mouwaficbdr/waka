@@ -174,6 +174,7 @@ async fn stats(cmd: StatsCommands, global: &GlobalOpts) -> Result<()> {
     let opts = RenderOptions {
         color,
         format,
+        csv_bom: global.csv_bom,
         ..RenderOptions::default()
     };
 
@@ -378,6 +379,7 @@ async fn projects(cmd: ProjectsCommands, global: &GlobalOpts) -> Result<()> {
     let opts = RenderOptions {
         color,
         format,
+        csv_bom: global.csv_bom,
         ..RenderOptions::default()
     };
 
@@ -448,6 +450,7 @@ async fn languages(cmd: LanguagesCommands, global: &GlobalOpts) -> Result<()> {
     let opts = RenderOptions {
         color,
         format,
+        csv_bom: global.csv_bom,
         ..RenderOptions::default()
     };
 
@@ -490,6 +493,7 @@ async fn editors(cmd: EditorsCommands, global: &GlobalOpts) -> Result<()> {
     let opts = RenderOptions {
         color,
         format,
+        csv_bom: global.csv_bom,
         ..RenderOptions::default()
     };
 

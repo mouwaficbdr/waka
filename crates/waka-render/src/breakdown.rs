@@ -64,9 +64,9 @@ impl BreakdownRenderer {
         match opts.format {
             OutputFormat::Table => Self::render_table(entries, title_col, limit, opts),
             OutputFormat::Json => Self::render_json(entries, limit),
-            OutputFormat::Plain | OutputFormat::Csv | OutputFormat::Tsv => {
-                Self::render_plain(entries, title_col, limit)
-            }
+            OutputFormat::Csv => Self::render_csv(entries, title_col, limit, opts.csv_bom),
+            OutputFormat::Tsv => Self::render_tsv(entries, title_col, limit),
+            OutputFormat::Plain => Self::render_plain(entries, title_col, limit),
         }
     }
 
@@ -167,6 +167,73 @@ impl BreakdownRenderer {
                 .expect("write to String is infallible");
         }
         out
+    }
+
+    // ── csv / tsv ─────────────────────────────────────────────────────────────
+
+    fn render_csv_or_tsv(
+        entries: &[(String, f64)],
+        title_col: &str,
+        limit: Option<usize>,
+        sep: char,
+        bom: bool,
+    ) -> String {
+        let cap = limit.unwrap_or(DEFAULT_LIMIT);
+        let total: f64 = entries.iter().map(|(_, s)| s).sum();
+
+        let mut out = String::new();
+        if bom {
+            out.push('\u{FEFF}');
+        }
+
+        writeln!(
+            out,
+            "rank{s}{col}{s}total_seconds{s}time{s}percent",
+            s = sep,
+            col = title_col.to_lowercase(),
+        )
+        .expect("write to String is infallible");
+
+        for (i, (name, seconds)) in entries.iter().take(cap).enumerate() {
+            let pct = if total > 0.0 {
+                (seconds / total) * 100.0
+            } else {
+                0.0
+            };
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            let secs_u64 = seconds.round() as u64;
+            writeln!(
+                out,
+                "{rank}{s}{name}{s}{secs}{s}{time}{s}{pct:.1}",
+                s = sep,
+                rank = i + 1,
+                secs = secs_u64,
+                time = format_duration(secs_u64),
+            )
+            .expect("write to String is infallible");
+        }
+        out
+    }
+
+    /// Renders `entries` as CSV with an optional UTF-8 BOM.
+    ///
+    /// Columns: `rank, <title_col>, total_seconds, time, percent`.
+    #[must_use]
+    pub fn render_csv(
+        entries: &[(String, f64)],
+        title_col: &str,
+        limit: Option<usize>,
+        bom: bool,
+    ) -> String {
+        Self::render_csv_or_tsv(entries, title_col, limit, ',', bom)
+    }
+
+    /// Renders `entries` as TSV (tab-separated values).
+    ///
+    /// Columns: `rank, <title_col>, total_seconds, time, percent`.
+    #[must_use]
+    pub fn render_tsv(entries: &[(String, f64)], title_col: &str, limit: Option<usize>) -> String {
+        Self::render_csv_or_tsv(entries, title_col, limit, '\t', false)
     }
 }
 
@@ -281,6 +348,62 @@ mod tests {
             ..RenderOptions::default()
         };
         let out = BreakdownRenderer::render(&entries(), "Language", None, &opts);
+        insta::assert_snapshot!(out);
+    }
+
+    // ── CSV / TSV tests ────────────────────────────────────────────────────────
+
+    #[test]
+    fn render_csv_has_header_row() {
+        let out = BreakdownRenderer::render_csv(&entries(), "Language", None, false);
+        let first = out.lines().next().expect("at least one line");
+        assert_eq!(
+            first, "rank,language,total_seconds,time,percent",
+            "CSV header mismatch: {first}"
+        );
+    }
+
+    #[test]
+    fn render_csv_uses_comma_separator() {
+        let out = BreakdownRenderer::render_csv(&entries(), "Language", None, false);
+        for line in out.lines() {
+            assert!(!line.contains('\t'), "CSV must not contain tabs");
+            assert_eq!(
+                line.matches(',').count(),
+                4,
+                "each CSV line must have 5 fields"
+            );
+        }
+    }
+
+    #[test]
+    fn render_csv_with_bom_starts_with_bom() {
+        let out = BreakdownRenderer::render_csv(&entries(), "Language", None, true);
+        assert!(out.starts_with('\u{FEFF}'), "expected UTF-8 BOM");
+    }
+
+    #[test]
+    fn render_csv_without_bom_has_no_bom() {
+        let out = BreakdownRenderer::render_csv(&entries(), "Language", None, false);
+        assert!(!out.starts_with('\u{FEFF}'), "unexpected BOM");
+    }
+
+    #[test]
+    fn render_tsv_uses_tab_separator() {
+        let out = BreakdownRenderer::render_tsv(&entries(), "Language", None);
+        let header = out.lines().next().expect("at least one line");
+        assert!(header.contains('\t'), "TSV header must use tab delimiter");
+    }
+
+    #[test]
+    fn render_tsv_does_not_start_with_bom() {
+        let out = BreakdownRenderer::render_tsv(&entries(), "Language", None);
+        assert!(!out.starts_with('\u{FEFF}'), "TSV must never have a BOM");
+    }
+
+    #[test]
+    fn snapshot_breakdown_csv() {
+        let out = BreakdownRenderer::render_csv(&entries(), "Language", None, false);
         insta::assert_snapshot!(out);
     }
 }

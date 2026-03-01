@@ -186,6 +186,72 @@ impl SummaryRenderer {
         out
     }
 
+    /// Renders a [`SummaryResponse`] as CSV (comma-separated values).
+    ///
+    /// Columns: `date, language, total_seconds, time, percent`.
+    /// One row is emitted per language per day.
+    /// An optional UTF-8 BOM is prepended when `bom` is `true`.
+    #[must_use]
+    pub fn render_csv(resp: &SummaryResponse, bom: bool) -> String {
+        Self::render_dsv(resp, ',', bom)
+    }
+
+    /// Renders a [`SummaryResponse`] as TSV (tab-separated values).
+    ///
+    /// Columns: `date, language, total_seconds, time, percent`.
+    #[must_use]
+    pub fn render_tsv(resp: &SummaryResponse) -> String {
+        Self::render_dsv(resp, '\t', false)
+    }
+
+    /// Shared delimiter-separated-values builder.
+    fn render_dsv(resp: &SummaryResponse, sep: char, bom: bool) -> String {
+        let mut out = String::new();
+        if bom {
+            out.push('\u{FEFF}');
+        }
+
+        // Header
+        writeln!(
+            out,
+            "date{sep}language{sep}total_seconds{sep}time{sep}percent"
+        )
+        .expect("write to String is infallible");
+
+        for day in &resp.data {
+            let date = day
+                .range
+                .date
+                .as_deref()
+                .or(day.range.start.get(..10))
+                .unwrap_or("unknown");
+
+            let day_total: f64 = day.languages.iter().map(|e| e.total_seconds).sum();
+
+            for entry in &day.languages {
+                let pct = if day_total > 0.0 {
+                    (entry.total_seconds / day_total) * 100.0
+                } else {
+                    0.0
+                };
+                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                let secs_u64 = entry.total_seconds.round() as u64;
+                writeln!(
+                    out,
+                    "{date}{s}{name}{s}{secs}{s}{time}{s}{pct:.1}",
+                    s = sep,
+                    name = entry.name,
+                    secs = secs_u64,
+                    time = format_duration(secs_u64),
+                    pct = pct,
+                )
+                .expect("write to String is infallible");
+            }
+        }
+
+        out
+    }
+
     /// Dispatches to the appropriate renderer based on `opts.format`.
     ///
     /// This is a convenience method for the binary crate — it avoids a
@@ -194,12 +260,9 @@ impl SummaryRenderer {
     pub fn render(resp: &SummaryResponse, opts: &RenderOptions) -> String {
         match opts.format {
             OutputFormat::Json => Self::render_json(resp),
-            OutputFormat::Plain | OutputFormat::Csv | OutputFormat::Tsv => {
-                // TODO(spec): CSV and TSV formats are not yet fully specified.
-                // Fall back to plain text until spec §output clarifies the
-                // column layout for machine-readable formats.
-                Self::render_plain(resp, opts)
-            }
+            OutputFormat::Csv => Self::render_csv(resp, opts.csv_bom),
+            OutputFormat::Tsv => Self::render_tsv(resp),
+            OutputFormat::Plain => Self::render_plain(resp, opts),
             OutputFormat::Table => Self::render_table(resp, opts),
         }
     }
@@ -312,5 +375,77 @@ mod tests {
         assert!((result[0].1 - 5_400.0).abs() < f64::EPSILON);
         assert_eq!(result[1].0, "Python");
         assert_eq!(result[2].0, "Go");
+    }
+
+    // ── CSV / TSV tests ────────────────────────────────────────────────────────
+
+    #[test]
+    fn render_csv_has_header_row() {
+        let resp = fixture_today();
+        let out = SummaryRenderer::render_csv(&resp, false);
+        let first = out.lines().next().expect("at least one line");
+        assert!(
+            first.starts_with("date,language,"),
+            "CSV header mismatch: {first}"
+        );
+    }
+
+    #[test]
+    fn render_csv_uses_comma_separator() {
+        let resp = fixture_today();
+        let out = SummaryRenderer::render_csv(&resp, false);
+        for line in out.lines() {
+            assert!(!line.contains('\t'), "CSV must not contain tab characters");
+            let field_count = line.matches(',').count();
+            assert_eq!(
+                field_count, 4,
+                "CSV must have 5 fields (4 commas) per line: {line}"
+            );
+        }
+    }
+
+    #[test]
+    fn render_csv_with_bom_starts_with_bom() {
+        let resp = fixture_today();
+        let out = SummaryRenderer::render_csv(&resp, true);
+        assert!(
+            out.starts_with('\u{FEFF}'),
+            "CSV with BOM must start with UTF-8 BOM"
+        );
+    }
+
+    #[test]
+    fn render_csv_without_bom_does_not_start_with_bom() {
+        let resp = fixture_today();
+        let out = SummaryRenderer::render_csv(&resp, false);
+        assert!(
+            !out.starts_with('\u{FEFF}'),
+            "CSV without BOM must not start with BOM"
+        );
+    }
+
+    #[test]
+    fn render_tsv_uses_tab_separator() {
+        let resp = fixture_today();
+        let out = SummaryRenderer::render_tsv(&resp);
+        let header = out.lines().next().expect("at least one line");
+        assert!(
+            header.contains('\t'),
+            "TSV header must contain tab character"
+        );
+    }
+
+    #[test]
+    fn render_tsv_does_not_start_with_bom() {
+        let resp = fixture_today();
+        let out = SummaryRenderer::render_tsv(&resp);
+        assert!(!out.starts_with('\u{FEFF}'), "TSV must never have a BOM");
+    }
+
+    #[test]
+    fn snapshot_render_csv() {
+        let resp = fixture_today();
+        let out = SummaryRenderer::render_csv(&resp, false);
+        insta::assert_snapshot!(out);
     }
 }

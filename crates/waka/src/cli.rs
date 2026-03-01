@@ -56,6 +56,10 @@ pub struct GlobalOpts {
     /// Enable verbose mode (shows HTTP requests).
     #[arg(long, global = true)]
     pub verbose: bool,
+
+    /// Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility).
+    #[arg(long, global = true)]
+    pub csv_bom: bool,
 }
 
 /// Output format for tabular commands.
