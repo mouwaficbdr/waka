@@ -1,0 +1,38 @@
+# .cargo/config.toml — build configuration and cross-compilation settings
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Build settings
+# ─────────────────────────────────────────────────────────────────────────────
+[build]
+# Uncomment to use the mold linker for faster incremental dev builds on Linux:
+# rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Linux — native (dynamic)
+# ─────────────────────────────────────────────────────────────────────────────
+[target.x86_64-unknown-linux-gnu]
+rustflags = ["-C", "target-cpu=native"]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Linux — musl static binary (cargo build --target x86_64-unknown-linux-musl)
+# ─────────────────────────────────────────────────────────────────────────────
+[target.x86_64-unknown-linux-musl]
+rustflags = ["-C", "target-feature=+crt-static"]
+
+[target.aarch64-unknown-linux-musl]
+rustflags = ["-C", "target-feature=+crt-static"]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# macOS — set minimum deployment target for universal releases
+# ─────────────────────────────────────────────────────────────────────────────
+[target.x86_64-apple-darwin]
+rustflags = []
+
+[target.aarch64-apple-darwin]
+rustflags = []
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Aliases — convenience shortcuts
+# ─────────────────────────────────────────────────────────────────────────────
+[alias]
+nt = "nextest run"

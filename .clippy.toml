@@ -1,0 +1,11 @@
+# .clippy.toml — project-wide Clippy configuration
+# Thresholds that differ from clippy defaults
+
+# Allow slightly more complex functions before warning
+cognitive-complexity-threshold = 20
+
+# Allow more arguments before the too-many-arguments lint fires
+too-many-arguments-threshold = 8
+
+# Allow longer functions in some contexts
+too-many-lines-threshold = 150

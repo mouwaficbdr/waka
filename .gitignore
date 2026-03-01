@@ -1,0 +1,41 @@
+# ─── Rust ────────────────────────────────────────────────────────────────────
+/target/
+**/*.rs.bk
+Cargo.lock.bak
+
+# ─── IDE / Editors ───────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ─── Test / coverage artifacts ───────────────────────────────────────────────
+/lcov.info
+/coverage/
+tarpaulin-report.html
+
+# ─── Distribution artifacts ──────────────────────────────────────────────────
+/dist/
+
+# ─── Shell completions (generated) ───────────────────────────────────────────
+# Keep the committed completions; ignore any local rebuilds in a scratch dir.
+/completions/.generated/
+
+# ─── Man pages (generated) ───────────────────────────────────────────────────
+/man/.generated/
+
+# ─── Snapshots under review ──────────────────────────────────────────────────
+# insta snapshot review files are committed; only ignore the pending ones.
+*.snap.new
+
+# ─── Environment ─────────────────────────────────────────────────────────────
+.env
+.env.local
+.envrc
+
+# ─── OS ──────────────────────────────────────────────────────────────────────
+Thumbs.db
+.Spotlight-V100
+.Trashes

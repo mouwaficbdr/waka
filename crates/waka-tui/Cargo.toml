@@ -1,0 +1,27 @@
+[package]
+name = "waka-tui"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Interactive TUI dashboard for waka"
+
+[dependencies]
+waka-api = { path = "../waka-api" }
+waka-cache = { path = "../waka-cache" }
+ratatui = { workspace = true }
+crossterm = { workspace = true }
+tokio = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+chrono = { workspace = true }
+
+[lints]
+workspace = true
