@@ -1016,7 +1016,7 @@ _arguments "${_arguments_options[@]}" : \
 ':shell -- Target shell:((bash\:"Bash (append to \`~/.bashrc\`)"
 zsh\:"Zsh (place in a directory on \`\$fpath\`)"
 fish\:"Fish (place in \`~/.config/fish/completions/\`)"
-powershell\:"PowerShell (dot-source in \`\$PROFILE\`)"
+powershell\:"\`PowerShell\` (dot-source in \`\$PROFILE\`)"
 elvish\:"Elvish"))' \
 && ret=0
 ;;
@@ -1184,6 +1184,119 @@ _arguments "${_arguments_options[@]}" : \
 && ret=0
 ;;
 (doctor)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(cache)
+_arguments "${_arguments_options[@]}" : \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+":: :_waka__cache_commands" \
+"*::: :->cache" \
+&& ret=0
+
+    case $state in
+    (cache)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-cache-command-$line[1]:"
+        case $line[1] in
+            (clear)
+_arguments "${_arguments_options[@]}" : \
+'--older=[Remove only entries older than this duration (e.g. \`1h\`, \`24h\`, \`7d\`)]:DURATION:_default' \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(info)
+_arguments "${_arguments_options[@]}" : \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(path)
+_arguments "${_arguments_options[@]}" : \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_waka__cache__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-cache-help-command-$line[1]:"
+        case $line[1] in
+            (clear)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(info)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(path)
 _arguments "${_arguments_options[@]}" : \
 && ret=0
 ;;
@@ -1487,6 +1600,34 @@ _arguments "${_arguments_options[@]}" : \
     ;;
 esac
 ;;
+(cache)
+_arguments "${_arguments_options[@]}" : \
+":: :_waka__help__cache_commands" \
+"*::: :->cache" \
+&& ret=0
+
+    case $state in
+    (cache)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-help-cache-command-$line[1]:"
+        case $line[1] in
+            (clear)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(info)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(path)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
 (help)
 _arguments "${_arguments_options[@]}" : \
 && ret=0
@@ -1515,6 +1656,7 @@ _waka_commands() {
 'prompt:Shell prompt integration (reads from cache only, no network)' \
 'completions:Generate shell completions' \
 'config:Manage waka configuration' \
+'cache:Manage the local response cache' \
 'help:Print this message or the help of the given subcommand(s)' \
     )
     _describe -t commands 'waka commands' commands "$@"
@@ -1597,6 +1739,61 @@ _waka__auth__status_commands() {
 _waka__auth__switch_commands() {
     local commands; commands=()
     _describe -t commands 'waka auth switch commands' commands "$@"
+}
+(( $+functions[_waka__cache_commands] )) ||
+_waka__cache_commands() {
+    local commands; commands=(
+'clear:Clear all cached entries (or only those older than a duration)' \
+'info:Show cache statistics (entry count, disk size, last write)' \
+'path:Print the path to the cache directory' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'waka cache commands' commands "$@"
+}
+(( $+functions[_waka__cache__clear_commands] )) ||
+_waka__cache__clear_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka cache clear commands' commands "$@"
+}
+(( $+functions[_waka__cache__help_commands] )) ||
+_waka__cache__help_commands() {
+    local commands; commands=(
+'clear:Clear all cached entries (or only those older than a duration)' \
+'info:Show cache statistics (entry count, disk size, last write)' \
+'path:Print the path to the cache directory' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'waka cache help commands' commands "$@"
+}
+(( $+functions[_waka__cache__help__clear_commands] )) ||
+_waka__cache__help__clear_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka cache help clear commands' commands "$@"
+}
+(( $+functions[_waka__cache__help__help_commands] )) ||
+_waka__cache__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka cache help help commands' commands "$@"
+}
+(( $+functions[_waka__cache__help__info_commands] )) ||
+_waka__cache__help__info_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka cache help info commands' commands "$@"
+}
+(( $+functions[_waka__cache__help__path_commands] )) ||
+_waka__cache__help__path_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka cache help path commands' commands "$@"
+}
+(( $+functions[_waka__cache__info_commands] )) ||
+_waka__cache__info_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka cache info commands' commands "$@"
+}
+(( $+functions[_waka__cache__path_commands] )) ||
+_waka__cache__path_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka cache path commands' commands "$@"
 }
 (( $+functions[_waka__completions_commands] )) ||
 _waka__completions_commands() {
@@ -1812,6 +2009,7 @@ _waka__help_commands() {
 'prompt:Shell prompt integration (reads from cache only, no network)' \
 'completions:Generate shell completions' \
 'config:Manage waka configuration' \
+'cache:Manage the local response cache' \
 'help:Print this message or the help of the given subcommand(s)' \
     )
     _describe -t commands 'waka help commands' commands "$@"
@@ -1851,6 +2049,30 @@ _waka__help__auth__status_commands() {
 _waka__help__auth__switch_commands() {
     local commands; commands=()
     _describe -t commands 'waka help auth switch commands' commands "$@"
+}
+(( $+functions[_waka__help__cache_commands] )) ||
+_waka__help__cache_commands() {
+    local commands; commands=(
+'clear:Clear all cached entries (or only those older than a duration)' \
+'info:Show cache statistics (entry count, disk size, last write)' \
+'path:Print the path to the cache directory' \
+    )
+    _describe -t commands 'waka help cache commands' commands "$@"
+}
+(( $+functions[_waka__help__cache__clear_commands] )) ||
+_waka__help__cache__clear_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help cache clear commands' commands "$@"
+}
+(( $+functions[_waka__help__cache__info_commands] )) ||
+_waka__help__cache__info_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help cache info commands' commands "$@"
+}
+(( $+functions[_waka__help__cache__path_commands] )) ||
+_waka__help__cache__path_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help cache path commands' commands "$@"
 }
 (( $+functions[_waka__help__completions_commands] )) ||
 _waka__help__completions_commands() {

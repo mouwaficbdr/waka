@@ -46,6 +46,7 @@ Register-ArgumentCompleter -Native -CommandName 'waka' -ScriptBlock {
             [CompletionResult]::new('prompt', 'prompt', [CompletionResultType]::ParameterValue, 'Shell prompt integration (reads from cache only, no network)')
             [CompletionResult]::new('completions', 'completions', [CompletionResultType]::ParameterValue, 'Generate shell completions')
             [CompletionResult]::new('config', 'config', [CompletionResultType]::ParameterValue, 'Manage waka configuration')
+            [CompletionResult]::new('cache', 'cache', [CompletionResultType]::ParameterValue, 'Manage the local response cache')
             [CompletionResult]::new('help', 'help', [CompletionResultType]::ParameterValue, 'Print this message or the help of the given subcommand(s)')
             break
         }
@@ -972,6 +973,94 @@ Register-ArgumentCompleter -Native -CommandName 'waka' -ScriptBlock {
         'waka;config;help;help' {
             break
         }
+        'waka;cache' {
+            [CompletionResult]::new('-p', '-p', [CompletionResultType]::ParameterName, 'Use a specific profile')
+            [CompletionResult]::new('--profile', '--profile', [CompletionResultType]::ParameterName, 'Use a specific profile')
+            [CompletionResult]::new('-f', '-f', [CompletionResultType]::ParameterName, 'Output format: table, json, csv, plain')
+            [CompletionResult]::new('--format', '--format', [CompletionResultType]::ParameterName, 'Output format: table, json, csv, plain')
+            [CompletionResult]::new('--no-cache', '--no-cache', [CompletionResultType]::ParameterName, 'Skip the cache and force a fresh API request')
+            [CompletionResult]::new('--no-color', '--no-color', [CompletionResultType]::ParameterName, 'Disable colors (equivalent to `NO_COLOR=1`)')
+            [CompletionResult]::new('--quiet', '--quiet', [CompletionResultType]::ParameterName, 'Suppress non-essential output')
+            [CompletionResult]::new('--verbose', '--verbose', [CompletionResultType]::ParameterName, 'Enable verbose mode (shows HTTP requests)')
+            [CompletionResult]::new('--csv-bom', '--csv-bom', [CompletionResultType]::ParameterName, 'Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)')
+            [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help')
+            [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help')
+            [CompletionResult]::new('-V', '-V ', [CompletionResultType]::ParameterName, 'Print version')
+            [CompletionResult]::new('--version', '--version', [CompletionResultType]::ParameterName, 'Print version')
+            [CompletionResult]::new('clear', 'clear', [CompletionResultType]::ParameterValue, 'Clear all cached entries (or only those older than a duration)')
+            [CompletionResult]::new('info', 'info', [CompletionResultType]::ParameterValue, 'Show cache statistics (entry count, disk size, last write)')
+            [CompletionResult]::new('path', 'path', [CompletionResultType]::ParameterValue, 'Print the path to the cache directory')
+            [CompletionResult]::new('help', 'help', [CompletionResultType]::ParameterValue, 'Print this message or the help of the given subcommand(s)')
+            break
+        }
+        'waka;cache;clear' {
+            [CompletionResult]::new('--older', '--older', [CompletionResultType]::ParameterName, 'Remove only entries older than this duration (e.g. `1h`, `24h`, `7d`)')
+            [CompletionResult]::new('-p', '-p', [CompletionResultType]::ParameterName, 'Use a specific profile')
+            [CompletionResult]::new('--profile', '--profile', [CompletionResultType]::ParameterName, 'Use a specific profile')
+            [CompletionResult]::new('-f', '-f', [CompletionResultType]::ParameterName, 'Output format: table, json, csv, plain')
+            [CompletionResult]::new('--format', '--format', [CompletionResultType]::ParameterName, 'Output format: table, json, csv, plain')
+            [CompletionResult]::new('--no-cache', '--no-cache', [CompletionResultType]::ParameterName, 'Skip the cache and force a fresh API request')
+            [CompletionResult]::new('--no-color', '--no-color', [CompletionResultType]::ParameterName, 'Disable colors (equivalent to `NO_COLOR=1`)')
+            [CompletionResult]::new('--quiet', '--quiet', [CompletionResultType]::ParameterName, 'Suppress non-essential output')
+            [CompletionResult]::new('--verbose', '--verbose', [CompletionResultType]::ParameterName, 'Enable verbose mode (shows HTTP requests)')
+            [CompletionResult]::new('--csv-bom', '--csv-bom', [CompletionResultType]::ParameterName, 'Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)')
+            [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help')
+            [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help')
+            [CompletionResult]::new('-V', '-V ', [CompletionResultType]::ParameterName, 'Print version')
+            [CompletionResult]::new('--version', '--version', [CompletionResultType]::ParameterName, 'Print version')
+            break
+        }
+        'waka;cache;info' {
+            [CompletionResult]::new('-p', '-p', [CompletionResultType]::ParameterName, 'Use a specific profile')
+            [CompletionResult]::new('--profile', '--profile', [CompletionResultType]::ParameterName, 'Use a specific profile')
+            [CompletionResult]::new('-f', '-f', [CompletionResultType]::ParameterName, 'Output format: table, json, csv, plain')
+            [CompletionResult]::new('--format', '--format', [CompletionResultType]::ParameterName, 'Output format: table, json, csv, plain')
+            [CompletionResult]::new('--no-cache', '--no-cache', [CompletionResultType]::ParameterName, 'Skip the cache and force a fresh API request')
+            [CompletionResult]::new('--no-color', '--no-color', [CompletionResultType]::ParameterName, 'Disable colors (equivalent to `NO_COLOR=1`)')
+            [CompletionResult]::new('--quiet', '--quiet', [CompletionResultType]::ParameterName, 'Suppress non-essential output')
+            [CompletionResult]::new('--verbose', '--verbose', [CompletionResultType]::ParameterName, 'Enable verbose mode (shows HTTP requests)')
+            [CompletionResult]::new('--csv-bom', '--csv-bom', [CompletionResultType]::ParameterName, 'Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)')
+            [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help')
+            [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help')
+            [CompletionResult]::new('-V', '-V ', [CompletionResultType]::ParameterName, 'Print version')
+            [CompletionResult]::new('--version', '--version', [CompletionResultType]::ParameterName, 'Print version')
+            break
+        }
+        'waka;cache;path' {
+            [CompletionResult]::new('-p', '-p', [CompletionResultType]::ParameterName, 'Use a specific profile')
+            [CompletionResult]::new('--profile', '--profile', [CompletionResultType]::ParameterName, 'Use a specific profile')
+            [CompletionResult]::new('-f', '-f', [CompletionResultType]::ParameterName, 'Output format: table, json, csv, plain')
+            [CompletionResult]::new('--format', '--format', [CompletionResultType]::ParameterName, 'Output format: table, json, csv, plain')
+            [CompletionResult]::new('--no-cache', '--no-cache', [CompletionResultType]::ParameterName, 'Skip the cache and force a fresh API request')
+            [CompletionResult]::new('--no-color', '--no-color', [CompletionResultType]::ParameterName, 'Disable colors (equivalent to `NO_COLOR=1`)')
+            [CompletionResult]::new('--quiet', '--quiet', [CompletionResultType]::ParameterName, 'Suppress non-essential output')
+            [CompletionResult]::new('--verbose', '--verbose', [CompletionResultType]::ParameterName, 'Enable verbose mode (shows HTTP requests)')
+            [CompletionResult]::new('--csv-bom', '--csv-bom', [CompletionResultType]::ParameterName, 'Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)')
+            [CompletionResult]::new('-h', '-h', [CompletionResultType]::ParameterName, 'Print help')
+            [CompletionResult]::new('--help', '--help', [CompletionResultType]::ParameterName, 'Print help')
+            [CompletionResult]::new('-V', '-V ', [CompletionResultType]::ParameterName, 'Print version')
+            [CompletionResult]::new('--version', '--version', [CompletionResultType]::ParameterName, 'Print version')
+            break
+        }
+        'waka;cache;help' {
+            [CompletionResult]::new('clear', 'clear', [CompletionResultType]::ParameterValue, 'Clear all cached entries (or only those older than a duration)')
+            [CompletionResult]::new('info', 'info', [CompletionResultType]::ParameterValue, 'Show cache statistics (entry count, disk size, last write)')
+            [CompletionResult]::new('path', 'path', [CompletionResultType]::ParameterValue, 'Print the path to the cache directory')
+            [CompletionResult]::new('help', 'help', [CompletionResultType]::ParameterValue, 'Print this message or the help of the given subcommand(s)')
+            break
+        }
+        'waka;cache;help;clear' {
+            break
+        }
+        'waka;cache;help;info' {
+            break
+        }
+        'waka;cache;help;path' {
+            break
+        }
+        'waka;cache;help;help' {
+            break
+        }
         'waka;help' {
             [CompletionResult]::new('auth', 'auth', [CompletionResultType]::ParameterValue, 'Manage API key and authentication')
             [CompletionResult]::new('stats', 'stats', [CompletionResultType]::ParameterValue, 'Show coding statistics')
@@ -985,6 +1074,7 @@ Register-ArgumentCompleter -Native -CommandName 'waka' -ScriptBlock {
             [CompletionResult]::new('prompt', 'prompt', [CompletionResultType]::ParameterValue, 'Shell prompt integration (reads from cache only, no network)')
             [CompletionResult]::new('completions', 'completions', [CompletionResultType]::ParameterValue, 'Generate shell completions')
             [CompletionResult]::new('config', 'config', [CompletionResultType]::ParameterValue, 'Manage waka configuration')
+            [CompletionResult]::new('cache', 'cache', [CompletionResultType]::ParameterValue, 'Manage the local response cache')
             [CompletionResult]::new('help', 'help', [CompletionResultType]::ParameterValue, 'Print this message or the help of the given subcommand(s)')
             break
         }
@@ -1142,6 +1232,21 @@ Register-ArgumentCompleter -Native -CommandName 'waka' -ScriptBlock {
             break
         }
         'waka;help;config;doctor' {
+            break
+        }
+        'waka;help;cache' {
+            [CompletionResult]::new('clear', 'clear', [CompletionResultType]::ParameterValue, 'Clear all cached entries (or only those older than a duration)')
+            [CompletionResult]::new('info', 'info', [CompletionResultType]::ParameterValue, 'Show cache statistics (entry count, disk size, last write)')
+            [CompletionResult]::new('path', 'path', [CompletionResultType]::ParameterValue, 'Print the path to the cache directory')
+            break
+        }
+        'waka;help;cache;clear' {
+            break
+        }
+        'waka;help;cache;info' {
+            break
+        }
+        'waka;help;cache;path' {
             break
         }
         'waka;help;help' {

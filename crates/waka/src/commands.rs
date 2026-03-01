@@ -20,9 +20,10 @@ use waka_render::{
 
 use crate::auth;
 use crate::cli::{
-    AuthCommands, Commands, CompletionShell, ConfigCommands, DashboardArgs, EditorsCommands,
-    GlobalOpts, GoalsCommands, LanguagesCommands, LeaderboardCommands, OutputFormat as CliFormat,
-    ProjectsCommands, PromptArgs, ReportCommands, StatsCommands, StatsFilterOpts,
+    AuthCommands, CacheCommands, Commands, CompletionShell, ConfigCommands, DashboardArgs,
+    EditorsCommands, GlobalOpts, GoalsCommands, LanguagesCommands, LeaderboardCommands,
+    OutputFormat as CliFormat, ProjectsCommands, PromptArgs, ReportCommands, StatsCommands,
+    StatsFilterOpts,
 };
 
 /// Dispatch a parsed [`Commands`] variant to the appropriate handler.
@@ -46,6 +47,7 @@ pub async fn dispatch(cmd: Commands, global: GlobalOpts) -> Result<()> {
             Ok(())
         }
         Commands::Config { cmd } => config(cmd, &global).await,
+        Commands::Cache { cmd } => cache(cmd, &global),
     }
 }
 
@@ -929,6 +931,132 @@ fn version_is_newer(candidate: &str, current: &str) -> bool {
     }
 }
 
+// ─── cache ────────────────────────────────────────────────────────────────────
+
+/// Parses a human-friendly duration string (e.g. `"1h"`, `"24h"`, `"7d"`) into
+/// a [`Duration`].
+///
+/// Supported suffixes: `s` (seconds), `m` (minutes), `h` (hours), `d` (days).
+///
+/// # Errors
+///
+/// Returns an error if the string is malformed or the numeric part overflows.
+fn parse_duration(s: &str) -> Result<Duration> {
+    let s = s.trim();
+    if s.is_empty() {
+        bail!("duration string must not be empty");
+    }
+
+    let (num_str, unit) = if let Some(n) = s.strip_suffix('s') {
+        (n, "s")
+    } else if let Some(n) = s.strip_suffix('m') {
+        (n, "m")
+    } else if let Some(n) = s.strip_suffix('h') {
+        (n, "h")
+    } else if let Some(n) = s.strip_suffix('d') {
+        (n, "d")
+    } else {
+        bail!(
+            "unrecognised duration '{s}': expected a number followed by s/m/h/d (e.g. 1h, 24h, 7d)"
+        );
+    };
+
+    let n: u64 = num_str
+        .trim()
+        .parse()
+        .with_context(|| format!("invalid number in duration '{s}'"))?;
+
+    let secs = match unit {
+        "s" => n,
+        "m" => n.saturating_mul(60),
+        "h" => n.saturating_mul(3_600),
+        "d" => n.saturating_mul(86_400),
+        _ => unreachable!(),
+    };
+    Ok(Duration::from_secs(secs))
+}
+
+/// Implements `waka cache clear / info / path`.
+// `needless_pass_by_value`: cmd is consumed by the match; GlobalOpts is needed for quiet/profile.
+#[allow(clippy::needless_pass_by_value)]
+fn cache(cmd: CacheCommands, global: &GlobalOpts) -> Result<()> {
+    let profile = global.profile.as_deref().unwrap_or("default");
+
+    match cmd {
+        CacheCommands::Clear { older } => {
+            let store = CacheStore::open(profile)
+                .with_context(|| format!("failed to open cache for profile '{profile}'"))?;
+
+            let removed = if let Some(ref dur_str) = older {
+                let dur = parse_duration(dur_str)
+                    .with_context(|| format!("invalid --older value '{dur_str}'"))?;
+                store
+                    .clear_older_than(dur)
+                    .context("failed to clear old cache entries")?
+            } else {
+                store.clear().context("failed to clear cache")?
+            };
+
+            if !global.quiet {
+                if removed == 1 {
+                    println!("Removed 1 cache entry.");
+                } else {
+                    println!("Removed {removed} cache entries.");
+                }
+            }
+            Ok(())
+        }
+
+        CacheCommands::Info => {
+            let store = CacheStore::open(profile)
+                .with_context(|| format!("failed to open cache for profile '{profile}'"))?;
+            let info = store.info();
+
+            let size_human = format_bytes(info.size_on_disk);
+            let last_write = info.last_write.map_or_else(
+                || "never".to_owned(),
+                |dt| dt.format("%Y-%m-%d %H:%M:%S UTC").to_string(),
+            );
+
+            println!("Profile:     {profile}");
+            println!("Entries:     {}", info.entry_count);
+            println!("Disk usage:  {size_human}");
+            println!("Last write:  {last_write}");
+            println!(
+                "Path:        {}",
+                CacheStore::db_path(profile)
+                    .map_or_else(|_| "<unavailable>".to_owned(), |p| p.display().to_string())
+            );
+            Ok(())
+        }
+
+        CacheCommands::Path => {
+            let path = CacheStore::db_path(profile)
+                .with_context(|| "could not determine cache directory")?;
+            println!("{}", path.display());
+            Ok(())
+        }
+    }
+}
+
+/// Formats a byte count into a human-readable string (e.g. `1.2 MB`).
+fn format_bytes(bytes: u64) -> String {
+    const KB: u64 = 1_024;
+    const MB: u64 = KB * 1_024;
+    const GB: u64 = MB * 1_024;
+
+    #[allow(clippy::cast_precision_loss)]
+    if bytes >= GB {
+        format!("{:.1} GB", bytes as f64 / GB as f64)
+    } else if bytes >= MB {
+        format!("{:.1} MB", bytes as f64 / MB as f64)
+    } else if bytes >= KB {
+        format!("{:.1} KB", bytes as f64 / KB as f64)
+    } else {
+        format!("{bytes} B")
+    }
+}
+
 // ─── unit tests ───────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -1064,5 +1192,69 @@ mod tests {
     fn version_is_newer_returns_false_for_malformed_input() {
         assert!(!version_is_newer("not-a-version", "0.1.0"));
         assert!(!version_is_newer("0.1.0", "not-a-version"));
+    }
+
+    // ── parse_duration ────────────────────────────────────────────────────────
+
+    #[test]
+    fn parse_duration_seconds() {
+        assert_eq!(parse_duration("30s").unwrap(), Duration::from_secs(30));
+    }
+
+    #[test]
+    fn parse_duration_minutes() {
+        assert_eq!(parse_duration("5m").unwrap(), Duration::from_secs(300));
+    }
+
+    #[test]
+    fn parse_duration_hours() {
+        assert_eq!(parse_duration("2h").unwrap(), Duration::from_secs(7_200));
+    }
+
+    #[test]
+    fn parse_duration_days() {
+        assert_eq!(parse_duration("7d").unwrap(), Duration::from_secs(604_800));
+    }
+
+    #[test]
+    fn parse_duration_rejects_empty() {
+        assert!(parse_duration("").is_err());
+    }
+
+    #[test]
+    fn parse_duration_rejects_unknown_suffix() {
+        assert!(parse_duration("10x").is_err());
+    }
+
+    #[test]
+    fn parse_duration_rejects_non_numeric() {
+        assert!(parse_duration("abch").is_err());
+    }
+
+    // ── format_bytes ──────────────────────────────────────────────────────────
+
+    #[test]
+    fn format_bytes_zero() {
+        assert_eq!(format_bytes(0), "0 B");
+    }
+
+    #[test]
+    fn format_bytes_bytes() {
+        assert_eq!(format_bytes(512), "512 B");
+    }
+
+    #[test]
+    fn format_bytes_kilobytes() {
+        assert_eq!(format_bytes(2_048), "2.0 KB");
+    }
+
+    #[test]
+    fn format_bytes_megabytes() {
+        assert_eq!(format_bytes(5 * 1_024 * 1_024), "5.0 MB");
+    }
+
+    #[test]
+    fn format_bytes_gigabytes() {
+        assert_eq!(format_bytes(2 * 1_024 * 1_024 * 1_024), "2.0 GB");
     }
 }

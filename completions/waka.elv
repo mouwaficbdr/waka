@@ -43,6 +43,7 @@ set edit:completion:arg-completer[waka] = {|@words|
             cand prompt 'Shell prompt integration (reads from cache only, no network)'
             cand completions 'Generate shell completions'
             cand config 'Manage waka configuration'
+            cand cache 'Manage the local response cache'
             cand help 'Print this message or the help of the given subcommand(s)'
         }
         &'waka;auth'= {
@@ -878,6 +879,85 @@ set edit:completion:arg-completer[waka] = {|@words|
         }
         &'waka;config;help;help'= {
         }
+        &'waka;cache'= {
+            cand -p 'Use a specific profile'
+            cand --profile 'Use a specific profile'
+            cand -f 'Output format: table, json, csv, plain'
+            cand --format 'Output format: table, json, csv, plain'
+            cand --no-cache 'Skip the cache and force a fresh API request'
+            cand --no-color 'Disable colors (equivalent to `NO_COLOR=1`)'
+            cand --quiet 'Suppress non-essential output'
+            cand --verbose 'Enable verbose mode (shows HTTP requests)'
+            cand --csv-bom 'Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)'
+            cand -h 'Print help'
+            cand --help 'Print help'
+            cand -V 'Print version'
+            cand --version 'Print version'
+            cand clear 'Clear all cached entries (or only those older than a duration)'
+            cand info 'Show cache statistics (entry count, disk size, last write)'
+            cand path 'Print the path to the cache directory'
+            cand help 'Print this message or the help of the given subcommand(s)'
+        }
+        &'waka;cache;clear'= {
+            cand --older 'Remove only entries older than this duration (e.g. `1h`, `24h`, `7d`)'
+            cand -p 'Use a specific profile'
+            cand --profile 'Use a specific profile'
+            cand -f 'Output format: table, json, csv, plain'
+            cand --format 'Output format: table, json, csv, plain'
+            cand --no-cache 'Skip the cache and force a fresh API request'
+            cand --no-color 'Disable colors (equivalent to `NO_COLOR=1`)'
+            cand --quiet 'Suppress non-essential output'
+            cand --verbose 'Enable verbose mode (shows HTTP requests)'
+            cand --csv-bom 'Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)'
+            cand -h 'Print help'
+            cand --help 'Print help'
+            cand -V 'Print version'
+            cand --version 'Print version'
+        }
+        &'waka;cache;info'= {
+            cand -p 'Use a specific profile'
+            cand --profile 'Use a specific profile'
+            cand -f 'Output format: table, json, csv, plain'
+            cand --format 'Output format: table, json, csv, plain'
+            cand --no-cache 'Skip the cache and force a fresh API request'
+            cand --no-color 'Disable colors (equivalent to `NO_COLOR=1`)'
+            cand --quiet 'Suppress non-essential output'
+            cand --verbose 'Enable verbose mode (shows HTTP requests)'
+            cand --csv-bom 'Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)'
+            cand -h 'Print help'
+            cand --help 'Print help'
+            cand -V 'Print version'
+            cand --version 'Print version'
+        }
+        &'waka;cache;path'= {
+            cand -p 'Use a specific profile'
+            cand --profile 'Use a specific profile'
+            cand -f 'Output format: table, json, csv, plain'
+            cand --format 'Output format: table, json, csv, plain'
+            cand --no-cache 'Skip the cache and force a fresh API request'
+            cand --no-color 'Disable colors (equivalent to `NO_COLOR=1`)'
+            cand --quiet 'Suppress non-essential output'
+            cand --verbose 'Enable verbose mode (shows HTTP requests)'
+            cand --csv-bom 'Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)'
+            cand -h 'Print help'
+            cand --help 'Print help'
+            cand -V 'Print version'
+            cand --version 'Print version'
+        }
+        &'waka;cache;help'= {
+            cand clear 'Clear all cached entries (or only those older than a duration)'
+            cand info 'Show cache statistics (entry count, disk size, last write)'
+            cand path 'Print the path to the cache directory'
+            cand help 'Print this message or the help of the given subcommand(s)'
+        }
+        &'waka;cache;help;clear'= {
+        }
+        &'waka;cache;help;info'= {
+        }
+        &'waka;cache;help;path'= {
+        }
+        &'waka;cache;help;help'= {
+        }
         &'waka;help'= {
             cand auth 'Manage API key and authentication'
             cand stats 'Show coding statistics'
@@ -891,6 +971,7 @@ set edit:completion:arg-completer[waka] = {|@words|
             cand prompt 'Shell prompt integration (reads from cache only, no network)'
             cand completions 'Generate shell completions'
             cand config 'Manage waka configuration'
+            cand cache 'Manage the local response cache'
             cand help 'Print this message or the help of the given subcommand(s)'
         }
         &'waka;help;auth'= {
@@ -1006,6 +1087,17 @@ set edit:completion:arg-completer[waka] = {|@words|
         &'waka;help;config;reset'= {
         }
         &'waka;help;config;doctor'= {
+        }
+        &'waka;help;cache'= {
+            cand clear 'Clear all cached entries (or only those older than a duration)'
+            cand info 'Show cache statistics (entry count, disk size, last write)'
+            cand path 'Print the path to the cache directory'
+        }
+        &'waka;help;cache;clear'= {
+        }
+        &'waka;help;cache;info'= {
+        }
+        &'waka;help;cache;path'= {
         }
         &'waka;help;help'= {
         }

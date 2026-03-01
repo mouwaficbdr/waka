@@ -141,6 +141,12 @@ pub enum Commands {
         #[command(subcommand)]
         cmd: ConfigCommands,
     },
+
+    /// Manage the local response cache.
+    Cache {
+        #[command(subcommand)]
+        cmd: CacheCommands,
+    },
 }
 
 // ─── auth ─────────────────────────────────────────────────────────────────────
@@ -464,6 +470,24 @@ pub enum ConfigCommands {
 
     /// Run a full diagnostic check.
     Doctor,
+}
+
+// ─── cache ────────────────────────────────────────────────────────────────────
+
+#[derive(Debug, Subcommand)]
+pub enum CacheCommands {
+    /// Clear all cached entries (or only those older than a duration).
+    Clear {
+        /// Remove only entries older than this duration (e.g. `1h`, `24h`, `7d`).
+        #[arg(long, value_name = "DURATION")]
+        older: Option<String>,
+    },
+
+    /// Show cache statistics (entry count, disk size, last write).
+    Info,
+
+    /// Print the path to the cache directory.
+    Path,
 }
 
 // ─── completions ──────────────────────────────────────────────────────────────
