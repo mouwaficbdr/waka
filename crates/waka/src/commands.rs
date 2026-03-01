@@ -10,11 +10,12 @@ use std::time::Duration;
 use anyhow::{bail, Context as _, Result};
 use chrono::{Local, NaiveDate};
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
-use waka_api::{SummaryParams, WakaClient};
+use waka_api::{StatsRange, SummaryEntry, SummaryParams, WakaClient};
 use waka_cache::CacheStore;
 use waka_config::{Config, CredentialStore, ProfileConfig};
 use waka_render::{
-    detect_output_format, OutputFormat as RenderFormat, RenderOptions, SummaryRenderer,
+    detect_output_format, BreakdownRenderer, OutputFormat as RenderFormat, RenderOptions,
+    SummaryRenderer,
 };
 
 use crate::auth;
@@ -32,9 +33,9 @@ pub async fn dispatch(cmd: Commands, global: GlobalOpts) -> Result<()> {
     match cmd {
         Commands::Auth { cmd } => auth_cmd(cmd, global).await,
         Commands::Stats { cmd } => stats(cmd, &global).await,
-        Commands::Projects { cmd } => projects(cmd),
-        Commands::Languages { cmd } => languages(cmd),
-        Commands::Editors { cmd } => editors(cmd),
+        Commands::Projects { cmd } => projects(cmd, &global).await,
+        Commands::Languages { cmd } => languages(cmd, &global).await,
+        Commands::Editors { cmd } => editors(cmd, &global).await,
         Commands::Goals { cmd } => goals(cmd),
         Commands::Leaderboard { cmd } => leaderboard(cmd),
         Commands::Report { cmd } => report(cmd),
@@ -312,38 +313,211 @@ fn stats_spinner(msg: &str) -> ProgressBar {
     pb
 }
 
+// ─── shared API-client helpers ────────────────────────────────────────────────
+
+/// Builds a [`WakaClient`] from the active profile's config and credentials.
+///
+/// Extracts the API URL from `config.profiles[profile]` (falling back to the
+/// default) and retrieves the API key from the credential store.
+///
+/// # Errors
+///
+/// Returns an error if no API key is found or if the base URL is invalid.
+fn build_api_client(profile: &str, config: &Config) -> Result<WakaClient> {
+    let api_url = config
+        .profiles
+        .get(profile)
+        .map_or_else(|| ProfileConfig::default().api_url, |p| p.api_url.clone());
+
+    let store = CredentialStore::new(profile);
+    let api_key = store.get_api_key().with_context(|| {
+        format!(
+            "No API key found for profile '{profile}'.\n\
+             Run `waka auth login` to authenticate."
+        )
+    })?;
+
+    let normalized = if api_url.ends_with('/') {
+        api_url.clone()
+    } else {
+        format!("{api_url}/")
+    };
+    WakaClient::with_base_url(api_key.expose(), &normalized)
+        .with_context(|| format!("invalid api_url in profile '{profile}': {api_url}"))
+}
+
+/// Converts a [`Period`] (CLI value) to its [`StatsRange`] equivalent.
+#[must_use]
+fn period_to_stats_range(period: crate::cli::Period) -> StatsRange {
+    match period {
+        crate::cli::Period::SevenDays => StatsRange::Last7Days,
+        crate::cli::Period::ThirtyDays => StatsRange::Last30Days,
+        crate::cli::Period::OneYear => StatsRange::LastYear,
+    }
+}
+
+/// Converts [`SummaryEntry`] slices (already aggregated) to `(name, total_seconds)` pairs.
+fn entries_from_stats(entries: &[SummaryEntry]) -> Vec<(String, f64)> {
+    let mut result: Vec<(String, f64)> = entries
+        .iter()
+        .map(|e| (e.name.clone(), e.total_seconds))
+        .collect();
+    result.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+    result
+}
+
 // ─── projects ─────────────────────────────────────────────────────────────────
 
-// `needless_pass_by_value`: cmd is consumed by the match for exhaustive checking.
-#[allow(clippy::needless_pass_by_value)]
-fn projects(cmd: ProjectsCommands) -> Result<()> {
+/// Handles `waka projects {list,top,show}`.
+async fn projects(cmd: ProjectsCommands, global: &GlobalOpts) -> Result<()> {
+    let config = Config::load().unwrap_or_default();
+    let profile = stats_profile_name(global);
+    let client = build_api_client(&profile, &config)?;
+    let format = stats_resolve_format(global, &config);
+    let color = !global.no_color && std::io::stdout().is_terminal();
+    let opts = RenderOptions {
+        color,
+        format,
+        ..RenderOptions::default()
+    };
+
     match cmd {
-        ProjectsCommands::List { .. } => bail!("not yet implemented: projects list"),
-        ProjectsCommands::Top { .. } => bail!("not yet implemented: projects top"),
-        ProjectsCommands::Show { .. } => bail!("not yet implemented: projects show"),
+        ProjectsCommands::List { sort_by, limit } => {
+            // Projects list: use AllTime stats for time data per project.
+            let pb = stats_spinner("Fetching projects …");
+            let resp = client.stats(StatsRange::AllTime).await;
+            pb.finish_and_clear();
+            let resp = resp.with_context(|| "failed to fetch project list from WakaTime")?;
+
+            let mut entries = entries_from_stats(&resp.data.projects);
+
+            if matches!(sort_by, crate::cli::ProjectSortBy::Name) {
+                entries.sort_by(|a, b| a.0.cmp(&b.0));
+            }
+
+            let output = BreakdownRenderer::render(&entries, "Project", limit, &opts);
+            print!("{output}");
+        }
+        ProjectsCommands::Top { period } => {
+            let range = period_to_stats_range(period);
+            let pb = stats_spinner("Fetching top projects …");
+            let resp = client.stats(range).await;
+            pb.finish_and_clear();
+            let resp = resp.with_context(|| "failed to fetch top projects from WakaTime")?;
+
+            let entries = entries_from_stats(&resp.data.projects);
+            let output = BreakdownRenderer::render(&entries, "Project", Some(10), &opts);
+            print!("{output}");
+        }
+        ProjectsCommands::Show {
+            project_name,
+            from,
+            to,
+        } => {
+            let today = chrono::Local::now().date_naive();
+            let start = from.as_deref().map_or(Ok(today), |s| {
+                chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d")
+                    .with_context(|| format!("--from must be YYYY-MM-DD, got '{s}'"))
+            })?;
+            let end = to.as_deref().map_or(Ok(today), |s| {
+                chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d")
+                    .with_context(|| format!("--to must be YYYY-MM-DD, got '{s}'"))
+            })?;
+            let params = SummaryParams::for_range(start, end).project(&project_name);
+            let pb = stats_spinner(&format!("Fetching stats for '{project_name}' …"));
+            let resp = client.summaries(params).await;
+            pb.finish_and_clear();
+            let resp =
+                resp.with_context(|| format!("failed to fetch stats for '{project_name}'"))?;
+            print!("{}", SummaryRenderer::render(&resp, &opts));
+        }
     }
+
+    Ok(())
 }
 
 // ─── languages ────────────────────────────────────────────────────────────────
 
-// `needless_pass_by_value`: cmd is consumed by the match for exhaustive checking.
-#[allow(clippy::needless_pass_by_value)]
-fn languages(cmd: LanguagesCommands) -> Result<()> {
+/// Handles `waka languages {list,top}`.
+async fn languages(cmd: LanguagesCommands, global: &GlobalOpts) -> Result<()> {
+    let config = Config::load().unwrap_or_default();
+    let profile = stats_profile_name(global);
+    let client = build_api_client(&profile, &config)?;
+    let format = stats_resolve_format(global, &config);
+    let color = !global.no_color && std::io::stdout().is_terminal();
+    let opts = RenderOptions {
+        color,
+        format,
+        ..RenderOptions::default()
+    };
+
     match cmd {
-        LanguagesCommands::List { .. } => bail!("not yet implemented: languages list"),
-        LanguagesCommands::Top { .. } => bail!("not yet implemented: languages top"),
+        LanguagesCommands::List { period } => {
+            let range = period_to_stats_range(period);
+            let pb = stats_spinner("Fetching languages …");
+            let resp = client.stats(range).await;
+            pb.finish_and_clear();
+            let resp = resp.with_context(|| "failed to fetch language stats from WakaTime")?;
+
+            let entries = entries_from_stats(&resp.data.languages);
+            let output = BreakdownRenderer::render(&entries, "Language", None, &opts);
+            print!("{output}");
+        }
+        LanguagesCommands::Top { limit } => {
+            let pb = stats_spinner("Fetching top languages …");
+            let resp = client.stats(StatsRange::Last7Days).await;
+            pb.finish_and_clear();
+            let resp = resp.with_context(|| "failed to fetch language stats from WakaTime")?;
+
+            let entries = entries_from_stats(&resp.data.languages);
+            let output = BreakdownRenderer::render(&entries, "Language", limit.or(Some(10)), &opts);
+            print!("{output}");
+        }
     }
+
+    Ok(())
 }
 
 // ─── editors ──────────────────────────────────────────────────────────────────
 
-// `needless_pass_by_value`: cmd is consumed by the match for exhaustive checking.
-#[allow(clippy::needless_pass_by_value)]
-fn editors(cmd: EditorsCommands) -> Result<()> {
+/// Handles `waka editors {list,top}`.
+async fn editors(cmd: EditorsCommands, global: &GlobalOpts) -> Result<()> {
+    let config = Config::load().unwrap_or_default();
+    let profile = stats_profile_name(global);
+    let client = build_api_client(&profile, &config)?;
+    let format = stats_resolve_format(global, &config);
+    let color = !global.no_color && std::io::stdout().is_terminal();
+    let opts = RenderOptions {
+        color,
+        format,
+        ..RenderOptions::default()
+    };
+
     match cmd {
-        EditorsCommands::List { .. } => bail!("not yet implemented: editors list"),
-        EditorsCommands::Top { .. } => bail!("not yet implemented: editors top"),
+        EditorsCommands::List { period } => {
+            let range = period_to_stats_range(period);
+            let pb = stats_spinner("Fetching editors …");
+            let resp = client.stats(range).await;
+            pb.finish_and_clear();
+            let resp = resp.with_context(|| "failed to fetch editor stats from WakaTime")?;
+
+            let entries = entries_from_stats(&resp.data.editors);
+            let output = BreakdownRenderer::render(&entries, "Editor", None, &opts);
+            print!("{output}");
+        }
+        EditorsCommands::Top { limit } => {
+            let pb = stats_spinner("Fetching top editors …");
+            let resp = client.stats(StatsRange::Last7Days).await;
+            pb.finish_and_clear();
+            let resp = resp.with_context(|| "failed to fetch editor stats from WakaTime")?;
+
+            let entries = entries_from_stats(&resp.data.editors);
+            let output = BreakdownRenderer::render(&entries, "Editor", limit.or(Some(10)), &opts);
+            print!("{output}");
+        }
     }
+
+    Ok(())
 }
 
 // ─── goals ────────────────────────────────────────────────────────────────────

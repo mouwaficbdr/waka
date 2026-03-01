@@ -1,0 +1,8 @@
+---
+source: crates/waka-render/src/breakdown.rs
+expression: out
+---
+Language	 Time	 %
+Rust	 3h 0m	 50.0%
+Python	 2h 0m	 33.3%
+TypeScript	 1h 0m	 16.7%

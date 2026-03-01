@@ -1,0 +1,27 @@
+---
+source: crates/waka-render/src/breakdown.rs
+expression: out
+---
+[
+  {
+    "rank": 1,
+    "name": "Rust",
+    "total_seconds": 10800.0,
+    "text": "3h 0m",
+    "percent": 50.0
+  },
+  {
+    "rank": 2,
+    "name": "Python",
+    "total_seconds": 7200.0,
+    "text": "2h 0m",
+    "percent": 33.3
+  },
+  {
+    "rank": 3,
+    "name": "TypeScript",
+    "total_seconds": 3600.0,
+    "text": "1h 0m",
+    "percent": 16.7
+  }
+]
