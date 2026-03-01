@@ -1,32 +1,60 @@
 # waka stats
 
-Show aggregated coding statistics for a predefined time range.
+Show coding statistics for a predefined or custom time range.
+
+## Subcommands
+
+| Subcommand                | Description                                          |
+| ------------------------- | ---------------------------------------------------- |
+| `waka stats today`        | Today's coding activity                              |
+| `waka stats yesterday`    | Yesterday's coding activity                          |
+| `waka stats week`         | Last 7 days                                          |
+| `waka stats month`        | Last 30 days                                         |
+| `waka stats year`         | Last 12 months                                       |
+| `waka stats range`        | Custom date range (requires `--from` and `--to`)     |
 
 ## Usage
 
 ```sh
-waka stats [OPTIONS] [RANGE]
+waka stats <SUBCOMMAND> [OPTIONS]
 ```
 
-## Arguments
+## Common options
 
-| Argument | Values                                                                  | Default       |
-| -------- | ----------------------------------------------------------------------- | ------------- |
-| `RANGE`  | `last_7_days`, `last_30_days`, `last_6_months`, `last_year`, `all_time` | `last_7_days` |
+These options apply to all `waka stats` subcommands:
 
-## Options
+| Flag                    | Description                                              |
+| ----------------------- | -------------------------------------------------------- |
+| `--project <name>`      | Filter results to a specific project                     |
+| `--language <lang>`     | Filter results to a specific programming language        |
+| `-f, --format <FORMAT>` | Output format: `table` (default), `json`, `csv`, `plain` |
+| `--no-cache`            | Bypass the local cache and force a fresh API request     |
 
-| Flag             | Description                             |
-| ---------------- | --------------------------------------- |
-| `--format <fmt>` | Output format: `text` (default), `json` |
-| `--color <when>` | Color mode: `auto`, `always`, `never`   |
+## `waka stats range` options
+
+| Flag            | Required | Description                 |
+| --------------- | -------- | --------------------------- |
+| `--from <DATE>` | yes      | Start date in `YYYY-MM-DD`  |
+| `--to <DATE>`   | yes      | End date in `YYYY-MM-DD`    |
 
 ## Examples
 
 ```sh
-waka stats
-waka stats last_30_days
-waka stats all_time --format json
+# Built-in ranges
+waka stats today
+waka stats yesterday
+waka stats week
+waka stats month
+waka stats year
+
+# Custom range
+waka stats range --from 2024-01-01 --to 2024-03-31
+
+# Filter to a project and output as JSON
+waka stats week --project my-saas --format json
+
+# Bypass cache
+waka stats today --no-cache
 ```
 
 ## Sample output

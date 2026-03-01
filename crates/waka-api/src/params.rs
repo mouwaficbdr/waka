@@ -9,6 +9,10 @@ use chrono::{Local, NaiveDate};
 /// Predefined time ranges accepted by the `GET /users/current/stats/{range}`
 /// endpoint.
 ///
+/// This enum is `#[non_exhaustive]` — new ranges may be added in future
+/// minor versions as the `WakaTime` API evolves. Always include a wildcard
+/// arm when matching on it.
+///
 /// # Example
 ///
 /// ```rust
@@ -17,6 +21,7 @@ use chrono::{Local, NaiveDate};
 /// let path_segment = StatsRange::Last7Days.as_str();
 /// assert_eq!(path_segment, "last_7_days");
 /// ```
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StatsRange {
     /// The last 7 days.

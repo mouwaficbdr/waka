@@ -17,6 +17,7 @@ use serde::{Deserialize, Serialize};
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Top-level envelope returned by `GET /users/current`.
+#[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserResponse {
     /// The user object.
@@ -24,6 +25,7 @@ pub struct UserResponse {
 }
 
 /// A `WakaTime` user account.
+#[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
     /// Unique user identifier (UUID).
@@ -76,6 +78,7 @@ pub struct User {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Top-level envelope returned by `GET /users/current/summaries`.
+#[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SummaryResponse {
     /// Per-day summary entries (one per calendar day in the requested range).
@@ -87,6 +90,7 @@ pub struct SummaryResponse {
 }
 
 /// Coding activity summary for a single calendar day.
+#[non_exhaustive]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SummaryData {
     /// Time broken down by activity category (coding, browsing, etc.).
@@ -136,6 +140,7 @@ pub struct SummaryEntry {
 ///
 /// This is structurally similar to [`SummaryEntry`] but includes the
 /// `machine_name_id` field returned by the API.
+#[non_exhaustive]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct MachineEntry {
     /// Human-readable duration in `HH:MM` format.
@@ -159,6 +164,7 @@ pub struct MachineEntry {
 }
 
 /// Grand total coding time for a single calendar day.
+#[non_exhaustive]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct GrandTotal {
     /// Human-readable duration in `HH:MM` format.
@@ -176,6 +182,7 @@ pub struct GrandTotal {
 }
 
 /// Date range metadata attached to a [`SummaryData`] entry.
+#[non_exhaustive]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SummaryRange {
     /// Calendar date string (e.g. `"2025-01-13"`). Present on single-day
@@ -196,6 +203,7 @@ pub struct SummaryRange {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Top-level envelope returned by `GET /users/current/projects`.
+#[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectsResponse {
     /// The list of projects.
@@ -203,6 +211,7 @@ pub struct ProjectsResponse {
 }
 
 /// A `WakaTime` project.
+#[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Project {
     /// Optional badge URL associated with the project.
@@ -234,6 +243,7 @@ pub struct Project {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Top-level envelope returned by `GET /users/current/stats/{range}`.
+#[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StatsResponse {
     /// The aggregated stats object.
@@ -241,6 +251,7 @@ pub struct StatsResponse {
 }
 
 /// Aggregated coding stats for a predefined time range.
+#[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Stats {
     /// The day with the most coding activity.
@@ -308,6 +319,7 @@ pub struct Stats {
 }
 
 /// The single best (most productive) day in a stats range.
+#[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BestDay {
     /// Calendar date (e.g. `"2025-01-13"`).
@@ -424,6 +436,7 @@ pub struct GoalChartRange {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Top-level envelope returned by `GET /users/current/leaderboards`.
+#[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LeaderboardResponse {
     /// The current authenticated user's entry, if they appear in this page.
@@ -447,6 +460,7 @@ pub struct LeaderboardResponse {
 }
 
 /// A single entry on the leaderboard.
+#[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LeaderboardEntry {
     /// The rank of this user (1 = top coder).
@@ -458,6 +472,7 @@ pub struct LeaderboardEntry {
 }
 
 /// Aggregated coding totals used on the leaderboard.
+#[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunningTotal {
     /// Average daily coding time in seconds.
@@ -477,6 +492,7 @@ pub struct RunningTotal {
 }
 
 /// Public user information exposed on the leaderboard.
+#[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LeaderboardUser {
     /// Human-readable display name.
@@ -510,6 +526,7 @@ pub struct LeaderboardUser {
 }
 
 /// Date range metadata for a [`LeaderboardResponse`].
+#[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LeaderboardRange {
     /// End date string (e.g. `"2025-01-13"`).

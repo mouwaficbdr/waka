@@ -1,26 +1,28 @@
-# waka week
+# waka stats week
 
-Display this week's coding activity summary (Monday → today).
+Display the last 7 days of coding activity.
 
 ## Usage
 
 ```sh
-waka week [OPTIONS]
+waka stats week [OPTIONS]
 ```
 
 ## Options
 
-| Flag               | Description                             |
-| ------------------ | --------------------------------------- |
-| `--project <name>` | Filter to a specific project            |
-| `--format <fmt>`   | Output format: `text` (default), `json` |
-| `--color <when>`   | Color mode: `auto`, `always`, `never`   |
+| Flag                    | Description                                              |
+| ----------------------- | -------------------------------------------------------- |
+| `--project <name>`      | Filter to a specific project                             |
+| `--language <lang>`     | Filter to a specific language                            |
+| `-f, --format <FORMAT>` | Output format: `table` (default), `json`, `csv`, `plain` |
+| `--no-cache`            | Force a fresh API request                                |
 
 ## Examples
 
 ```sh
-waka week
-waka week --project my-saas --format json
+waka stats week
+waka stats week --project my-saas --format json
+waka stats week --no-cache
 ```
 
 ## Sample output

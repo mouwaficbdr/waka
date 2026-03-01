@@ -1,32 +1,36 @@
-# waka today
+# waka stats today
 
 Display today's coding activity summary.
 
 ## Usage
 
 ```sh
-waka today [OPTIONS]
+waka stats today [OPTIONS]
 ```
 
 ## Options
 
-| Flag               | Description                             |
-| ------------------ | --------------------------------------- |
-| `--project <name>` | Filter to a specific project            |
-| `--format <fmt>`   | Output format: `text` (default), `json` |
-| `--color <when>`   | Color mode: `auto`, `always`, `never`   |
+| Flag                    | Description                                              |
+| ----------------------- | -------------------------------------------------------- |
+| `--project <name>`      | Filter to a specific project                             |
+| `--language <lang>`     | Filter to a specific language                            |
+| `-f, --format <FORMAT>` | Output format: `table` (default), `json`, `csv`, `plain` |
+| `--no-cache`            | Force a fresh API request                                |
 
 ## Examples
 
 ```sh
 # Show today's summary
-waka today
+waka stats today
 
 # Filter to a single project
-waka today --project my-saas
+waka stats today --project my-saas
 
 # Machine-readable JSON output
-waka today --format json
+waka stats today --format json
+
+# Bypass the cache
+waka stats today --no-cache
 ```
 
 ## Sample output
