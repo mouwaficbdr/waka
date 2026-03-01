@@ -63,6 +63,8 @@ pub async fn dispatch(cmd: Commands, global: GlobalOpts) -> Result<()> {
         }
         Commands::Config { cmd } => config(cmd, &global).await,
         Commands::Cache { cmd } => cache(cmd, &global),
+        Commands::Update => update_self(&global).await,
+        Commands::Changelog => show_changelog(&global).await,
     };
 
     // After command output: wait briefly for the update notification.
@@ -780,15 +782,17 @@ async fn report_generate(
     let pb = stats_spinner("Fetching data for report...");
     let params = waka_api::SummaryParams::for_range(start_date, end_date);
     let summary = client.summaries(params).await?;
-    
+
     // Fetch goals (may fail if user has no goals - that's ok)
     let goals = client.goals().await.ok();
-    
+
     pb.finish_and_clear();
 
     // Generate report content
     let content = match format {
-        ReportFormat::Md => generate_report_markdown(&summary, goals.as_ref(), start_date, end_date),
+        ReportFormat::Md => {
+            generate_report_markdown(&summary, goals.as_ref(), start_date, end_date)
+        }
         ReportFormat::Html => generate_report_html(&summary, goals.as_ref(), start_date, end_date),
         ReportFormat::Json => generate_report_json(&summary, goals.as_ref(), start_date, end_date)?,
         ReportFormat::Csv => generate_report_csv(&summary, start_date, end_date),
@@ -836,7 +840,11 @@ async fn report_summary(period: SummaryPeriod, global: &GlobalOpts) -> Result<()
     pb.finish_and_clear();
 
     // Calculate totals
-    let total_seconds: f64 = summary.data.iter().map(|d| d.grand_total.total_seconds).sum();
+    let total_seconds: f64 = summary
+        .data
+        .iter()
+        .map(|d| d.grand_total.total_seconds)
+        .sum();
     let hours = (total_seconds / 3600.0).floor() as u64;
     let minutes = ((total_seconds % 3600.0) / 60.0).floor() as u64;
 
@@ -1396,6 +1404,223 @@ async fn update_check_background(global: GlobalOpts) {
     }
 }
 
+// ─── update / changelog ───────────────────────────────────────────────────────
+
+/// Detects how `waka` was likely installed, in order of specificity.
+///
+/// Returns a short identifier string used to choose the update strategy.
+fn detect_install_method() -> &'static str {
+    // Homebrew: the binary is typically located under a Cellar or opt/homebrew
+    // path. We check the current executable path.
+    if let Ok(exe) = std::env::current_exe() {
+        let path_str = exe.to_string_lossy();
+        if path_str.contains("/Cellar/") || path_str.contains("/homebrew/") {
+            return "homebrew";
+        }
+        // cargo install places binaries in ~/.cargo/bin
+        if path_str.contains("/.cargo/bin/") {
+            return "cargo";
+        }
+    }
+    // Snap / flatpak detection via environment variables
+    if std::env::var_os("SNAP").is_some() {
+        return "snap";
+    }
+    if std::env::var_os("FLATPAK_ID").is_some() {
+        return "flatpak";
+    }
+    "cargo" // default: assume cargo install
+}
+
+/// Implements `waka update`.
+///
+/// Detects the install method and runs the appropriate updater command,
+/// or prints instructions when automatic update is not possible.
+async fn update_self(global: &GlobalOpts) -> Result<()> {
+    // First, check if a newer version is actually available.
+    if !global.quiet {
+        let pb = stats_spinner("Checking for updates...");
+        let current = env!("CARGO_PKG_VERSION");
+        match check_latest_version().await {
+            Ok(Some(ref latest)) if version_is_newer(latest, current) => {
+                pb.finish_and_clear();
+                eprintln!("  ⬆  Updating waka v{current} → v{latest}");
+            }
+            Ok(Some(ref latest)) => {
+                pb.finish_and_clear();
+                println!("  ✓  Already on the latest version (v{latest})");
+                return Ok(());
+            }
+            Ok(None) => {
+                pb.finish_and_clear();
+                println!("  ✓  No releases found — you are on the latest build.");
+                return Ok(());
+            }
+            Err(e) => {
+                pb.finish_and_clear();
+                bail!("Failed to check for updates: {e}");
+            }
+        }
+    }
+
+    let method = detect_install_method();
+
+    match method {
+        "cargo" => {
+            eprintln!("  Running: cargo install waka --force");
+            // Print the command for the user to copy/paste if this fails.
+            // We attempt to exec via std::process::Command so the user sees
+            // live output.
+            let status = std::process::Command::new("cargo")
+                .args(["install", "waka", "--force"])
+                .status()
+                .context("failed to execute `cargo install waka --force`")?;
+
+            if !status.success() {
+                bail!(
+                    "`cargo install waka --force` exited with status {status}\n\
+                     Try running it manually: cargo install waka --force"
+                );
+            }
+            if !global.quiet {
+                println!("  ✓  waka updated successfully via cargo.");
+            }
+        }
+        "homebrew" => {
+            eprintln!("  Running: brew upgrade waka");
+            let status = std::process::Command::new("brew")
+                .args(["upgrade", "waka"])
+                .status()
+                .context("failed to execute `brew upgrade waka`")?;
+
+            if !status.success() {
+                bail!(
+                    "`brew upgrade waka` exited with status {status}\n\
+                     Try running it manually: brew upgrade waka"
+                );
+            }
+            if !global.quiet {
+                println!("  ✓  waka updated successfully via Homebrew.");
+            }
+        }
+        "snap" => {
+            eprintln!("  Running: sudo snap refresh waka");
+            let status = std::process::Command::new("sudo")
+                .args(["snap", "refresh", "waka"])
+                .status()
+                .context("failed to execute `sudo snap refresh waka`")?;
+
+            if !status.success() {
+                bail!(
+                    "`sudo snap refresh waka` exited with status {status}\n\
+                     Try running it manually: sudo snap refresh waka"
+                );
+            }
+            if !global.quiet {
+                println!("  ✓  waka updated successfully via snap.");
+            }
+        }
+        _ => {
+            eprintln!(
+                "  ℹ  Install method not auto-detected. Update manually:\n\
+                 \n    cargo install waka --force\n\
+                 \n  Or download the latest release from:\n\
+                 \n    https://github.com/mouwaficbdr/waka/releases\n"
+            );
+        }
+    }
+
+    Ok(())
+}
+
+/// Implements `waka changelog`.
+///
+/// Fetches the latest CHANGELOG.md from the GitHub repository and displays
+/// the entries from the installed version onwards.
+async fn show_changelog(global: &GlobalOpts) -> Result<()> {
+    let pb = stats_spinner("Fetching changelog...");
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .user_agent(concat!("waka/", env!("CARGO_PKG_VERSION")))
+        .build()?;
+
+    // Fetch CHANGELOG.md from GitHub (raw content).
+    let url = "https://raw.githubusercontent.com/mouwaficbdr/waka/main/CHANGELOG.md";
+
+    let resp = client.get(url).send().await?;
+    pb.finish_and_clear();
+
+    if !resp.status().is_success() {
+        bail!(
+            "Could not fetch changelog (HTTP {})\n\
+             View it online: https://github.com/mouwaficbdr/waka/blob/main/CHANGELOG.md",
+            resp.status()
+        );
+    }
+
+    let content = resp.text().await?;
+    let current = env!("CARGO_PKG_VERSION");
+
+    // Find the section that corresponds to the current version and print from
+    // the latest entry down to (but not including) the installed version.
+    let mut found_newer = false;
+    let mut found_current = false;
+    let mut output = Vec::new();
+
+    for line in content.lines() {
+        // Markdown headings like `## [0.4.0] - 2025-...`
+        if let Some(rest) = line.strip_prefix("## [") {
+            let ver = rest.split(']').next().unwrap_or("").trim();
+            if ver == current {
+                found_current = true;
+                break; // stop before including the installed version section
+            }
+            found_newer = true;
+        }
+        if found_newer {
+            output.push(line);
+        }
+    }
+
+    if !found_newer {
+        if found_current {
+            println!("  ✓  You are on the latest released version (v{current}).");
+        } else {
+            // Fallback: print the full changelog if we can't detect version.
+            if !global.quiet {
+                println!("  ℹ  Could not detect version in changelog. Displaying full content:\n");
+            }
+            print!("{content}");
+        }
+        return Ok(());
+    }
+
+    // Respect PAGER env var (like `less`).
+    let pager = std::env::var("PAGER").ok();
+    if let Some(pager_cmd) = pager.as_deref().filter(|p| !p.is_empty()) {
+        // Write to pager via stdin.
+        let mut child = std::process::Command::new(pager_cmd)
+            .stdin(std::process::Stdio::piped())
+            .spawn()
+            .context("failed to launch pager")?;
+
+        if let Some(stdin) = child.stdin.as_mut() {
+            use std::io::Write as _;
+            for line in &output {
+                let _ = writeln!(stdin, "{line}");
+            }
+        }
+        let _ = child.wait();
+    } else {
+        for line in &output {
+            println!("{line}");
+        }
+    }
+
+    Ok(())
+}
+
 // ─── cache ────────────────────────────────────────────────────────────────────
 
 /// Parses a human-friendly duration string (e.g. `"1h"`, `"24h"`, `"7d"`) into
@@ -1548,7 +1773,11 @@ fn generate_report_markdown(
     let _ = writeln!(output, "**Period:** {start_date} to {end_date}\n");
 
     // Calculate totals
-    let total_seconds: f64 = summary.data.iter().map(|d| d.grand_total.total_seconds).sum();
+    let total_seconds: f64 = summary
+        .data
+        .iter()
+        .map(|d| d.grand_total.total_seconds)
+        .sum();
     let hours = (total_seconds / 3600.0).floor() as u64;
     let minutes = ((total_seconds % 3600.0) / 60.0).floor() as u64;
 
@@ -1578,9 +1807,7 @@ fn generate_report_markdown(
         std::collections::HashMap::new();
     for day in &summary.data {
         for project in &day.projects {
-            *project_totals
-                .entry(project.name.clone())
-                .or_insert(0.0) += project.total_seconds;
+            *project_totals.entry(project.name.clone()).or_insert(0.0) += project.total_seconds;
         }
     }
 
@@ -1646,9 +1873,7 @@ fn generate_report_markdown(
         std::collections::HashMap::new();
     for day in &summary.data {
         for editor in &day.editors {
-            *editor_totals
-                .entry(editor.name.clone())
-                .or_insert(0.0) += editor.total_seconds;
+            *editor_totals.entry(editor.name.clone()).or_insert(0.0) += editor.total_seconds;
         }
     }
 
@@ -1744,7 +1969,11 @@ fn generate_report_html(
     use std::fmt::Write as _;
 
     // Calculate totals
-    let total_seconds: f64 = summary.data.iter().map(|d| d.grand_total.total_seconds).sum();
+    let total_seconds: f64 = summary
+        .data
+        .iter()
+        .map(|d| d.grand_total.total_seconds)
+        .sum();
     let hours = (total_seconds / 3600.0).floor() as u64;
     let minutes = ((total_seconds % 3600.0) / 60.0).floor() as u64;
 
@@ -1779,7 +2008,9 @@ fn generate_report_html(
     html.push_str("td { padding: 12px; border-bottom: 1px solid #ddd; }\n");
     html.push_str("tr:last-child td { border-bottom: none; }\n");
     html.push_str("tr:hover { background: #f9f9f9; }\n");
-    html.push_str(".footer { text-align: center; margin-top: 40px; color: #888; font-size: 14px; }\n");
+    html.push_str(
+        ".footer { text-align: center; margin-top: 40px; color: #888; font-size: 14px; }\n",
+    );
     html.push_str(".goal-list { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\n");
     html.push_str(".goal-item { padding: 10px 0; border-bottom: 1px solid #eee; }\n");
     html.push_str(".goal-item:last-child { border-bottom: none; }\n");
@@ -1789,9 +2020,18 @@ fn generate_report_html(
     // Header
     html.push_str("<div class=\"header\">\n");
     html.push_str("<h1>Productivity Report</h1>\n");
-    let _ = writeln!(html, "<div class=\"stat\"><strong>Period:</strong> {start_date} to {end_date}</div>");
-    let _ = writeln!(html, "<div class=\"stat\"><strong>Total Time:</strong> {hours}h {minutes}m</div>");
-    let _ = writeln!(html, "<div class=\"stat\"><strong>Average per day:</strong> {avg_display}</div>");
+    let _ = writeln!(
+        html,
+        "<div class=\"stat\"><strong>Period:</strong> {start_date} to {end_date}</div>"
+    );
+    let _ = writeln!(
+        html,
+        "<div class=\"stat\"><strong>Total Time:</strong> {hours}h {minutes}m</div>"
+    );
+    let _ = writeln!(
+        html,
+        "<div class=\"stat\"><strong>Average per day:</strong> {avg_display}</div>"
+    );
     html.push_str("</div>\n");
 
     // Projects
@@ -1800,9 +2040,7 @@ fn generate_report_html(
         std::collections::HashMap::new();
     for day in &summary.data {
         for project in &day.projects {
-            *project_totals
-                .entry(project.name.clone())
-                .or_insert(0.0) += project.total_seconds;
+            *project_totals.entry(project.name.clone()).or_insert(0.0) += project.total_seconds;
         }
     }
 
@@ -1823,7 +2061,10 @@ fn generate_report_html(
             } else {
                 0
             };
-            let _ = writeln!(html, "<tr><td>{name}</td><td>{hrs}h {mins}m</td><td>{pct}%</td></tr>");
+            let _ = writeln!(
+                html,
+                "<tr><td>{name}</td><td>{hrs}h {mins}m</td><td>{pct}%</td></tr>"
+            );
         }
         html.push_str("</tbody>\n</table>\n");
     }
@@ -1855,7 +2096,10 @@ fn generate_report_html(
             } else {
                 0
             };
-            let _ = writeln!(html, "<tr><td>{name}</td><td>{hrs}h {mins}m</td><td>{pct}%</td></tr>");
+            let _ = writeln!(
+                html,
+                "<tr><td>{name}</td><td>{hrs}h {mins}m</td><td>{pct}%</td></tr>"
+            );
         }
         html.push_str("</tbody>\n</table>\n");
     }
@@ -1866,9 +2110,7 @@ fn generate_report_html(
         std::collections::HashMap::new();
     for day in &summary.data {
         for editor in &day.editors {
-            *editor_totals
-                .entry(editor.name.clone())
-                .or_insert(0.0) += editor.total_seconds;
+            *editor_totals.entry(editor.name.clone()).or_insert(0.0) += editor.total_seconds;
         }
     }
 
@@ -1889,7 +2131,10 @@ fn generate_report_html(
             } else {
                 0
             };
-            let _ = writeln!(html, "<tr><td>{name}</td><td>{hrs}h {mins}m</td><td>{pct}%</td></tr>");
+            let _ = writeln!(
+                html,
+                "<tr><td>{name}</td><td>{hrs}h {mins}m</td><td>{pct}%</td></tr>"
+            );
         }
         html.push_str("</tbody>\n</table>\n");
     }
@@ -1915,7 +2160,10 @@ fn generate_report_html(
         let secs = day_data.grand_total.total_seconds;
         let hrs = (secs / 3600.0).floor() as u64;
         let mins = ((secs % 3600.0) / 60.0).floor() as u64;
-        let _ = writeln!(html, "<tr><td>{date_str}</td><td>{day_name}</td><td>{hrs}h {mins}m</td></tr>");
+        let _ = writeln!(
+            html,
+            "<tr><td>{date_str}</td><td>{day_name}</td><td>{hrs}h {mins}m</td></tr>"
+        );
     }
     html.push_str("</tbody>\n</table>\n");
 
@@ -1932,7 +2180,10 @@ fn generate_report_html(
                     "✗ Not Achieved"
                 };
                 let title = &goal.title;
-                let _ = writeln!(html, "<div class=\"goal-item\"><strong>{title}:</strong> {status}</div>");
+                let _ = writeln!(
+                    html,
+                    "<div class=\"goal-item\"><strong>{title}:</strong> {status}</div>"
+                );
             }
             html.push_str("</div>\n");
         }
@@ -1940,7 +2191,10 @@ fn generate_report_html(
 
     // Footer
     let now = chrono::Local::now().format("%Y-%m-%d %H:%M");
-    let _ = writeln!(html, "<div class=\"footer\">Generated on {now} by waka</div>");
+    let _ = writeln!(
+        html,
+        "<div class=\"footer\">Generated on {now} by waka</div>"
+    );
     html.push_str("</body>\n</html>");
 
     html
@@ -1953,8 +2207,12 @@ fn generate_report_json(
     start_date: chrono::NaiveDate,
     end_date: chrono::NaiveDate,
 ) -> Result<String> {
-    let total_seconds: f64 = summary.data.iter().map(|d| d.grand_total.total_seconds).sum();
-    
+    let total_seconds: f64 = summary
+        .data
+        .iter()
+        .map(|d| d.grand_total.total_seconds)
+        .sum();
+
     let report = serde_json::json!({
         "period": {
             "start": start_date.to_string(),
@@ -1968,9 +2226,8 @@ fn generate_report_json(
         "data": summary.data,
         "goals": goals.map(|g| &g.data),
     });
-    
-    serde_json::to_string_pretty(&report)
-        .context("failed to serialize report to JSON")
+
+    serde_json::to_string_pretty(&report).context("failed to serialize report to JSON")
 }
 
 /// Generates a CSV report.

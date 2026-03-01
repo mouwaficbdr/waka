@@ -147,6 +147,12 @@ pub enum Commands {
         #[command(subcommand)]
         cmd: CacheCommands,
     },
+
+    /// Update waka to the latest version.
+    Update,
+
+    /// Show the changelog from the installed version to the latest.
+    Changelog,
 }
 
 // ─── auth ─────────────────────────────────────────────────────────────────────
