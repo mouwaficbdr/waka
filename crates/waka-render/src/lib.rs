@@ -7,11 +7,13 @@
 
 pub mod breakdown;
 pub mod format;
+pub mod goals;
 pub mod options;
 pub mod summary;
 
 // Flatten the most-used items to the crate root for ergonomic imports.
 pub use breakdown::BreakdownRenderer;
 pub use format::{format_bar, format_duration};
+pub use goals::GoalRenderer;
 pub use options::{detect_output_format, should_use_color, OutputFormat, RenderOptions};
 pub use summary::SummaryRenderer;

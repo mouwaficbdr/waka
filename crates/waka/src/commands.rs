@@ -14,8 +14,8 @@ use waka_api::{StatsRange, SummaryEntry, SummaryParams, WakaClient};
 use waka_cache::CacheStore;
 use waka_config::{Config, CredentialStore, ProfileConfig};
 use waka_render::{
-    detect_output_format, should_use_color, BreakdownRenderer, OutputFormat as RenderFormat,
-    RenderOptions, SummaryRenderer,
+    detect_output_format, should_use_color, BreakdownRenderer, GoalRenderer,
+    OutputFormat as RenderFormat, RenderOptions, SummaryRenderer,
 };
 
 use crate::auth;
@@ -48,7 +48,7 @@ pub async fn dispatch(cmd: Commands, global: GlobalOpts) -> Result<()> {
         Commands::Projects { cmd } => projects(cmd, &global).await,
         Commands::Languages { cmd } => languages(cmd, &global).await,
         Commands::Editors { cmd } => editors(cmd, &global).await,
-        Commands::Goals { cmd } => goals(cmd),
+        Commands::Goals { cmd } => goals(cmd, &global).await,
         Commands::Leaderboard { cmd } => leaderboard(cmd),
         Commands::Report { cmd } => report(cmd),
         Commands::Dashboard(args) => dashboard(args),
@@ -552,14 +552,48 @@ async fn editors(cmd: EditorsCommands, global: &GlobalOpts) -> Result<()> {
 }
 
 // ─── goals ────────────────────────────────────────────────────────────────────
-// `needless_pass_by_value`: cmd consumed by match; data is ignored since all arms bail.
-#[allow(clippy::needless_pass_by_value)]
-fn goals(cmd: GoalsCommands) -> Result<()> {
+
+async fn goals(cmd: GoalsCommands, global: &GlobalOpts) -> Result<()> {
+    let config = Config::load().unwrap_or_default();
+    let profile = stats_profile_name(global);
+    let client = build_api_client(&profile, &config)?;
+    let format = stats_resolve_format(global, &config);
+    let color = !global.no_color && should_use_color();
+    let opts = RenderOptions {
+        color,
+        format,
+        csv_bom: global.csv_bom,
+        ..RenderOptions::default()
+    };
+
     match cmd {
-        GoalsCommands::List => bail!("not yet implemented: goals list"),
-        GoalsCommands::Show { .. } => bail!("not yet implemented: goals show"),
+        GoalsCommands::List => {
+            let pb = stats_spinner("Fetching goals …");
+            let resp = client.goals().await;
+            pb.finish_and_clear();
+            let resp = resp.with_context(|| "failed to fetch goals from WakaTime")?;
+            let output = GoalRenderer::render_list(&resp, &opts);
+            print!("{output}");
+        }
+        GoalsCommands::Show { goal_id } => {
+            let pb = stats_spinner("Fetching goals …");
+            let resp = client.goals().await;
+            pb.finish_and_clear();
+            let resp = resp.with_context(|| "failed to fetch goals from WakaTime")?;
+
+            let goal = resp
+                .data
+                .iter()
+                .find(|g| g.id == goal_id)
+                .with_context(|| format!("goal '{goal_id}' not found"))?;
+
+            let output = GoalRenderer::render_detail(goal, &opts);
+            print!("{output}");
+        }
         GoalsCommands::Watch { .. } => bail!("not yet implemented: goals watch"),
     }
+
+    Ok(())
 }
 
 // ─── leaderboard ──────────────────────────────────────────────────────────────

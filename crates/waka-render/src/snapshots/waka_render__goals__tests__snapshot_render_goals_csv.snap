@@ -1,0 +1,7 @@
+---
+source: crates/waka-render/src/goals.rs
+expression: out
+---
+id,title,status,target_seconds,period,scope
+cccccccc-0003-0003-0003-cccccccccccc,Code 8 hours per day,success,28800,day,
+dddddddd-0004-0004-0004-dddddddddddd,Code 10 hours of Python per week,fail,36000,week,Python

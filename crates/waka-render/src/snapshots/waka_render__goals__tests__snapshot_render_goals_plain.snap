@@ -1,0 +1,6 @@
+---
+source: crates/waka-render/src/goals.rs
+expression: out
+---
+1. ✓  Code 8 hours per day — 8h 0m / day
+2. ✗  Code 10 hours of Python per week — 10h 0m / week [Python]
