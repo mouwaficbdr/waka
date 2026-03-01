@@ -95,16 +95,38 @@ waka goals show <GOAL_ID>
 waka goals watch [--notify] [--interval SECONDS]
 ```
 
+Goal watching monitors your progress in real-time and sends desktop notifications when goals are achieved (requires `notify-send` on Linux).
+
 ### Leaderboard
 
 ```bash
 waka leaderboard show [--page N]
 ```
 
-### Reports
+### Interactive Dashboard (TUI)
 
 ```bash
-waka report generate --from 2024-01-01 --to 2024-01-31 [--format md|html|json|csv] [-o report.md]
+waka dash [--refresh DURATION]
+```
+
+**Live TUI dashboard** powered by [ratatui](https://ratatui.rs/) with:
+
+- 5 views: Main (overview), Projects, Languages, Goals, Activity (30-day heatmap)
+- Auto-refresh every 5 minutes (configurable with `--refresh`)
+- Keyboard navigation: Tab/1-5 to switch views, ↑/↓ to scroll lists
+- `r` key for manual refresh
+- `e` key to export current view data to JSON
+- Offline indicator and loading spinner
+- Graceful terminal resize handling
+
+Press `?` for help, `q` or Esc to quit.
+
+### Reports
+
+_Coming in Phase 3._
+
+```bash
+waka report generate --from 2024-01-01 --to 2024-31 [--format md|html|json|csv] [-o report.md]
 waka report summary [--period week|month]
 ```
 
@@ -207,8 +229,19 @@ Color output respects `NO_COLOR`, `TERM=dumb`, and `--no-color`.
 
 See [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) for the full phased roadmap.
 
-Coming next: TUI interactive dashboard, goal progress bars with notifications,
-update checker.
+**Phase 2 (v0.3.0) — Complete:**
+- ✅ Shell prompt integration (`waka prompt`)
+- ✅ Update checker (runs in background on every command)
+- ✅ Goals list, show, and watch with notifications
+- ✅ Leaderboard command
+- ✅ Interactive TUI dashboard with 5 views
+- ✅ Standardized error messages
+
+**Phase 3 (v0.4.0) — Next:**
+- Report generation (Markdown, HTML, JSON, CSV)
+- `waka update` command for self-update
+- Man pages and mdBook documentation
+- `waka-api` published to crates.io
 
 ## Contributing
 
