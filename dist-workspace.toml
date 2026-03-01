@@ -1,0 +1,42 @@
+# dist-workspace.toml — cargo-dist v0.30.4 config
+# Versions verified: 2026-03-01
+#
+# NOTE: cargo-dist is now also known as `dist` (can be run as `dist` or `cargo dist`)
+# Install: curl --proto '=https' --tlsv1.2 -LsSf \
+#   https://github.com/axodotdev/cargo-dist/releases/download/v0.30.4/cargo-dist-installer.sh | sh
+
+[workspace]
+members = ["waka"]
+
+[dist]
+# Pin to the exact version used to generate this config
+cargo-dist-version = "0.30.4"
+
+# CI backend
+ci = "github"
+
+# Installers to generate
+installers = ["shell", "powershell", "homebrew"]
+
+# Target platforms (Tier 1 + ARM)
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "x86_64-unknown-linux-musl",
+    "aarch64-unknown-linux-gnu",
+    "x86_64-apple-darwin",
+    "aarch64-apple-darwin",
+    "x86_64-pc-windows-msvc",
+]
+
+# GitHub Release creation
+create-release = true
+
+# Homebrew tap repo (create this repo before first release)
+tap = "mouwaficbdr/homebrew-waka"
+formula = "waka"
+
+# Publish jobs
+publish-jobs = ["homebrew"]
+
+# Self-updater binary alongside main binary
+install-updater = true

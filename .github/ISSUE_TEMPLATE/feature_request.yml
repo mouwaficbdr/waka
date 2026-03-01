@@ -1,0 +1,50 @@
+name: Feature Request
+description: Suggest a new feature or improvement
+title: "[feat]: "
+labels: ["feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before submitting, please check `SPEC.md` and open issues to avoid duplicates.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / Motivation
+      description: What problem does this solve? What's the use case?
+      placeholder: "I want to be able to... because..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: What would the feature look like? Include example CLI invocations if applicable.
+      placeholder: |
+        waka stats today --group-by os
+        
+        Output:
+        macOS    5h 32m
+        Linux    1h 10m
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What other approaches did you consider?
+
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Suggested roadmap phase
+      options:
+        - Phase 0 (v0.1 — Foundations)
+        - Phase 1 (v0.2 — Completeness)
+        - Phase 2 (v0.3 — UX Premium)
+        - Phase 3 (v0.4 — Ecosystem)
+        - Phase 4 (v1.0 — Stability)
+        - Not sure
