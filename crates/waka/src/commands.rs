@@ -650,7 +650,9 @@ async fn goals_watch(
         if notify {
             for goal in &resp.data {
                 let was = prev_statuses.get(&goal.id).map(String::as_str);
-                if goal.range_status == "success" && !matches!(was, Some("success")) {
+                if goal.range_status.as_deref() == Some("success")
+                    && !matches!(was, Some("success"))
+                {
                     goals_notify_success(&goal.title);
                 }
             }
@@ -658,7 +660,10 @@ async fn goals_watch(
 
         // Update tracked statuses.
         for goal in &resp.data {
-            prev_statuses.insert(goal.id.clone(), goal.range_status.clone());
+            prev_statuses.insert(
+                goal.id.clone(),
+                goal.range_status.clone().unwrap_or_default(),
+            );
         }
 
         // ── render ────────────────────────────────────────────────────────

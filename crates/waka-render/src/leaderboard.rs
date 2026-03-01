@@ -80,7 +80,7 @@ impl LeaderboardRenderer {
             let user_name = &entry.user.display_name;
 
             table.add_row(vec![
-                Cell::new(entry.rank),
+                Cell::new(entry.rank.unwrap_or(0)),
                 Cell::new(user_name),
                 Cell::new(&total),
                 Cell::new(&avg),
@@ -106,7 +106,10 @@ impl LeaderboardRenderer {
                 writeln!(
                     output,
                     "\nYour rank: #{} — {} (daily avg: {}) — {}",
-                    cu.rank, total, avg, top_lang
+                    cu.rank.unwrap_or(0),
+                    total,
+                    avg,
+                    top_lang
                 )
                 .unwrap_or_default();
             }
@@ -137,7 +140,11 @@ impl LeaderboardRenderer {
             writeln!(
                 out,
                 "{:2}. {} — {} (daily avg: {}) — {}",
-                entry.rank, entry.user.display_name, total, avg, top_lang
+                entry.rank.unwrap_or(0),
+                entry.user.display_name,
+                total,
+                avg,
+                top_lang
             )
             .unwrap_or_default();
         }
@@ -149,7 +156,9 @@ impl LeaderboardRenderer {
                 writeln!(
                     out,
                     "\nYour rank: #{} — {} (daily avg: {})",
-                    cu.rank, total, avg
+                    cu.rank.unwrap_or(0),
+                    total,
+                    avg
                 )
                 .unwrap_or_default();
             }
@@ -199,7 +208,7 @@ impl LeaderboardRenderer {
             writeln!(
                 out,
                 "{}{sep}{}{sep}{}{sep}{}{sep}{}",
-                entry.rank,
+                entry.rank.unwrap_or(0),
                 entry.user.display_name,
                 secs(entry.running_total.total_seconds),
                 secs(entry.running_total.daily_average),
