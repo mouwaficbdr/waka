@@ -17,7 +17,7 @@ async fn main() {
     let cli = Cli::parse();
 
     if let Err(err) = commands::dispatch(cli.command, cli.global).await {
-        eprintln!("Error: {err:#}");
+        eprintln!("{}", error::format_error(&err));
         std::process::exit(error::exit_code(&err));
     }
 }
