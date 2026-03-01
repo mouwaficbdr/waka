@@ -31,7 +31,7 @@ pub struct Cli {
 /// Options available on every command (SPEC.md §6.2).
 // Four bool flags are required by SPEC.md §6.2 — a state machine would obscure the CLI API.
 #[allow(clippy::struct_excessive_bools)]
-#[derive(Debug, Default, Args)]
+#[derive(Debug, Default, Clone, Args)]
 pub struct GlobalOpts {
     /// Use a specific profile.
     #[arg(short = 'p', long, global = true, value_name = "PROFILE")]

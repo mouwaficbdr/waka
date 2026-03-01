@@ -31,7 +31,18 @@ use crate::cli::{
 /// `global` carries flags shared by every command (profile, format, color,
 /// verbosity). It is passed down to handlers that need it.
 pub async fn dispatch(cmd: Commands, global: GlobalOpts) -> Result<()> {
-    match cmd {
+    // Prompt and Completions produce machine-readable output or are
+    // latency-sensitive (shell prompt) — skip the update check entirely.
+    let skip_update =
+        global.quiet || matches!(&cmd, Commands::Prompt(_) | Commands::Completions { .. });
+
+    // Spawn the update check concurrently with the command.
+    // On a cache hit (most runs) it completes in microseconds.
+    // On a cache miss (first run of the day) it fetches GitHub with up to
+    // 5 s network timeout — we wait at most 3 s for it here.
+    let update_handle = tokio::spawn(update_check_background(global.clone()));
+
+    let result = match cmd {
         Commands::Auth { cmd } => auth_cmd(cmd, global).await,
         Commands::Stats { cmd } => stats(cmd, &global).await,
         Commands::Projects { cmd } => projects(cmd, &global).await,
@@ -51,7 +62,14 @@ pub async fn dispatch(cmd: Commands, global: GlobalOpts) -> Result<()> {
         }
         Commands::Config { cmd } => config(cmd, &global).await,
         Commands::Cache { cmd } => cache(cmd, &global),
+    };
+
+    // After command output: wait briefly for the update notification.
+    if !skip_update {
+        let _ = tokio::time::timeout(Duration::from_secs(3), update_handle).await;
     }
+
+    result
 }
 
 // ─── auth ─────────────────────────────────────────────────────────────────────
@@ -1033,6 +1051,60 @@ fn version_is_newer(candidate: &str, current: &str) -> bool {
     match (parse(candidate), parse(current)) {
         (Some(c), Some(cur)) => c > cur,
         _ => false,
+    }
+}
+
+/// Background update check task.
+///
+/// Runs once per day (as determined by the cache TTL). Prints a one-line
+/// notice to **stderr** when a newer `waka` version is available.
+///
+/// All errors are swallowed — an update check must never break a command.
+async fn update_check_background(global: GlobalOpts) {
+    // Cache key stores the last-fetched latest version string.
+    // TTL = 24 h — so we hit GitHub at most once per day.
+    const UPDATE_CACHE_KEY: &str = "update_check:latest";
+    const CHECK_INTERVAL: Duration = Duration::from_secs(86_400);
+
+    // 1. Honour WAKA_NO_UPDATE_CHECK env var.
+    if std::env::var_os("WAKA_NO_UPDATE_CHECK").is_some() {
+        return;
+    }
+
+    // 2. Honour config flag.
+    let config = Config::load().unwrap_or_default();
+    if !config.core.update_check {
+        return;
+    }
+
+    let profile = global.profile.as_deref().unwrap_or("default");
+    let Ok(store) = CacheStore::open(profile) else {
+        return;
+    };
+
+    // 3. Determine if we need to fetch (cache miss or expired).
+    let cached = store.get::<String>(UPDATE_CACHE_KEY).ok().flatten();
+
+    let latest = if cached.as_ref().is_some_and(|e| !e.is_expired()) {
+        // Cache hit — use stored value immediately (no network).
+        cached.map(|e| e.value)
+    } else {
+        // Cache miss or expired — fetch from GitHub.
+        match check_latest_version().await {
+            Ok(Some(v)) => {
+                let _ = store.set(UPDATE_CACHE_KEY, &v, CHECK_INTERVAL);
+                Some(v)
+            }
+            // No releases yet or network error — skip silently.
+            _ => return,
+        }
+    };
+
+    let Some(latest) = latest else { return };
+    let current = env!("CARGO_PKG_VERSION");
+
+    if version_is_newer(&latest, current) {
+        eprintln!("\n  ⚠  waka v{current} installed — v{latest} available (run: waka update)");
     }
 }
 
