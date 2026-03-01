@@ -128,11 +128,8 @@ impl GoalRenderer {
             ]);
 
         for (i, goal) in resp.data.iter().enumerate() {
-            let status = format!(
-                "{} {}",
-                status_symbol(&goal.range_status),
-                &goal.range_status
-            );
+            let rs = goal.range_status.as_deref().unwrap_or("");
+            let status = format!("{} {}", status_symbol(rs), rs);
             let target = format_duration(target_secs(goal));
             let bar = if let Some(ratio) = progress_ratio(goal) {
                 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
@@ -168,7 +165,8 @@ impl GoalRenderer {
 
         let mut out = String::new();
         for (i, goal) in resp.data.iter().enumerate() {
-            let sym = status_symbol(&goal.range_status);
+            let rs = goal.range_status.as_deref().unwrap_or("");
+            let sym = status_symbol(rs);
             let target = format_duration(target_secs(goal));
             let scope = format_scope(goal);
             let scope_part = if scope.is_empty() {
@@ -199,12 +197,9 @@ impl GoalRenderer {
         let mut out = String::new();
         writeln!(out, "Title:   {}", goal.title).unwrap_or_default();
         writeln!(out, "ID:      {}", goal.id).unwrap_or_default();
-        writeln!(
-            out,
-            "Status:  {} ({})",
-            goal.range_status, goal.range_status_reason
-        )
-        .unwrap_or_default();
+        let rs = goal.range_status.as_deref().unwrap_or("");
+        let rsr = goal.range_status_reason.as_deref().unwrap_or("");
+        writeln!(out, "Status:  {rs} ({rsr})").unwrap_or_default();
         writeln!(
             out,
             "Target:  {} / {}",
@@ -277,7 +272,7 @@ impl GoalRenderer {
                 "{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}",
                 goal.id,
                 goal.title,
-                goal.range_status,
+                goal.range_status.as_deref().unwrap_or(""),
                 target_secs(goal),
                 goal.delta,
                 scope,
@@ -300,25 +295,35 @@ mod tests {
 
     fn make_goal(id: &str, title: &str, delta: &str, seconds: f64, status: &str) -> Goal {
         Goal {
+            average_status: None,
             chart_data: None,
             created_at: "2025-01-01T00:00:00Z".to_owned(),
+            cumulative_status: None,
+            custom_title: None,
             delta: delta.to_owned(),
             editors: vec![],
             id: id.to_owned(),
             ignore_days: vec![],
             ignore_zero_days: false,
             improve_by_percent: None,
+            is_current_user_owner: false,
             is_enabled: true,
             is_inverse: false,
             is_snoozed: false,
             is_tweeting: false,
             languages: vec![],
-            modified_at: "2025-01-10T00:00:00Z".to_owned(),
+            modified_at: Some("2025-01-10T00:00:00Z".to_owned()),
+            owner: None,
             projects: vec![],
-            range_status: status.to_owned(),
-            range_status_reason: format!("{status} reason"),
+            range_status: Some(status.to_owned()),
+            range_status_reason: Some(format!("{status} reason")),
+            range_text: None,
             seconds,
+            shared_with: vec![],
+            snooze_until: None,
             status: status.to_owned(),
+            status_percent_calculated: 0,
+            subscribers: vec![],
             title: title.to_owned(),
             goal_type: "coding".to_owned(),
         }
@@ -445,7 +450,7 @@ mod tests {
             goal_seconds: 28800.0,
             goal_seconds_text: "8h".to_owned(),
             range: GoalChartRange {
-                date: "2025-01-13".to_owned(),
+                date: Some("2025-01-13".to_owned()),
                 end: "2025-01-13T23:59:59Z".to_owned(),
                 start: "2025-01-13T00:00:00Z".to_owned(),
                 text: "Mon, Jan 13".to_owned(),

@@ -24,6 +24,20 @@ pub struct UserResponse {
     pub data: User,
 }
 
+/// Geographic location returned on user profiles and leaderboards.
+#[non_exhaustive]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct City {
+    /// Two-letter country code (e.g. `"US"`, `"UK"`).
+    pub country_code: Option<String>,
+    /// City name (e.g. `"San Francisco"`).
+    pub name: Option<String>,
+    /// State/province name (e.g. `"California"`).
+    pub state: Option<String>,
+    /// Human-readable `"City, State"` or country if state matches city.
+    pub title: Option<String>,
+}
+
 /// A `WakaTime` user account.
 #[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -32,13 +46,17 @@ pub struct User {
     pub id: String,
     /// The user's login handle.
     pub username: String,
-    /// Human-readable display name.
+    /// Human-readable display name (full name or `@username`).
     pub display_name: String,
     /// Full legal name (may be `None` if not set).
     pub full_name: Option<String>,
+    /// Optional user-defined bio.
+    pub bio: Option<String>,
     /// Email address (only present when the authenticated user requests their
-    /// own profile).
+    /// own profile; requires `email` scope).
     pub email: Option<String>,
+    /// Public-facing email (distinct from the account email).
+    pub public_email: Option<String>,
     /// URL of the user's avatar image.
     pub photo: Option<String>,
     /// IANA timezone string (e.g. `"America/New_York"`).
@@ -47,25 +65,70 @@ pub struct User {
     pub website: Option<String>,
     /// Human-readable website URL (without protocol prefix).
     pub human_readable_website: Option<String>,
-    /// Geographic location string.
-    pub location: Option<String>,
     /// Subscription plan (e.g. `"free"`, `"premium"`).
     pub plan: Option<String>,
-    /// Absolute URL of the user's public profile.
-    pub profile_url: Option<String>,
+    /// Whether the user has access to premium features.
+    #[serde(default)]
+    pub has_premium_features: bool,
+    /// Whether the user's email address is publicly visible on leaderboards.
+    #[serde(default)]
+    pub is_email_public: bool,
+    /// Whether the user's avatar is publicly visible on leaderboards.
+    #[serde(default)]
+    pub is_photo_public: bool,
     /// Whether the user's email address has been verified.
     #[serde(default)]
     pub is_email_confirmed: bool,
-    /// Whether the user is open to work.
-    pub is_hireable: Option<bool>,
-    /// Whether coding time is visible on the public profile.
-    pub logged_time_public: Option<bool>,
-    /// Whether this account is in write-only mode.
+    /// Whether the user is open to work (shows "hireable" badge on profile).
+    #[serde(default)]
+    pub is_hireable: bool,
+    /// Whether total coding time is visible on the public leaderboard.
+    #[serde(default)]
+    pub logged_time_public: bool,
+    /// Whether language usage is visible on the public profile.
+    #[serde(default)]
+    pub languages_used_public: bool,
+    /// Whether editor usage is visible on the public profile.
+    #[serde(default)]
+    pub editors_used_public: bool,
+    /// Whether category usage is visible on the public profile.
+    #[serde(default)]
+    pub categories_used_public: bool,
+    /// Whether operating system usage is visible on the public profile.
+    #[serde(default)]
+    pub os_used_public: bool,
+    /// ISO 8601 timestamp of the most recently received heartbeat.
+    pub last_heartbeat_at: Option<String>,
+    /// User-agent string from the last plugin used.
+    pub last_plugin: Option<String>,
+    /// Editor name extracted from the last plugin user-agent.
+    pub last_plugin_name: Option<String>,
+    /// Name of the last project coded in.
+    pub last_project: Option<String>,
+    /// Name of the last branch coded in.
+    pub last_branch: Option<String>,
+    /// Geographic location associated with the account.
+    pub city: Option<City>,
+    /// `GitHub` username.
+    pub github_username: Option<String>,
+    /// Twitter/X handle.
+    pub twitter_username: Option<String>,
+    /// The user's `LinkedIn` username.
+    pub linkedin_username: Option<String>,
+    /// `wonderful.dev` username.
+    pub wonderfuldev_username: Option<String>,
+    // ── Fields below are not listed in the official API docs but are observed
+    // ── in real responses — kept as optional for forward-compatibility.
+    /// Geographic location string (legacy / undocumented).
+    pub location: Option<String>,
+    /// Absolute URL of the user's public profile (undocumented).
+    pub profile_url: Option<String>,
+    /// Whether this account is in write-only mode (undocumented).
     #[serde(default)]
     pub writes_only: bool,
-    /// Heartbeat timeout in minutes.
+    /// Heartbeat timeout in minutes (undocumented on this endpoint).
     pub timeout: Option<u32>,
-    /// Whether the user prefers 24-hour time format.
+    /// Whether the user prefers 24-hour time format (undocumented).
     pub time_format_24hr: Option<bool>,
     /// ISO 8601 timestamp when the account was created.
     pub created_at: String,
@@ -156,6 +219,14 @@ pub struct SummaryData {
     pub operating_systems: Vec<SummaryEntry>,
     /// Time broken down by project.
     pub projects: Vec<SummaryEntry>,
+    /// Time broken down by branch — only present when the `project` URL
+    /// parameter is used in the request.
+    #[serde(default)]
+    pub branches: Vec<SummaryEntry>,
+    /// Time broken down by entity (file/domain) — only present when the
+    /// `project` URL parameter is used in the request.
+    #[serde(default)]
+    pub entities: Vec<SummaryEntry>,
     /// The date range this entry covers.
     pub range: SummaryRange,
 }
@@ -339,28 +410,73 @@ pub struct Stats {
     pub categories: Vec<SummaryEntry>,
     /// ISO 8601 timestamp when this stats snapshot was created.
     pub created_at: String,
-    /// Average daily coding time in seconds.
+    /// Average daily coding time in seconds, excluding "Other" language.
     pub daily_average: f64,
-    /// Average daily coding time including "other language" seconds.
+    /// Average daily coding time in seconds, including all languages.
     pub daily_average_including_other_language: f64,
     /// Number of days in the range including weekends/holidays.
     pub days_including_holidays: u32,
-    /// Number of working days in the range.
+    /// Number of working days in the range (excluding days with no activity).
     pub days_minus_holidays: u32,
+    /// Time broken down by detected dependency / library.
+    #[serde(default)]
+    pub dependencies: Vec<SummaryEntry>,
     /// Time broken down by editor.
     pub editors: Vec<SummaryEntry>,
     /// ISO 8601 end of the stats range.
     pub end: String,
-    /// Number of holiday days detected in the range.
+    /// Number of holiday / zero-activity days in the range.
     pub holidays: u32,
-    /// Human-readable average daily coding time.
+    /// Human-readable average daily coding time, excluding "Other" language.
     pub human_readable_daily_average: String,
+    /// Human-readable average daily coding time, including all languages.
+    #[serde(default)]
+    pub human_readable_daily_average_including_other_language: String,
     /// Human-readable description of the range (e.g. `"last 7 days"`).
     pub human_readable_range: String,
-    /// Human-readable total coding time.
+    /// Human-readable total coding time, excluding "Other" language.
     pub human_readable_total: String,
-    /// Unique stats record identifier.
-    pub id: String,
+    /// Human-readable total coding time, including all languages.
+    #[serde(default)]
+    pub human_readable_total_including_other_language: String,
+    /// Lines added by AI coding assistants (e.g. GitHub Copilot).
+    #[serde(default)]
+    pub ai_additions: u32,
+    /// Lines removed by AI coding assistants.
+    #[serde(default)]
+    pub ai_deletions: u32,
+    /// Lines added by the developer via keyboard input.
+    #[serde(default)]
+    pub human_additions: u32,
+    /// Lines removed by the developer via keyboard input.
+    #[serde(default)]
+    pub human_deletions: u32,
+    /// Unique stats record identifier (not always present in the API response).
+    pub id: Option<String>,
+    /// Whether the stats snapshot is currently refreshing in the background.
+    #[serde(default)]
+    pub is_already_updating: bool,
+    /// Whether this user's coding activity is publicly visible.
+    #[serde(default)]
+    pub is_coding_activity_visible: bool,
+    /// Whether this user's language usage is publicly visible.
+    #[serde(default)]
+    pub is_language_usage_visible: bool,
+    /// Whether this user's editor usage is publicly visible.
+    #[serde(default)]
+    pub is_editor_usage_visible: bool,
+    /// Whether this user's category usage is publicly visible.
+    #[serde(default)]
+    pub is_category_usage_visible: bool,
+    /// Whether this user's operating system usage is publicly visible.
+    #[serde(default)]
+    pub is_os_usage_visible: bool,
+    /// Whether the stats calculation got stuck and will be retried.
+    #[serde(default)]
+    pub is_stuck: bool,
+    /// Whether these stats include the current (partial) day.
+    #[serde(default)]
+    pub is_including_today: bool,
     /// Whether the stats snapshot is up to date.
     pub is_up_to_date: bool,
     /// Time broken down by programming language.
@@ -385,9 +501,9 @@ pub struct Stats {
     pub timeout: u32,
     /// IANA timezone used when computing the stats.
     pub timezone: String,
-    /// Total coding time in seconds.
+    /// Total coding time in seconds, excluding "Other" language.
     pub total_seconds: f64,
-    /// Total coding time including "other language" in seconds.
+    /// Total coding time in seconds, including all languages.
     pub total_seconds_including_other_language: f64,
     /// Owner user identifier (UUID).
     pub user_id: String,
@@ -424,13 +540,77 @@ pub struct GoalsResponse {
     pub total_pages: u32,
 }
 
+/// Minimal user info embedded in a [`Goal`] (owner / shared-with).
+#[non_exhaustive]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GoalOwner {
+    /// Human-readable display name.
+    pub display_name: Option<String>,
+    /// Email address.
+    pub email: Option<String>,
+    /// Full legal name.
+    pub full_name: Option<String>,
+    /// Unique user identifier (UUID).
+    pub id: String,
+    /// Avatar URL.
+    pub photo: Option<String>,
+    /// Public username.
+    pub username: Option<String>,
+}
+
+/// A user this goal has been shared with.
+#[non_exhaustive]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GoalSharedWith {
+    /// Human-readable display name.
+    pub display_name: Option<String>,
+    /// Email address (only set if shared via email).
+    pub email: Option<String>,
+    /// Full legal name.
+    pub full_name: Option<String>,
+    /// Unique user identifier (UUID).
+    pub id: Option<String>,
+    /// Avatar URL.
+    pub photo: Option<String>,
+    /// Invitation acceptance status.
+    pub status: Option<String>,
+    /// User ID (only set if shared via user id).
+    pub user_id: Option<String>,
+    /// Username (only set if shared via username).
+    pub username: Option<String>,
+}
+
+/// A subscriber to a goal's progress emails.
+#[non_exhaustive]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GoalSubscriber {
+    /// Subscriber's public email (if available).
+    pub email: Option<String>,
+    /// How often this subscriber receives emails.
+    pub email_frequency: Option<String>,
+    /// Subscriber's full name (if available).
+    pub full_name: Option<String>,
+    /// Unique user identifier (UUID).
+    pub user_id: String,
+    /// Subscriber's username (if defined).
+    pub username: Option<String>,
+}
+
 /// A single coding goal.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Goal {
+    /// `"fail"` when failure days outnumber success days, otherwise `"success"`.
+    pub average_status: Option<String>,
     /// Per-period chart data (populated when fetching goal details).
+    #[serde(default)]
     pub chart_data: Option<Vec<GoalChartEntry>>,
     /// ISO 8601 timestamp when the goal was created.
     pub created_at: String,
+    /// Overall cumulative status across all delta periods
+    /// (`"success"`, `"fail"`, or `"ignored"`).
+    pub cumulative_status: Option<String>,
+    /// Optional user-defined title that overrides the generated title.
+    pub custom_title: Option<String>,
     /// Goal period (e.g. `"day"`, `"week"`).
     pub delta: String,
     /// Editors this goal is restricted to (empty = all editors).
@@ -445,6 +625,9 @@ pub struct Goal {
     pub ignore_zero_days: bool,
     /// Target improvement percentage over baseline.
     pub improve_by_percent: Option<f64>,
+    /// Whether the currently authenticated user owns this goal.
+    #[serde(default)]
+    pub is_current_user_owner: bool,
     /// Whether the goal is active.
     pub is_enabled: bool,
     /// Whether passing means staying *below* the target.
@@ -456,19 +639,35 @@ pub struct Goal {
     /// Languages this goal is restricted to (empty = all languages).
     #[serde(default)]
     pub languages: Vec<String>,
-    /// ISO 8601 timestamp when the goal was last modified.
-    pub modified_at: String,
+    /// ISO 8601 timestamp when the goal was last modified (optional).
+    pub modified_at: Option<String>,
+    /// Owner of this goal.
+    pub owner: Option<GoalOwner>,
     /// Projects this goal is restricted to (empty = all projects).
     #[serde(default)]
     pub projects: Vec<String>,
-    /// Status for the most recent period.
-    pub range_status: String,
-    /// Human-readable explanation of the status.
-    pub range_status_reason: String,
+    /// Human-readable range description covering all delta periods.
+    pub range_text: Option<String>,
+    /// Status for the most recent period (`"success"`, `"fail"`, etc.).
+    /// Present at the top level on list responses.
+    pub range_status: Option<String>,
+    /// Human-readable explanation of the most recent period's status.
+    pub range_status_reason: Option<String>,
     /// Target coding seconds per period.
     pub seconds: f64,
-    /// Overall goal status (e.g. `"success"`, `"fail"`, `"ignored"`).
+    /// Users this goal has been shared with.
+    #[serde(default)]
+    pub shared_with: Vec<GoalSharedWith>,
+    /// ISO 8601 timestamp when email notifications will be re-enabled.
+    pub snooze_until: Option<String>,
+    /// Overall goal status (e.g. `"success"`, `"fail"`, `"ignored"`, `"pending"`).
     pub status: String,
+    /// Percent calculated (0–100) for goals that are pre-calculated in the background.
+    #[serde(default)]
+    pub status_percent_calculated: u32,
+    /// Goal subscribers (users who receive progress emails).
+    #[serde(default)]
+    pub subscribers: Vec<GoalSubscriber>,
     /// Human-readable goal title.
     pub title: String,
     /// Goal type (e.g. `"coding"`).
@@ -498,8 +697,8 @@ pub struct GoalChartEntry {
 /// Date range metadata for a [`GoalChartEntry`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GoalChartRange {
-    /// Calendar date (e.g. `"2025-01-13"`).
-    pub date: String,
+    /// Calendar date (e.g. `"2025-01-13"`). Only present when `delta` is `"day"`.
+    pub date: Option<String>,
     /// ISO 8601 end timestamp.
     pub end: String,
     /// ISO 8601 start timestamp.
@@ -539,11 +738,15 @@ pub struct LeaderboardResponse {
 }
 
 /// A single entry on the leaderboard.
+///
+/// Used for both regular entries in `data` and the `current_user` object.
+/// `rank` is `None` when the authenticated user is not on the current page.
 #[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LeaderboardEntry {
     /// The rank of this user (1 = top coder).
-    pub rank: u32,
+    /// `None` when the `current_user` is not present on this page.
+    pub rank: Option<u32>,
     /// Aggregated coding totals for this user.
     pub running_total: RunningTotal,
     /// Public user information.
@@ -564,8 +767,8 @@ pub struct RunningTotal {
     /// disclosure).
     #[serde(default)]
     pub languages: Vec<SummaryEntry>,
-    /// ISO 8601 timestamp when this total was last computed.
-    pub modified_at: String,
+    /// ISO 8601 timestamp when this total was last computed (not always present).
+    pub modified_at: Option<String>,
     /// Total coding seconds for the leaderboard period.
     pub total_seconds: f64,
 }
@@ -702,17 +905,36 @@ mod tests {
             username: "johndoe".to_owned(),
             display_name: "John Doe".to_owned(),
             full_name: Some("John Doe".to_owned()),
+            bio: None,
             email: None,
+            public_email: None,
             photo: None,
             timezone: "UTC".to_owned(),
             website: None,
             human_readable_website: None,
-            location: None,
             plan: Some("free".to_owned()),
-            profile_url: Some("https://wakatime.com/@johndoe".to_owned()),
+            has_premium_features: false,
+            is_email_public: false,
+            is_photo_public: false,
             is_email_confirmed: true,
-            is_hireable: Some(false),
-            logged_time_public: Some(false),
+            is_hireable: false,
+            logged_time_public: false,
+            languages_used_public: false,
+            editors_used_public: false,
+            categories_used_public: false,
+            os_used_public: false,
+            last_heartbeat_at: None,
+            last_plugin: None,
+            last_plugin_name: None,
+            last_project: None,
+            last_branch: None,
+            city: None,
+            github_username: None,
+            twitter_username: None,
+            linkedin_username: None,
+            wonderfuldev_username: None,
+            location: None,
+            profile_url: Some("https://wakatime.com/@johndoe".to_owned()),
             writes_only: false,
             timeout: Some(15),
             time_format_24hr: Some(false),
