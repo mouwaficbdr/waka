@@ -86,6 +86,9 @@ owo-colors = "4"
 # Credentials obfuscation
 base64 = "0.22"
 
+# Password prompt (hidden input, no echo)
+rpassword = "7"
+
 # System notifications
 notify-rust = "4"
 

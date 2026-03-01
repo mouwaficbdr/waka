@@ -4,6 +4,7 @@
 //! to command handlers. All user-facing errors are printed to stderr and the
 //! process exits with the code defined in SPEC.md Annexe B.
 
+mod auth;
 mod cli;
 mod commands;
 mod error;
@@ -15,7 +16,7 @@ use cli::Cli;
 async fn main() {
     let cli = Cli::parse();
 
-    if let Err(err) = commands::dispatch(cli.command).await {
+    if let Err(err) = commands::dispatch(cli.command, cli.global).await {
         eprintln!("Error: {err:#}");
         std::process::exit(error::exit_code(&err));
     }

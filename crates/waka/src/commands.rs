@@ -1,27 +1,25 @@
 //! Command handlers for `waka`.
 //!
-//! Each function corresponds to a leaf command in the CLI tree. All handlers
-//! are stubs that will be filled in during later phases. They return
-//! `anyhow::Result<()>` for uniform error propagation.
+//! Each function corresponds to a leaf command in the CLI tree. Auth handlers
+//! are fully implemented; all others remain stubs to be filled in during
+//! later phases.
 
 use anyhow::{bail, Result};
 
+use crate::auth;
 use crate::cli::{
-    AuthCommands, Commands, ConfigCommands, EditorsCommands, GoalsCommands, LanguagesCommands,
-    LeaderboardCommands, ProjectsCommands, ReportCommands, StatsCommands,
+    AuthCommands, Commands, ConfigCommands, EditorsCommands, GlobalOpts, GoalsCommands,
+    LanguagesCommands, LeaderboardCommands, ProjectsCommands, ReportCommands, StatsCommands,
 };
 use crate::cli::{DashboardArgs, PromptArgs};
 
 /// Dispatch a parsed [`Commands`] variant to the appropriate handler.
 ///
-/// `dispatch` is `async` because concrete handlers will perform network I/O
-/// in later phases. Stub handlers are synchronous; when a handler becomes
-/// async it simply gains an `async` keyword with no further refactoring needed.
-// `unused_async`: correct by design — inner handlers become async in later phases.
-#[allow(clippy::unused_async)]
-pub async fn dispatch(cmd: Commands) -> Result<()> {
+/// `global` carries flags shared by every command (profile, format, color,
+/// verbosity). It is passed down to handlers that need it.
+pub async fn dispatch(cmd: Commands, global: GlobalOpts) -> Result<()> {
     match cmd {
-        Commands::Auth { cmd } => auth(cmd),
+        Commands::Auth { cmd } => auth_cmd(cmd, global).await,
         Commands::Stats { cmd } => stats(cmd),
         Commands::Projects { cmd } => projects(cmd),
         Commands::Languages { cmd } => languages(cmd),
@@ -37,21 +35,19 @@ pub async fn dispatch(cmd: Commands) -> Result<()> {
 
 // ─── auth ─────────────────────────────────────────────────────────────────────
 
-// `needless_pass_by_value`: cmd consumed by match; data ignored since all arms bail.
-#[allow(clippy::needless_pass_by_value)]
-fn auth(cmd: AuthCommands) -> Result<()> {
+async fn auth_cmd(cmd: AuthCommands, global: GlobalOpts) -> Result<()> {
     match cmd {
-        AuthCommands::Login(_) => bail!("not yet implemented: auth login"),
-        AuthCommands::Logout { .. } => bail!("not yet implemented: auth logout"),
-        AuthCommands::Status => bail!("not yet implemented: auth status"),
-        AuthCommands::ShowKey => bail!("not yet implemented: auth show-key"),
+        AuthCommands::Login(args) => auth::login(args, &global).await,
+        AuthCommands::Logout { profile } => auth::logout(profile, &global).await,
+        AuthCommands::Status => auth::status(&global).await,
+        AuthCommands::ShowKey => auth::show_key(&global).await,
         AuthCommands::Switch { .. } => bail!("not yet implemented: auth switch"),
     }
 }
 
 // ─── stats ────────────────────────────────────────────────────────────────────
 
-// `needless_pass_by_value`: cmd consumed by match; data ignored since all arms bail.
+// `needless_pass_by_value`: cmd is consumed by the match for exhaustive checking.
 #[allow(clippy::needless_pass_by_value)]
 fn stats(cmd: StatsCommands) -> Result<()> {
     match cmd {
@@ -66,7 +62,7 @@ fn stats(cmd: StatsCommands) -> Result<()> {
 
 // ─── projects ─────────────────────────────────────────────────────────────────
 
-// `needless_pass_by_value`: cmd consumed by match; data ignored since all arms bail.
+// `needless_pass_by_value`: cmd is consumed by the match for exhaustive checking.
 #[allow(clippy::needless_pass_by_value)]
 fn projects(cmd: ProjectsCommands) -> Result<()> {
     match cmd {
@@ -78,7 +74,7 @@ fn projects(cmd: ProjectsCommands) -> Result<()> {
 
 // ─── languages ────────────────────────────────────────────────────────────────
 
-// `needless_pass_by_value`: cmd consumed by match; data ignored since all arms bail.
+// `needless_pass_by_value`: cmd is consumed by the match for exhaustive checking.
 #[allow(clippy::needless_pass_by_value)]
 fn languages(cmd: LanguagesCommands) -> Result<()> {
     match cmd {
@@ -89,7 +85,7 @@ fn languages(cmd: LanguagesCommands) -> Result<()> {
 
 // ─── editors ──────────────────────────────────────────────────────────────────
 
-// `needless_pass_by_value`: cmd consumed by match; data ignored since all arms bail.
+// `needless_pass_by_value`: cmd is consumed by the match for exhaustive checking.
 #[allow(clippy::needless_pass_by_value)]
 fn editors(cmd: EditorsCommands) -> Result<()> {
     match cmd {
@@ -100,7 +96,7 @@ fn editors(cmd: EditorsCommands) -> Result<()> {
 
 // ─── goals ────────────────────────────────────────────────────────────────────
 
-// `needless_pass_by_value`: cmd consumed by match; data ignored since all arms bail.
+// `needless_pass_by_value`: cmd is consumed by the match for exhaustive checking.
 #[allow(clippy::needless_pass_by_value)]
 fn goals(cmd: GoalsCommands) -> Result<()> {
     match cmd {
@@ -110,9 +106,9 @@ fn goals(cmd: GoalsCommands) -> Result<()> {
     }
 }
 
-// ─── leaderboard ──────────────────────────────────────────────────────────────
+// ─── leaderboard ─────────────────────────────────────────────────────────────
 
-// `needless_pass_by_value`: cmd consumed by match; data ignored since all arms bail.
+// `needless_pass_by_value`: cmd is consumed by the match for exhaustive checking.
 #[allow(clippy::needless_pass_by_value)]
 fn leaderboard(cmd: LeaderboardCommands) -> Result<()> {
     match cmd {
@@ -122,7 +118,7 @@ fn leaderboard(cmd: LeaderboardCommands) -> Result<()> {
 
 // ─── report ───────────────────────────────────────────────────────────────────
 
-// `needless_pass_by_value`: cmd consumed by match; data ignored since all arms bail.
+// `needless_pass_by_value`: cmd is consumed by the match for exhaustive checking.
 #[allow(clippy::needless_pass_by_value)]
 fn report(cmd: ReportCommands) -> Result<()> {
     match cmd {
@@ -145,7 +141,7 @@ fn prompt(_args: PromptArgs) -> Result<()> {
 
 // ─── config ───────────────────────────────────────────────────────────────────
 
-// `needless_pass_by_value`: cmd consumed by match; data ignored since all arms bail.
+// `needless_pass_by_value`: cmd is consumed by the match for exhaustive checking.
 #[allow(clippy::needless_pass_by_value)]
 fn config(cmd: ConfigCommands) -> Result<()> {
     match cmd {
