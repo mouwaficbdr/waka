@@ -13,5 +13,5 @@ pub mod summary;
 // Flatten the most-used items to the crate root for ergonomic imports.
 pub use breakdown::BreakdownRenderer;
 pub use format::{format_bar, format_duration};
-pub use options::{detect_output_format, OutputFormat, RenderOptions};
+pub use options::{detect_output_format, should_use_color, OutputFormat, RenderOptions};
 pub use summary::SummaryRenderer;

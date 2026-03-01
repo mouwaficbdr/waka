@@ -14,8 +14,8 @@ use waka_api::{StatsRange, SummaryEntry, SummaryParams, WakaClient};
 use waka_cache::CacheStore;
 use waka_config::{Config, CredentialStore, ProfileConfig};
 use waka_render::{
-    detect_output_format, BreakdownRenderer, OutputFormat as RenderFormat, RenderOptions,
-    SummaryRenderer,
+    detect_output_format, should_use_color, BreakdownRenderer, OutputFormat as RenderFormat,
+    RenderOptions, SummaryRenderer,
 };
 
 use crate::auth;
@@ -102,7 +102,7 @@ async fn stats(cmd: StatsCommands, global: &GlobalOpts) -> Result<()> {
         None
     };
 
-    let color = !global.no_color && std::io::stdout().is_terminal();
+    let color = !global.no_color && should_use_color();
 
     // `(resp, footer_line)` — footer_line is shown below the table when set.
     let (resp, footer) = if let Some(ref c) = cache {
@@ -375,7 +375,7 @@ async fn projects(cmd: ProjectsCommands, global: &GlobalOpts) -> Result<()> {
     let profile = stats_profile_name(global);
     let client = build_api_client(&profile, &config)?;
     let format = stats_resolve_format(global, &config);
-    let color = !global.no_color && std::io::stdout().is_terminal();
+    let color = !global.no_color && should_use_color();
     let opts = RenderOptions {
         color,
         format,
@@ -446,7 +446,7 @@ async fn languages(cmd: LanguagesCommands, global: &GlobalOpts) -> Result<()> {
     let profile = stats_profile_name(global);
     let client = build_api_client(&profile, &config)?;
     let format = stats_resolve_format(global, &config);
-    let color = !global.no_color && std::io::stdout().is_terminal();
+    let color = !global.no_color && should_use_color();
     let opts = RenderOptions {
         color,
         format,
@@ -489,7 +489,7 @@ async fn editors(cmd: EditorsCommands, global: &GlobalOpts) -> Result<()> {
     let profile = stats_profile_name(global);
     let client = build_api_client(&profile, &config)?;
     let format = stats_resolve_format(global, &config);
-    let color = !global.no_color && std::io::stdout().is_terminal();
+    let color = !global.no_color && should_use_color();
     let opts = RenderOptions {
         color,
         format,
@@ -596,9 +596,7 @@ async fn config(cmd: ConfigCommands, global: &GlobalOpts) -> Result<()> {
 // The function has many sequential checks that are intentionally laid out in order.
 #[allow(clippy::too_many_lines)]
 async fn config_doctor(global: &GlobalOpts) -> Result<()> {
-    use std::io::IsTerminal as _;
-
-    let use_color = !global.no_color && std::io::stdout().is_terminal();
+    let use_color = !global.no_color && should_use_color();
     let profile = global.profile.as_deref().unwrap_or("default");
     let mut issues: u32 = 0;
     let mut warnings: u32 = 0;
