@@ -2,6 +2,49 @@
 
 use chrono::{Local, NaiveDate};
 
+// ─────────────────────────────────────────────────────────────────────────────
+// StatsRange
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Predefined time ranges accepted by the `GET /users/current/stats/{range}`
+/// endpoint.
+///
+/// # Example
+///
+/// ```rust
+/// use waka_api::StatsRange;
+///
+/// let path_segment = StatsRange::Last7Days.as_str();
+/// assert_eq!(path_segment, "last_7_days");
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StatsRange {
+    /// The last 7 days.
+    Last7Days,
+    /// The last 30 days.
+    Last30Days,
+    /// The last 6 months.
+    Last6Months,
+    /// The last year.
+    LastYear,
+    /// All time since the account was created.
+    AllTime,
+}
+
+impl StatsRange {
+    /// Returns the URL path segment for this range as expected by the API.
+    #[must_use]
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Last7Days => "last_7_days",
+            Self::Last30Days => "last_30_days",
+            Self::Last6Months => "last_6_months",
+            Self::LastYear => "last_year",
+            Self::AllTime => "all_time",
+        }
+    }
+}
+
 /// Query parameters for the `GET /users/current/summaries` endpoint.
 ///
 /// # Example
@@ -214,5 +257,31 @@ mod tests {
             p.cache_key(),
             "summaries:2025-01-06:2025-01-12:project:my-saas"
         );
+    }
+
+    // ── StatsRange ─────────────────────────────────────────────────────────────
+
+    #[test]
+    fn stats_range_as_str_last_7_days() {
+        assert_eq!(StatsRange::Last7Days.as_str(), "last_7_days");
+    }
+
+    #[test]
+    fn stats_range_as_str_all_time() {
+        assert_eq!(StatsRange::AllTime.as_str(), "all_time");
+    }
+
+    #[test]
+    fn stats_range_all_variants_have_distinct_str() {
+        use std::collections::HashSet;
+        let variants = [
+            StatsRange::Last7Days,
+            StatsRange::Last30Days,
+            StatsRange::Last6Months,
+            StatsRange::LastYear,
+            StatsRange::AllTime,
+        ];
+        let strs: HashSet<&str> = variants.iter().map(|v| v.as_str()).collect();
+        assert_eq!(strs.len(), variants.len(), "all variants must be distinct");
     }
 }

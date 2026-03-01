@@ -7,8 +7,11 @@ use serde::de::DeserializeOwned;
 use tracing::{debug, warn};
 
 use crate::error::ApiError;
-use crate::params::SummaryParams;
-use crate::types::{SummaryResponse, UserResponse};
+use crate::params::{StatsRange, SummaryParams};
+use crate::types::{
+    GoalsResponse, LeaderboardResponse, ProjectsResponse, StatsResponse, SummaryResponse,
+    UserResponse,
+};
 
 /// Base URL for the production `WakaTime` API.
 const DEFAULT_BASE_URL: &str = "https://wakatime.com/api/v1/";
@@ -217,6 +220,61 @@ impl WakaClient {
             .map(|(k, v)| (k.as_str(), v.as_str()))
             .collect();
         self.get("users/current/summaries", &borrowed).await
+    }
+
+    /// Returns all projects the authenticated user has logged time against.
+    ///
+    /// Calls `GET /users/current/projects`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ApiError::Unauthorized`] if the API key is invalid.
+    /// Returns [`ApiError::NetworkError`] on connection or timeout failures.
+    /// Returns [`ApiError::ParseError`] if the response cannot be deserialized.
+    pub async fn projects(&self) -> Result<ProjectsResponse, ApiError> {
+        self.get("users/current/projects", &[]).await
+    }
+
+    /// Returns aggregated coding stats for the given predefined range.
+    ///
+    /// Calls `GET /users/current/stats/{range}`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ApiError::Unauthorized`] if the API key is invalid.
+    /// Returns [`ApiError::NetworkError`] on connection or timeout failures.
+    /// Returns [`ApiError::ParseError`] if the response cannot be deserialized.
+    pub async fn stats(&self, range: StatsRange) -> Result<StatsResponse, ApiError> {
+        let path = format!("users/current/stats/{}", range.as_str());
+        self.get(&path, &[]).await
+    }
+
+    /// Returns all coding goals for the authenticated user.
+    ///
+    /// Calls `GET /users/current/goals`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ApiError::Unauthorized`] if the API key is invalid.
+    /// Returns [`ApiError::NetworkError`] on connection or timeout failures.
+    /// Returns [`ApiError::ParseError`] if the response cannot be deserialized.
+    pub async fn goals(&self) -> Result<GoalsResponse, ApiError> {
+        self.get("users/current/goals", &[]).await
+    }
+
+    /// Returns the public `WakaTime` leaderboard for the given page.
+    ///
+    /// Page numbers are 1-based. Calls `GET /users/current/leaderboards`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ApiError::Unauthorized`] if the API key is invalid.
+    /// Returns [`ApiError::NetworkError`] on connection or timeout failures.
+    /// Returns [`ApiError::ParseError`] if the response cannot be deserialized.
+    pub async fn leaderboard(&self, page: u32) -> Result<LeaderboardResponse, ApiError> {
+        let page_str = page.to_string();
+        self.get("users/current/leaderboards", &[("page", &page_str)])
+            .await
     }
 }
 

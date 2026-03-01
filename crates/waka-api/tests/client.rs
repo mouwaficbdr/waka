@@ -270,3 +270,209 @@ async fn summaries_returns_unauthorized_on_401() {
         "expected Unauthorized, got {err:?}"
     );
 }
+
+// ─── projects ─────────────────────────────────────────────────────────────────
+
+#[tokio::test]
+async fn projects_returns_list_on_200() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/users/current/projects"))
+        .and(header_exists("authorization"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_string(fixture("projects.json"))
+                .insert_header("content-type", "application/json"),
+        )
+        .mount(&server)
+        .await;
+
+    let c = client(&server);
+    let resp = c.projects().await.expect("should succeed on 200");
+
+    assert_eq!(resp.data.len(), 2);
+    assert_eq!(resp.data[0].name, "waka");
+    assert_eq!(resp.data[1].name, "my-saas");
+}
+
+#[tokio::test]
+async fn projects_returns_unauthorized_on_401() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/users/current/projects"))
+        .respond_with(
+            ResponseTemplate::new(401)
+                .set_body_string(fixture("errors/401_unauthorized.json"))
+                .insert_header("content-type", "application/json"),
+        )
+        .mount(&server)
+        .await;
+
+    let c = client(&server);
+    let err = c.projects().await.expect_err("should fail on 401");
+
+    assert!(
+        matches!(err, ApiError::Unauthorized),
+        "expected Unauthorized, got {err:?}"
+    );
+}
+
+// ─── stats ────────────────────────────────────────────────────────────────────
+
+#[tokio::test]
+async fn stats_uses_range_path_segment() {
+    use waka_api::StatsRange;
+
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/users/current/stats/last_7_days"))
+        .and(header_exists("authorization"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_string(fixture("stats_last_7_days.json"))
+                .insert_header("content-type", "application/json"),
+        )
+        .mount(&server)
+        .await;
+
+    let c = client(&server);
+    let resp = c
+        .stats(StatsRange::Last7Days)
+        .await
+        .expect("should succeed on 200");
+
+    assert_eq!(resp.data.range, "last_7_days");
+    assert!(
+        resp.data.total_seconds > 0.0,
+        "total_seconds should be positive"
+    );
+}
+
+#[tokio::test]
+async fn stats_returns_unauthorized_on_401() {
+    use waka_api::StatsRange;
+
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/users/current/stats/last_30_days"))
+        .respond_with(
+            ResponseTemplate::new(401)
+                .set_body_string(fixture("errors/401_unauthorized.json"))
+                .insert_header("content-type", "application/json"),
+        )
+        .mount(&server)
+        .await;
+
+    let c = client(&server);
+    let err = c
+        .stats(StatsRange::Last30Days)
+        .await
+        .expect_err("should fail on 401");
+
+    assert!(
+        matches!(err, ApiError::Unauthorized),
+        "expected Unauthorized, got {err:?}"
+    );
+}
+
+// ─── goals ────────────────────────────────────────────────────────────────────
+
+#[tokio::test]
+async fn goals_returns_list_on_200() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/users/current/goals"))
+        .and(header_exists("authorization"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_string(fixture("goals.json"))
+                .insert_header("content-type", "application/json"),
+        )
+        .mount(&server)
+        .await;
+
+    let c = client(&server);
+    let resp = c.goals().await.expect("should succeed on 200");
+
+    assert_eq!(resp.total, 2);
+    assert_eq!(resp.data.len(), 2);
+    assert_eq!(resp.data[0].title, "Code 8 hours per day");
+    assert_eq!(resp.data[1].status, "fail");
+}
+
+#[tokio::test]
+async fn goals_returns_unauthorized_on_401() {
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/users/current/goals"))
+        .respond_with(
+            ResponseTemplate::new(401)
+                .set_body_string(fixture("errors/401_unauthorized.json"))
+                .insert_header("content-type", "application/json"),
+        )
+        .mount(&server)
+        .await;
+
+    let c = client(&server);
+    let err = c.goals().await.expect_err("should fail on 401");
+
+    assert!(
+        matches!(err, ApiError::Unauthorized),
+        "expected Unauthorized, got {err:?}"
+    );
+}
+
+// ─── leaderboard ──────────────────────────────────────────────────────────────
+
+#[tokio::test]
+async fn leaderboard_sends_page_query_param() {
+    use wiremock::matchers::query_param;
+
+    let server = MockServer::start().await;
+
+    // Build a minimal leaderboard fixture inline.
+    let body = serde_json::json!({
+        "current_user": null,
+        "data": [],
+        "language": null,
+        "modified_at": "2025-01-13T12:00:00Z",
+        "page": 2,
+        "range": {
+            "end_date": "2025-01-13",
+            "end_text": "Jan 13",
+            "name": "last_7_days",
+            "start_date": "2025-01-07",
+            "start_text": "Jan 7",
+            "text": "Last 7 Days"
+        },
+        "timeout": 15,
+        "total_pages": 5,
+        "writes_only": false
+    })
+    .to_string();
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/users/current/leaderboards"))
+        .and(header_exists("authorization"))
+        .and(query_param("page", "2"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_string(body)
+                .insert_header("content-type", "application/json"),
+        )
+        .mount(&server)
+        .await;
+
+    let c = client(&server);
+    let resp = c.leaderboard(2).await.expect("should succeed on 200");
+
+    assert_eq!(resp.page, 2);
+    assert_eq!(resp.total_pages, 5);
+    assert!(resp.data.is_empty());
+}

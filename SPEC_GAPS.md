@@ -47,4 +47,29 @@ as `Option<Vec<WeeklyStats>>` once the shape is confirmed.
 
 ---
 
+## §3 — Flexible date parsing for `waka stats range`
+
+**Gap:** `DEVELOPMENT_PLAN.md §1.3` lists accepting `today`, `yesterday`, `7d ago`,
+and `last monday` as values for `--from` / `--to`. `SPEC.md` only shows `YYYY-MM-DD`
+in all examples.
+
+**Resolution:** Only `YYYY-MM-DD` is accepted for the `--from` / `--to` flags, matching
+every example in `SPEC.md`. If natural-language date parsing is desired it should first
+be specified in `SPEC.md` (e.g. using the `chrono-humanize` or `dateparser` crate).
+
+---
+
+## §4 — Cache expired-hit refresh strategy
+
+**Gap:** `DEVELOPMENT_PLAN.md §1.2` specifies "refresh in background, update display"
+for expired cache entries. This implies spawning a background task and re-drawing the
+terminal — behaviour more suited to a TUI than a CLI command.
+
+**Resolution:** On expired hit the command awaits the refresh (showing a spinner).
+On success the fresh result is displayed; on network failure the stale entry is shown
+with a `⚠ offline` badge. This matches the SPEC's offline-first intention without
+requiring a TUI redraw loop.
+
+---
+
 _New gaps should be appended here as they are discovered._

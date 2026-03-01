@@ -1,0 +1,52 @@
+{
+  "data": [
+    {
+      "chart_data": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "delta": "day",
+      "editors": [],
+      "id": "cccccccc-0003-0003-0003-cccccccccccc",
+      "ignore_days": ["saturday", "sunday"],
+      "ignore_zero_days": true,
+      "improve_by_percent": null,
+      "is_enabled": true,
+      "is_inverse": false,
+      "is_snoozed": false,
+      "is_tweeting": false,
+      "languages": [],
+      "modified_at": "2025-01-10T08:00:00Z",
+      "projects": [],
+      "range_status": "success",
+      "range_status_reason": "Coded 8 hrs today",
+      "seconds": 28800.0,
+      "status": "success",
+      "title": "Code 8 hours per day",
+      "type": "coding"
+    },
+    {
+      "chart_data": null,
+      "created_at": "2025-01-01T00:00:00Z",
+      "delta": "week",
+      "editors": [],
+      "id": "dddddddd-0004-0004-0004-dddddddddddd",
+      "ignore_days": [],
+      "ignore_zero_days": false,
+      "improve_by_percent": null,
+      "is_enabled": true,
+      "is_inverse": false,
+      "is_snoozed": false,
+      "is_tweeting": false,
+      "languages": ["Python"],
+      "modified_at": "2025-01-10T08:00:00Z",
+      "projects": [],
+      "range_status": "fail",
+      "range_status_reason": "Only coded 3 hrs of Python this week",
+      "seconds": 36000.0,
+      "status": "fail",
+      "title": "Code 10 hours of Python per week",
+      "type": "coding"
+    }
+  ],
+  "total": 2,
+  "total_pages": 1
+}
