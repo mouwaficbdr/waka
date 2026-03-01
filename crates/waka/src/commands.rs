@@ -53,7 +53,7 @@ async fn auth_cmd(cmd: AuthCommands, global: GlobalOpts) -> Result<()> {
         AuthCommands::Logout { profile } => auth::logout(profile, &global).await,
         AuthCommands::Status => auth::status(&global).await,
         AuthCommands::ShowKey => auth::show_key(&global).await,
-        AuthCommands::Switch { .. } => bail!("not yet implemented: auth switch"),
+        AuthCommands::Switch { profile } => auth::switch(&profile, &global).await,
     }
 }
 

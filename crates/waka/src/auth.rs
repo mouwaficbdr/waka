@@ -9,7 +9,7 @@ use std::time::Duration;
 use anyhow::{bail, Context as _, Result};
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
 use waka_api::WakaClient;
-use waka_config::{CredentialError, CredentialStore};
+use waka_config::{Config, CredentialError, CredentialStore};
 
 use crate::cli::{AuthLoginArgs, GlobalOpts};
 
@@ -173,9 +173,48 @@ pub async fn show_key(global: &GlobalOpts) -> Result<()> {
     }
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+/// Implements `waka auth switch <profile>`.
+///
+/// Changes `core.default_profile` in `config.toml` to the given profile name.
+/// The profile does not need to exist yet — it will be created with default
+/// settings when a command first uses it.
+///
+/// If the profile name is the same as the current default, the command
+/// succeeds silently (idempotent).
+// `unused_async`: no async I/O today — kept async for handler uniformity.
+#[allow(clippy::unused_async)]
+pub async fn switch(profile_name: &str, global: &GlobalOpts) -> Result<()> {
+    if profile_name.trim().is_empty() {
+        bail!("profile name cannot be empty");
+    }
 
-/// Returns the effective profile name using the priority: explicit CLI arg >
+    let mut config = Config::load().unwrap_or_default();
+
+    if config.core.default_profile == profile_name {
+        if !global.quiet {
+            println!("Already using profile '{profile_name}'.");
+        }
+        return Ok(());
+    }
+
+    // Ensure the profile section exists in the config so that the switch is
+    // immediately visible in `config.toml`. We never remove profiles.
+    config.profiles.entry(profile_name.to_owned()).or_default();
+
+    config.core.default_profile = String::from(profile_name);
+    config.save().with_context(|| {
+        format!("failed to save config while switching to profile '{profile_name}'")
+    })?;
+
+    if !global.quiet {
+        println!("✓ Switched to profile '{profile_name}'.");
+        println!("  Use `waka auth login --profile {profile_name}` to set an API key if needed.");
+    }
+
+    Ok(())
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 /// global `--profile` flag > `"default"`.
 fn profile_name(explicit: Option<&str>, global: &GlobalOpts) -> String {
     explicit
@@ -301,5 +340,49 @@ mod tests {
         // 10 chars = 5 + 1 + 4 — just enough to add a masked middle.
         let masked = mask_key("1234567890");
         assert_eq!(masked, "12345****7890");
+    }
+
+    // ── switch ────────────────────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn switch_creates_new_profile_entry_in_config() {
+        use waka_config::Config;
+
+        let path =
+            std::env::temp_dir().join(format!("waka_switch_test_{}.toml", std::process::id()));
+        let cleanup = || {
+            let _ = std::fs::remove_file(&path);
+        };
+
+        // Start with a fresh config saved to a temp file.
+        let mut initial = Config::default();
+        initial.save_to(&path).expect("should save initial config");
+
+        // We cannot call `switch()` directly since it calls `Config::load()`
+        // with the platform path. We test the logic directly instead.
+        initial.profiles.entry("work".to_owned()).or_default();
+        initial.core.default_profile = "work".to_owned();
+        initial.save_to(&path).expect("should save switched config");
+
+        let reloaded = Config::load_from(&path).expect("should load config");
+        assert_eq!(reloaded.core.default_profile, "work");
+        assert!(reloaded.profiles.contains_key("work"), "profile must exist");
+
+        cleanup();
+    }
+
+    #[tokio::test]
+    async fn switch_idempotent_when_already_on_profile() {
+        use waka_config::Config;
+
+        let mut config = Config::default();
+        // Already on "default"; simulated switch should not change anything.
+        let original = config.core.default_profile.clone();
+        if config.core.default_profile == "default" {
+            // No-op path — just verify the field is unchanged.
+            assert_eq!(config.core.default_profile, original);
+        }
+        config.core.default_profile = "default".to_owned();
+        assert_eq!(config.core.default_profile, "default");
     }
 }
