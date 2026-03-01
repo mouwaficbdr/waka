@@ -1,0 +1,26 @@
+/* waka docs — custom theme overrides */
+
+:root {
+    --sidebar-width: 280px;
+}
+
+.content main {
+    max-width: 860px;
+}
+
+/* Command reference styling */
+code.hljs {
+    border-radius: 6px;
+}
+
+/* Flag / option tables */
+table th {
+    background-color: var(--table-header-bg);
+}
+
+/* Callout boxes */
+.warning {
+    border-left: 4px solid #f0a500;
+    padding: 0.5em 1em;
+    border-radius: 0 4px 4px 0;
+}

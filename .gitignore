@@ -19,6 +19,8 @@ tarpaulin-report.html
 # ─── Distribution artifacts ──────────────────────────────────────────────────
 /dist/
 
+# ─── mdBook output ───────────────────────────────────────────────────────────
+/docs/book/
 # ─── Shell completions (generated) ───────────────────────────────────────────
 # Keep the committed completions; ignore any local rebuilds in a scratch dir.
 /completions/.generated/

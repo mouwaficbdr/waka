@@ -1,0 +1,32 @@
+[book]
+title = "waka — WakaTime CLI"
+description = "Documentation for the waka WakaTime CLI written in Rust"
+authors = ["waka contributors"]
+language = "en"
+src = "src"
+
+[build]
+build-dir = "book"
+
+[output.html]
+site-url = "/waka/"
+git-repository-url = "https://github.com/mouwaficbdr/waka"
+edit-url-template = "https://github.com/mouwaficbdr/waka/edit/main/docs/src/{path}"
+no-section-label = false
+additional-css = ["theme/custom.css"]
+
+[output.html.fold]
+enable = true
+level = 1
+
+[output.html.search]
+enable = true
+limit-results = 20
+teaser-word-count = 30
+use-boolean-and = true
+boost-title = 2
+boost-hierarchy = 1
+boost-paragraph = 1
+
+[preprocessor.index]
+[preprocessor.links]
