@@ -363,6 +363,10 @@ mod tests {
             seconds: 0,
             text: String::new(),
             total_seconds: secs,
+            ai_additions: 0,
+            ai_deletions: 0,
+            human_additions: 0,
+            human_deletions: 0,
         };
 
         let day1 = vec![entry("Rust", 3_600.0), entry("Python", 1_800.0)];

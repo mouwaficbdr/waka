@@ -14,7 +14,11 @@ expression: output
           "percent": 100.0,
           "seconds": 0,
           "text": "6 hrs 42 mins",
-          "total_seconds": 24120.0
+          "total_seconds": 24120.0,
+          "ai_additions": 0,
+          "ai_deletions": 0,
+          "human_additions": 0,
+          "human_deletions": 0
         }
       ],
       "dependencies": [
@@ -26,7 +30,11 @@ expression: output
           "percent": 33.5,
           "seconds": 0,
           "text": "2 hrs 15 mins",
-          "total_seconds": 8100.0
+          "total_seconds": 8100.0,
+          "ai_additions": 0,
+          "ai_deletions": 0,
+          "human_additions": 0,
+          "human_deletions": 0
         },
         {
           "digital": "1:47",
@@ -36,7 +44,11 @@ expression: output
           "percent": 26.5,
           "seconds": 0,
           "text": "1 hr 47 mins",
-          "total_seconds": 6420.0
+          "total_seconds": 6420.0,
+          "ai_additions": 0,
+          "ai_deletions": 0,
+          "human_additions": 0,
+          "human_deletions": 0
         }
       ],
       "editors": [
@@ -48,7 +60,11 @@ expression: output
           "percent": 89.1,
           "seconds": 0,
           "text": "5 hrs 58 mins",
-          "total_seconds": 21480.0
+          "total_seconds": 21480.0,
+          "ai_additions": 0,
+          "ai_deletions": 0,
+          "human_additions": 0,
+          "human_deletions": 0
         },
         {
           "digital": "0:44",
@@ -58,7 +74,11 @@ expression: output
           "percent": 10.9,
           "seconds": 0,
           "text": "44 mins",
-          "total_seconds": 2640.0
+          "total_seconds": 2640.0,
+          "ai_additions": 0,
+          "ai_deletions": 0,
+          "human_additions": 0,
+          "human_deletions": 0
         }
       ],
       "grand_total": {
@@ -67,7 +87,11 @@ expression: output
         "minutes": 42,
         "seconds": 0,
         "text": "6 hrs 42 mins",
-        "total_seconds": 24120.0
+        "total_seconds": 24120.0,
+        "ai_additions": 0,
+        "ai_deletions": 0,
+        "human_additions": 0,
+        "human_deletions": 0
       },
       "languages": [
         {
@@ -78,7 +102,11 @@ expression: output
           "percent": 52.3,
           "seconds": 0,
           "text": "3 hrs 30 mins",
-          "total_seconds": 12600.0
+          "total_seconds": 12600.0,
+          "ai_additions": 0,
+          "ai_deletions": 0,
+          "human_additions": 0,
+          "human_deletions": 0
         },
         {
           "digital": "1:52",
@@ -88,7 +116,11 @@ expression: output
           "percent": 27.9,
           "seconds": 0,
           "text": "1 hr 52 mins",
-          "total_seconds": 6720.0
+          "total_seconds": 6720.0,
+          "ai_additions": 0,
+          "ai_deletions": 0,
+          "human_additions": 0,
+          "human_deletions": 0
         },
         {
           "digital": "0:48",
@@ -98,7 +130,11 @@ expression: output
           "percent": 12.0,
           "seconds": 0,
           "text": "48 mins",
-          "total_seconds": 2880.0
+          "total_seconds": 2880.0,
+          "ai_additions": 0,
+          "ai_deletions": 0,
+          "human_additions": 0,
+          "human_deletions": 0
         },
         {
           "digital": "0:32",
@@ -108,7 +144,11 @@ expression: output
           "percent": 7.8,
           "seconds": 0,
           "text": "32 mins",
-          "total_seconds": 1920.0
+          "total_seconds": 1920.0,
+          "ai_additions": 0,
+          "ai_deletions": 0,
+          "human_additions": 0,
+          "human_deletions": 0
         }
       ],
       "machines": [
@@ -133,7 +173,11 @@ expression: output
           "percent": 100.0,
           "seconds": 0,
           "text": "6 hrs 42 mins",
-          "total_seconds": 24120.0
+          "total_seconds": 24120.0,
+          "ai_additions": 0,
+          "ai_deletions": 0,
+          "human_additions": 0,
+          "human_deletions": 0
         }
       ],
       "projects": [
@@ -145,7 +189,11 @@ expression: output
           "percent": 64.7,
           "seconds": 0,
           "text": "4 hrs 20 mins",
-          "total_seconds": 15600.0
+          "total_seconds": 15600.0,
+          "ai_additions": 0,
+          "ai_deletions": 0,
+          "human_additions": 0,
+          "human_deletions": 0
         },
         {
           "digital": "2:22",
@@ -155,7 +203,11 @@ expression: output
           "percent": 35.3,
           "seconds": 0,
           "text": "2 hrs 22 mins",
-          "total_seconds": 8520.0
+          "total_seconds": 8520.0,
+          "ai_additions": 0,
+          "ai_deletions": 0,
+          "human_additions": 0,
+          "human_deletions": 0
         }
       ],
       "range": {
@@ -168,5 +220,7 @@ expression: output
     }
   ],
   "end": "2025-01-13T23:00:00Z",
-  "start": "2025-01-13T00:00:00Z"
+  "start": "2025-01-13T00:00:00Z",
+  "cumulative_total": null,
+  "daily_average": null
 }

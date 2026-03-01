@@ -14,7 +14,7 @@ use crate::types::{
 };
 
 /// Base URL for the production `WakaTime` API.
-const DEFAULT_BASE_URL: &str = "https://wakatime.com/api/v1/";
+const DEFAULT_BASE_URL: &str = "https://api.wakatime.com/api/v1/";
 
 /// Per-request timeout in seconds.
 const REQUEST_TIMEOUT_SECS: u64 = 10;
