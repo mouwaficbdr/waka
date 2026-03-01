@@ -20,8 +20,8 @@ use waka_render::{
 
 use crate::auth;
 use crate::cli::{
-    AuthCommands, Commands, ConfigCommands, DashboardArgs, EditorsCommands, GlobalOpts,
-    GoalsCommands, LanguagesCommands, LeaderboardCommands, OutputFormat as CliFormat,
+    AuthCommands, Commands, CompletionShell, ConfigCommands, DashboardArgs, EditorsCommands,
+    GlobalOpts, GoalsCommands, LanguagesCommands, LeaderboardCommands, OutputFormat as CliFormat,
     ProjectsCommands, PromptArgs, ReportCommands, StatsCommands, StatsFilterOpts,
 };
 
@@ -41,6 +41,10 @@ pub async fn dispatch(cmd: Commands, global: GlobalOpts) -> Result<()> {
         Commands::Report { cmd } => report(cmd),
         Commands::Dashboard(args) => dashboard(args),
         Commands::Prompt(args) => prompt(args),
+        Commands::Completions { shell } => {
+            completions(shell);
+            Ok(())
+        }
         Commands::Config { cmd } => config(cmd, &global).await,
     }
 }
@@ -566,6 +570,32 @@ fn dashboard(_args: DashboardArgs) -> Result<()> {
 
 fn prompt(_args: PromptArgs) -> Result<()> {
     bail!("not yet implemented: prompt")
+}
+
+// ─── completions ──────────────────────────────────────────────────────────────
+
+/// Implements `waka completions <shell>`.
+///
+/// Generates tab-completion scripts for the given shell and prints them to
+/// stdout. The user pipes the output into the appropriate installation path.
+// `needless_pass_by_value`: shell is a Copy type; kept for API consistency.
+#[allow(clippy::needless_pass_by_value)]
+fn completions(shell: CompletionShell) {
+    use clap::CommandFactory as _;
+    use clap_complete::{generate, shells};
+
+    let mut cmd = crate::cli::Cli::command();
+    let name = cmd.get_name().to_owned();
+    let stdout = std::io::stdout();
+    let mut out = stdout.lock();
+
+    match shell {
+        CompletionShell::Bash => generate(shells::Bash, &mut cmd, &name, &mut out),
+        CompletionShell::Zsh => generate(shells::Zsh, &mut cmd, &name, &mut out),
+        CompletionShell::Fish => generate(shells::Fish, &mut cmd, &name, &mut out),
+        CompletionShell::PowerShell => generate(shells::PowerShell, &mut cmd, &name, &mut out),
+        CompletionShell::Elvish => generate(shells::Elvish, &mut cmd, &name, &mut out),
+    }
 }
 
 // ─── config ───────────────────────────────────────────────────────────────────

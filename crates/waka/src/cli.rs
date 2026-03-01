@@ -130,6 +130,12 @@ pub enum Commands {
     /// Shell prompt integration (reads from cache only, no network).
     Prompt(PromptArgs),
 
+    /// Generate shell completions.
+    Completions {
+        /// Target shell.
+        shell: CompletionShell,
+    },
+
     /// Manage waka configuration.
     Config {
         #[command(subcommand)]
@@ -458,4 +464,22 @@ pub enum ConfigCommands {
 
     /// Run a full diagnostic check.
     Doctor,
+}
+
+// ─── completions ──────────────────────────────────────────────────────────────
+
+/// Shell for which to generate tab-completion scripts.
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum CompletionShell {
+    /// Bash (append to `~/.bashrc`)
+    Bash,
+    /// Zsh (place in a directory on `$fpath`)
+    Zsh,
+    /// Fish (place in `~/.config/fish/completions/`)
+    Fish,
+    /// `PowerShell` (dot-source in `$PROFILE`)
+    #[value(name = "powershell")]
+    PowerShell,
+    /// Elvish
+    Elvish,
 }

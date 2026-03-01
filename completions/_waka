@@ -1,0 +1,2346 @@
+#compdef waka
+
+autoload -U is-at-least
+
+_waka() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+":: :_waka_commands" \
+"*::: :->waka" \
+&& ret=0
+    case $state in
+    (waka)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-command-$line[1]:"
+        case $line[1] in
+            (auth)
+_arguments "${_arguments_options[@]}" : \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+":: :_waka__auth_commands" \
+"*::: :->auth" \
+&& ret=0
+
+    case $state in
+    (auth)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-auth-command-$line[1]:"
+        case $line[1] in
+            (login)
+_arguments "${_arguments_options[@]}" : \
+'--api-key=[Provide the API key directly (non-interactive)]:KEY:_default' \
+'--profile=[Profile to store credentials under]:NAME:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(logout)
+_arguments "${_arguments_options[@]}" : \
+'--profile=[Log out a specific profile]:NAME:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(show-key)
+_arguments "${_arguments_options[@]}" : \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(switch)
+_arguments "${_arguments_options[@]}" : \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+':profile -- Profile name to activate:_default' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_waka__auth__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-auth-help-command-$line[1]:"
+        case $line[1] in
+            (login)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(logout)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(show-key)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(switch)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(stats)
+_arguments "${_arguments_options[@]}" : \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+":: :_waka__stats_commands" \
+"*::: :->stats" \
+&& ret=0
+
+    case $state in
+    (stats)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-stats-command-$line[1]:"
+        case $line[1] in
+            (today)
+_arguments "${_arguments_options[@]}" : \
+'--project=[Filter by project name]:NAME:_default' \
+'--language=[Filter by language]:LANG:_default' \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(yesterday)
+_arguments "${_arguments_options[@]}" : \
+'--project=[Filter by project name]:NAME:_default' \
+'--language=[Filter by language]:LANG:_default' \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(week)
+_arguments "${_arguments_options[@]}" : \
+'--project=[Filter by project name]:NAME:_default' \
+'--language=[Filter by language]:LANG:_default' \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(month)
+_arguments "${_arguments_options[@]}" : \
+'--project=[Filter by project name]:NAME:_default' \
+'--language=[Filter by language]:LANG:_default' \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(year)
+_arguments "${_arguments_options[@]}" : \
+'--project=[Filter by project name]:NAME:_default' \
+'--language=[Filter by language]:LANG:_default' \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(range)
+_arguments "${_arguments_options[@]}" : \
+'--from=[Start date (YYYY-MM-DD)]:DATE:_default' \
+'--to=[End date (YYYY-MM-DD)]:DATE:_default' \
+'--project=[Filter by project name]:NAME:_default' \
+'--language=[Filter by language]:LANG:_default' \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_waka__stats__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-stats-help-command-$line[1]:"
+        case $line[1] in
+            (today)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(yesterday)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(week)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(month)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(year)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(range)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(projects)
+_arguments "${_arguments_options[@]}" : \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+":: :_waka__projects_commands" \
+"*::: :->projects" \
+&& ret=0
+
+    case $state in
+    (projects)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-projects-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+'--sort-by=[Sort field]:FIELD:(time name)' \
+'--limit=[Maximum number of results]:N:_default' \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(top)
+_arguments "${_arguments_options[@]}" : \
+'--period=[Time period to aggregate over]:PERIOD:(7d 30d 1y)' \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+'--from=[Start date (YYYY-MM-DD)]:DATE:_default' \
+'--to=[End date (YYYY-MM-DD)]:DATE:_default' \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+':project_name -- Project name:_default' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_waka__projects__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-projects-help-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(top)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(languages)
+_arguments "${_arguments_options[@]}" : \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+":: :_waka__languages_commands" \
+"*::: :->languages" \
+&& ret=0
+
+    case $state in
+    (languages)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-languages-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+'--period=[Time period to aggregate over]:PERIOD:(7d 30d 1y)' \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(top)
+_arguments "${_arguments_options[@]}" : \
+'--limit=[Maximum number of results]:N:_default' \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_waka__languages__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-languages-help-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(top)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(editors)
+_arguments "${_arguments_options[@]}" : \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+":: :_waka__editors_commands" \
+"*::: :->editors" \
+&& ret=0
+
+    case $state in
+    (editors)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-editors-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+'--period=[Time period to aggregate over]:PERIOD:(7d 30d 1y)' \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(top)
+_arguments "${_arguments_options[@]}" : \
+'--limit=[Maximum number of results]:N:_default' \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_waka__editors__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-editors-help-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(top)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(goals)
+_arguments "${_arguments_options[@]}" : \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+":: :_waka__goals_commands" \
+"*::: :->goals" \
+&& ret=0
+
+    case $state in
+    (goals)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-goals-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+':goal_id -- Goal ID:_default' \
+&& ret=0
+;;
+(watch)
+_arguments "${_arguments_options[@]}" : \
+'--interval=[Refresh interval in seconds]:SECONDS:_default' \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--notify[Send a desktop notification when a goal is reached]' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_waka__goals__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-goals-help-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(watch)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(leaderboard)
+_arguments "${_arguments_options[@]}" : \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+":: :_waka__leaderboard_commands" \
+"*::: :->leaderboard" \
+&& ret=0
+
+    case $state in
+    (leaderboard)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-leaderboard-command-$line[1]:"
+        case $line[1] in
+            (show)
+_arguments "${_arguments_options[@]}" : \
+'--page=[Page number]:N:_default' \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_waka__leaderboard__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-leaderboard-help-command-$line[1]:"
+        case $line[1] in
+            (show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(report)
+_arguments "${_arguments_options[@]}" : \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+":: :_waka__report_commands" \
+"*::: :->report" \
+&& ret=0
+
+    case $state in
+    (report)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-report-command-$line[1]:"
+        case $line[1] in
+            (generate)
+_arguments "${_arguments_options[@]}" : \
+'--from=[Start date (YYYY-MM-DD)]:DATE:_default' \
+'--to=[End date (YYYY-MM-DD)]:DATE:_default' \
+'-o+[Output file path]:FILE:_files' \
+'--output=[Output file path]:FILE:_files' \
+'-f+[Report format]:FORMAT:(md html json csv)' \
+'--format=[Report format]:FORMAT:(md html json csv)' \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(summary)
+_arguments "${_arguments_options[@]}" : \
+'--period=[Period to summarise]:PERIOD:(week month)' \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_waka__report__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-report-help-command-$line[1]:"
+        case $line[1] in
+            (generate)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(summary)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(dashboard)
+_arguments "${_arguments_options[@]}" : \
+'--refresh=[Auto-refresh interval in seconds]:SECONDS:_default' \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(prompt)
+_arguments "${_arguments_options[@]}" : \
+'--format=[Output style]:STYLE:(simple detailed)' \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(completions)
+_arguments "${_arguments_options[@]}" : \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+':shell -- Target shell:((bash\:"Bash (append to \`~/.bashrc\`)"
+zsh\:"Zsh (place in a directory on \`\$fpath\`)"
+fish\:"Fish (place in \`~/.config/fish/completions/\`)"
+powershell\:"PowerShell (dot-source in \`\$PROFILE\`)"
+elvish\:"Elvish"))' \
+&& ret=0
+;;
+(config)
+_arguments "${_arguments_options[@]}" : \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+":: :_waka__config_commands" \
+"*::: :->config" \
+&& ret=0
+
+    case $state in
+    (config)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-config-command-$line[1]:"
+        case $line[1] in
+            (get)
+_arguments "${_arguments_options[@]}" : \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+':key -- Config key (e.g. `core.profile`):_default' \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+':key -- Config key:_default' \
+':value -- New value:_default' \
+&& ret=0
+;;
+(edit)
+_arguments "${_arguments_options[@]}" : \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(path)
+_arguments "${_arguments_options[@]}" : \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(reset)
+_arguments "${_arguments_options[@]}" : \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--confirm[Skip the confirmation prompt]' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(doctor)
+_arguments "${_arguments_options[@]}" : \
+'-p+[Use a specific profile]:PROFILE:_default' \
+'--profile=[Use a specific profile]:PROFILE:_default' \
+'-f+[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--format=[Output format\: table, json, csv, plain]:FORMAT:(table json csv plain)' \
+'--no-cache[Skip the cache and force a fresh API request]' \
+'--no-color[Disable colors (equivalent to \`NO_COLOR=1\`)]' \
+'--quiet[Suppress non-essential output]' \
+'--verbose[Enable verbose mode (shows HTTP requests)]' \
+'--csv-bom[Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_waka__config__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-config-help-command-$line[1]:"
+        case $line[1] in
+            (get)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(edit)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(path)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(reset)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(doctor)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_waka__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-help-command-$line[1]:"
+        case $line[1] in
+            (auth)
+_arguments "${_arguments_options[@]}" : \
+":: :_waka__help__auth_commands" \
+"*::: :->auth" \
+&& ret=0
+
+    case $state in
+    (auth)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-help-auth-command-$line[1]:"
+        case $line[1] in
+            (login)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(logout)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(show-key)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(switch)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(stats)
+_arguments "${_arguments_options[@]}" : \
+":: :_waka__help__stats_commands" \
+"*::: :->stats" \
+&& ret=0
+
+    case $state in
+    (stats)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-help-stats-command-$line[1]:"
+        case $line[1] in
+            (today)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(yesterday)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(week)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(month)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(year)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(range)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(projects)
+_arguments "${_arguments_options[@]}" : \
+":: :_waka__help__projects_commands" \
+"*::: :->projects" \
+&& ret=0
+
+    case $state in
+    (projects)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-help-projects-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(top)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(languages)
+_arguments "${_arguments_options[@]}" : \
+":: :_waka__help__languages_commands" \
+"*::: :->languages" \
+&& ret=0
+
+    case $state in
+    (languages)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-help-languages-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(top)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(editors)
+_arguments "${_arguments_options[@]}" : \
+":: :_waka__help__editors_commands" \
+"*::: :->editors" \
+&& ret=0
+
+    case $state in
+    (editors)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-help-editors-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(top)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(goals)
+_arguments "${_arguments_options[@]}" : \
+":: :_waka__help__goals_commands" \
+"*::: :->goals" \
+&& ret=0
+
+    case $state in
+    (goals)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-help-goals-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(watch)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(leaderboard)
+_arguments "${_arguments_options[@]}" : \
+":: :_waka__help__leaderboard_commands" \
+"*::: :->leaderboard" \
+&& ret=0
+
+    case $state in
+    (leaderboard)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-help-leaderboard-command-$line[1]:"
+        case $line[1] in
+            (show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(report)
+_arguments "${_arguments_options[@]}" : \
+":: :_waka__help__report_commands" \
+"*::: :->report" \
+&& ret=0
+
+    case $state in
+    (report)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-help-report-command-$line[1]:"
+        case $line[1] in
+            (generate)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(summary)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(dashboard)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(prompt)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(completions)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(config)
+_arguments "${_arguments_options[@]}" : \
+":: :_waka__help__config_commands" \
+"*::: :->config" \
+&& ret=0
+
+    case $state in
+    (config)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:waka-help-config-command-$line[1]:"
+        case $line[1] in
+            (get)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(edit)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(path)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(reset)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(doctor)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+}
+
+(( $+functions[_waka_commands] )) ||
+_waka_commands() {
+    local commands; commands=(
+'auth:Manage API key and authentication' \
+'stats:Show coding statistics' \
+'projects:Browse and filter projects' \
+'languages:Browse coding languages' \
+'editors:Browse editors and IDEs' \
+'goals:View and watch coding goals' \
+'leaderboard:View the \`WakaTime\` leaderboard' \
+'report:Generate productivity reports' \
+'dashboard:Launch the interactive TUI dashboard' \
+'prompt:Shell prompt integration (reads from cache only, no network)' \
+'completions:Generate shell completions' \
+'config:Manage waka configuration' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'waka commands' commands "$@"
+}
+(( $+functions[_waka__auth_commands] )) ||
+_waka__auth_commands() {
+    local commands; commands=(
+'login:Log in with your \`WakaTime\` API key' \
+'logout:Remove the stored API key' \
+'status:Show whether you are currently logged in' \
+'show-key:Display the stored API key (masked by default)' \
+'switch:Switch to a different profile' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'waka auth commands' commands "$@"
+}
+(( $+functions[_waka__auth__help_commands] )) ||
+_waka__auth__help_commands() {
+    local commands; commands=(
+'login:Log in with your \`WakaTime\` API key' \
+'logout:Remove the stored API key' \
+'status:Show whether you are currently logged in' \
+'show-key:Display the stored API key (masked by default)' \
+'switch:Switch to a different profile' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'waka auth help commands' commands "$@"
+}
+(( $+functions[_waka__auth__help__help_commands] )) ||
+_waka__auth__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka auth help help commands' commands "$@"
+}
+(( $+functions[_waka__auth__help__login_commands] )) ||
+_waka__auth__help__login_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka auth help login commands' commands "$@"
+}
+(( $+functions[_waka__auth__help__logout_commands] )) ||
+_waka__auth__help__logout_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka auth help logout commands' commands "$@"
+}
+(( $+functions[_waka__auth__help__show-key_commands] )) ||
+_waka__auth__help__show-key_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka auth help show-key commands' commands "$@"
+}
+(( $+functions[_waka__auth__help__status_commands] )) ||
+_waka__auth__help__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka auth help status commands' commands "$@"
+}
+(( $+functions[_waka__auth__help__switch_commands] )) ||
+_waka__auth__help__switch_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka auth help switch commands' commands "$@"
+}
+(( $+functions[_waka__auth__login_commands] )) ||
+_waka__auth__login_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka auth login commands' commands "$@"
+}
+(( $+functions[_waka__auth__logout_commands] )) ||
+_waka__auth__logout_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka auth logout commands' commands "$@"
+}
+(( $+functions[_waka__auth__show-key_commands] )) ||
+_waka__auth__show-key_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka auth show-key commands' commands "$@"
+}
+(( $+functions[_waka__auth__status_commands] )) ||
+_waka__auth__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka auth status commands' commands "$@"
+}
+(( $+functions[_waka__auth__switch_commands] )) ||
+_waka__auth__switch_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka auth switch commands' commands "$@"
+}
+(( $+functions[_waka__completions_commands] )) ||
+_waka__completions_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka completions commands' commands "$@"
+}
+(( $+functions[_waka__config_commands] )) ||
+_waka__config_commands() {
+    local commands; commands=(
+'get:Get the value of a config key' \
+'set:Set the value of a config key' \
+'edit:Open the config file in \$EDITOR' \
+'path:Print the path to the config file' \
+'reset:Reset config to defaults' \
+'doctor:Run a full diagnostic check' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'waka config commands' commands "$@"
+}
+(( $+functions[_waka__config__doctor_commands] )) ||
+_waka__config__doctor_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka config doctor commands' commands "$@"
+}
+(( $+functions[_waka__config__edit_commands] )) ||
+_waka__config__edit_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka config edit commands' commands "$@"
+}
+(( $+functions[_waka__config__get_commands] )) ||
+_waka__config__get_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka config get commands' commands "$@"
+}
+(( $+functions[_waka__config__help_commands] )) ||
+_waka__config__help_commands() {
+    local commands; commands=(
+'get:Get the value of a config key' \
+'set:Set the value of a config key' \
+'edit:Open the config file in \$EDITOR' \
+'path:Print the path to the config file' \
+'reset:Reset config to defaults' \
+'doctor:Run a full diagnostic check' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'waka config help commands' commands "$@"
+}
+(( $+functions[_waka__config__help__doctor_commands] )) ||
+_waka__config__help__doctor_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka config help doctor commands' commands "$@"
+}
+(( $+functions[_waka__config__help__edit_commands] )) ||
+_waka__config__help__edit_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka config help edit commands' commands "$@"
+}
+(( $+functions[_waka__config__help__get_commands] )) ||
+_waka__config__help__get_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka config help get commands' commands "$@"
+}
+(( $+functions[_waka__config__help__help_commands] )) ||
+_waka__config__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka config help help commands' commands "$@"
+}
+(( $+functions[_waka__config__help__path_commands] )) ||
+_waka__config__help__path_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka config help path commands' commands "$@"
+}
+(( $+functions[_waka__config__help__reset_commands] )) ||
+_waka__config__help__reset_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka config help reset commands' commands "$@"
+}
+(( $+functions[_waka__config__help__set_commands] )) ||
+_waka__config__help__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka config help set commands' commands "$@"
+}
+(( $+functions[_waka__config__path_commands] )) ||
+_waka__config__path_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka config path commands' commands "$@"
+}
+(( $+functions[_waka__config__reset_commands] )) ||
+_waka__config__reset_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka config reset commands' commands "$@"
+}
+(( $+functions[_waka__config__set_commands] )) ||
+_waka__config__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka config set commands' commands "$@"
+}
+(( $+functions[_waka__dashboard_commands] )) ||
+_waka__dashboard_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka dashboard commands' commands "$@"
+}
+(( $+functions[_waka__editors_commands] )) ||
+_waka__editors_commands() {
+    local commands; commands=(
+'list:List all editors with coding time' \
+'top:Show the top editors' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'waka editors commands' commands "$@"
+}
+(( $+functions[_waka__editors__help_commands] )) ||
+_waka__editors__help_commands() {
+    local commands; commands=(
+'list:List all editors with coding time' \
+'top:Show the top editors' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'waka editors help commands' commands "$@"
+}
+(( $+functions[_waka__editors__help__help_commands] )) ||
+_waka__editors__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka editors help help commands' commands "$@"
+}
+(( $+functions[_waka__editors__help__list_commands] )) ||
+_waka__editors__help__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka editors help list commands' commands "$@"
+}
+(( $+functions[_waka__editors__help__top_commands] )) ||
+_waka__editors__help__top_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka editors help top commands' commands "$@"
+}
+(( $+functions[_waka__editors__list_commands] )) ||
+_waka__editors__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka editors list commands' commands "$@"
+}
+(( $+functions[_waka__editors__top_commands] )) ||
+_waka__editors__top_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka editors top commands' commands "$@"
+}
+(( $+functions[_waka__goals_commands] )) ||
+_waka__goals_commands() {
+    local commands; commands=(
+'list:List all active goals' \
+'show:Show details for a specific goal' \
+'watch:Watch goals and refresh periodically' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'waka goals commands' commands "$@"
+}
+(( $+functions[_waka__goals__help_commands] )) ||
+_waka__goals__help_commands() {
+    local commands; commands=(
+'list:List all active goals' \
+'show:Show details for a specific goal' \
+'watch:Watch goals and refresh periodically' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'waka goals help commands' commands "$@"
+}
+(( $+functions[_waka__goals__help__help_commands] )) ||
+_waka__goals__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka goals help help commands' commands "$@"
+}
+(( $+functions[_waka__goals__help__list_commands] )) ||
+_waka__goals__help__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka goals help list commands' commands "$@"
+}
+(( $+functions[_waka__goals__help__show_commands] )) ||
+_waka__goals__help__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka goals help show commands' commands "$@"
+}
+(( $+functions[_waka__goals__help__watch_commands] )) ||
+_waka__goals__help__watch_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka goals help watch commands' commands "$@"
+}
+(( $+functions[_waka__goals__list_commands] )) ||
+_waka__goals__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka goals list commands' commands "$@"
+}
+(( $+functions[_waka__goals__show_commands] )) ||
+_waka__goals__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka goals show commands' commands "$@"
+}
+(( $+functions[_waka__goals__watch_commands] )) ||
+_waka__goals__watch_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka goals watch commands' commands "$@"
+}
+(( $+functions[_waka__help_commands] )) ||
+_waka__help_commands() {
+    local commands; commands=(
+'auth:Manage API key and authentication' \
+'stats:Show coding statistics' \
+'projects:Browse and filter projects' \
+'languages:Browse coding languages' \
+'editors:Browse editors and IDEs' \
+'goals:View and watch coding goals' \
+'leaderboard:View the \`WakaTime\` leaderboard' \
+'report:Generate productivity reports' \
+'dashboard:Launch the interactive TUI dashboard' \
+'prompt:Shell prompt integration (reads from cache only, no network)' \
+'completions:Generate shell completions' \
+'config:Manage waka configuration' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'waka help commands' commands "$@"
+}
+(( $+functions[_waka__help__auth_commands] )) ||
+_waka__help__auth_commands() {
+    local commands; commands=(
+'login:Log in with your \`WakaTime\` API key' \
+'logout:Remove the stored API key' \
+'status:Show whether you are currently logged in' \
+'show-key:Display the stored API key (masked by default)' \
+'switch:Switch to a different profile' \
+    )
+    _describe -t commands 'waka help auth commands' commands "$@"
+}
+(( $+functions[_waka__help__auth__login_commands] )) ||
+_waka__help__auth__login_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help auth login commands' commands "$@"
+}
+(( $+functions[_waka__help__auth__logout_commands] )) ||
+_waka__help__auth__logout_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help auth logout commands' commands "$@"
+}
+(( $+functions[_waka__help__auth__show-key_commands] )) ||
+_waka__help__auth__show-key_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help auth show-key commands' commands "$@"
+}
+(( $+functions[_waka__help__auth__status_commands] )) ||
+_waka__help__auth__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help auth status commands' commands "$@"
+}
+(( $+functions[_waka__help__auth__switch_commands] )) ||
+_waka__help__auth__switch_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help auth switch commands' commands "$@"
+}
+(( $+functions[_waka__help__completions_commands] )) ||
+_waka__help__completions_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help completions commands' commands "$@"
+}
+(( $+functions[_waka__help__config_commands] )) ||
+_waka__help__config_commands() {
+    local commands; commands=(
+'get:Get the value of a config key' \
+'set:Set the value of a config key' \
+'edit:Open the config file in \$EDITOR' \
+'path:Print the path to the config file' \
+'reset:Reset config to defaults' \
+'doctor:Run a full diagnostic check' \
+    )
+    _describe -t commands 'waka help config commands' commands "$@"
+}
+(( $+functions[_waka__help__config__doctor_commands] )) ||
+_waka__help__config__doctor_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help config doctor commands' commands "$@"
+}
+(( $+functions[_waka__help__config__edit_commands] )) ||
+_waka__help__config__edit_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help config edit commands' commands "$@"
+}
+(( $+functions[_waka__help__config__get_commands] )) ||
+_waka__help__config__get_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help config get commands' commands "$@"
+}
+(( $+functions[_waka__help__config__path_commands] )) ||
+_waka__help__config__path_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help config path commands' commands "$@"
+}
+(( $+functions[_waka__help__config__reset_commands] )) ||
+_waka__help__config__reset_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help config reset commands' commands "$@"
+}
+(( $+functions[_waka__help__config__set_commands] )) ||
+_waka__help__config__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help config set commands' commands "$@"
+}
+(( $+functions[_waka__help__dashboard_commands] )) ||
+_waka__help__dashboard_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help dashboard commands' commands "$@"
+}
+(( $+functions[_waka__help__editors_commands] )) ||
+_waka__help__editors_commands() {
+    local commands; commands=(
+'list:List all editors with coding time' \
+'top:Show the top editors' \
+    )
+    _describe -t commands 'waka help editors commands' commands "$@"
+}
+(( $+functions[_waka__help__editors__list_commands] )) ||
+_waka__help__editors__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help editors list commands' commands "$@"
+}
+(( $+functions[_waka__help__editors__top_commands] )) ||
+_waka__help__editors__top_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help editors top commands' commands "$@"
+}
+(( $+functions[_waka__help__goals_commands] )) ||
+_waka__help__goals_commands() {
+    local commands; commands=(
+'list:List all active goals' \
+'show:Show details for a specific goal' \
+'watch:Watch goals and refresh periodically' \
+    )
+    _describe -t commands 'waka help goals commands' commands "$@"
+}
+(( $+functions[_waka__help__goals__list_commands] )) ||
+_waka__help__goals__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help goals list commands' commands "$@"
+}
+(( $+functions[_waka__help__goals__show_commands] )) ||
+_waka__help__goals__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help goals show commands' commands "$@"
+}
+(( $+functions[_waka__help__goals__watch_commands] )) ||
+_waka__help__goals__watch_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help goals watch commands' commands "$@"
+}
+(( $+functions[_waka__help__help_commands] )) ||
+_waka__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help help commands' commands "$@"
+}
+(( $+functions[_waka__help__languages_commands] )) ||
+_waka__help__languages_commands() {
+    local commands; commands=(
+'list:List all languages with coding time' \
+'top:Show the top languages' \
+    )
+    _describe -t commands 'waka help languages commands' commands "$@"
+}
+(( $+functions[_waka__help__languages__list_commands] )) ||
+_waka__help__languages__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help languages list commands' commands "$@"
+}
+(( $+functions[_waka__help__languages__top_commands] )) ||
+_waka__help__languages__top_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help languages top commands' commands "$@"
+}
+(( $+functions[_waka__help__leaderboard_commands] )) ||
+_waka__help__leaderboard_commands() {
+    local commands; commands=(
+'show:Show the public leaderboard' \
+    )
+    _describe -t commands 'waka help leaderboard commands' commands "$@"
+}
+(( $+functions[_waka__help__leaderboard__show_commands] )) ||
+_waka__help__leaderboard__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help leaderboard show commands' commands "$@"
+}
+(( $+functions[_waka__help__projects_commands] )) ||
+_waka__help__projects_commands() {
+    local commands; commands=(
+'list:List all projects with coding time' \
+'top:Show the most active projects' \
+'show:Show detailed stats for a project' \
+    )
+    _describe -t commands 'waka help projects commands' commands "$@"
+}
+(( $+functions[_waka__help__projects__list_commands] )) ||
+_waka__help__projects__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help projects list commands' commands "$@"
+}
+(( $+functions[_waka__help__projects__show_commands] )) ||
+_waka__help__projects__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help projects show commands' commands "$@"
+}
+(( $+functions[_waka__help__projects__top_commands] )) ||
+_waka__help__projects__top_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help projects top commands' commands "$@"
+}
+(( $+functions[_waka__help__prompt_commands] )) ||
+_waka__help__prompt_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help prompt commands' commands "$@"
+}
+(( $+functions[_waka__help__report_commands] )) ||
+_waka__help__report_commands() {
+    local commands; commands=(
+'generate:Generate a productivity report for a date range' \
+'summary:Show a brief productivity summary' \
+    )
+    _describe -t commands 'waka help report commands' commands "$@"
+}
+(( $+functions[_waka__help__report__generate_commands] )) ||
+_waka__help__report__generate_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help report generate commands' commands "$@"
+}
+(( $+functions[_waka__help__report__summary_commands] )) ||
+_waka__help__report__summary_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help report summary commands' commands "$@"
+}
+(( $+functions[_waka__help__stats_commands] )) ||
+_waka__help__stats_commands() {
+    local commands; commands=(
+'today:Show today'\''s coding activity' \
+'yesterday:Show yesterday'\''s coding activity' \
+'week:Show the last 7 days of activity' \
+'month:Show the last 30 days of activity' \
+'year:Show the last 365 days of activity' \
+'range:Show activity for a custom date range' \
+    )
+    _describe -t commands 'waka help stats commands' commands "$@"
+}
+(( $+functions[_waka__help__stats__month_commands] )) ||
+_waka__help__stats__month_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help stats month commands' commands "$@"
+}
+(( $+functions[_waka__help__stats__range_commands] )) ||
+_waka__help__stats__range_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help stats range commands' commands "$@"
+}
+(( $+functions[_waka__help__stats__today_commands] )) ||
+_waka__help__stats__today_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help stats today commands' commands "$@"
+}
+(( $+functions[_waka__help__stats__week_commands] )) ||
+_waka__help__stats__week_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help stats week commands' commands "$@"
+}
+(( $+functions[_waka__help__stats__year_commands] )) ||
+_waka__help__stats__year_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help stats year commands' commands "$@"
+}
+(( $+functions[_waka__help__stats__yesterday_commands] )) ||
+_waka__help__stats__yesterday_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka help stats yesterday commands' commands "$@"
+}
+(( $+functions[_waka__languages_commands] )) ||
+_waka__languages_commands() {
+    local commands; commands=(
+'list:List all languages with coding time' \
+'top:Show the top languages' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'waka languages commands' commands "$@"
+}
+(( $+functions[_waka__languages__help_commands] )) ||
+_waka__languages__help_commands() {
+    local commands; commands=(
+'list:List all languages with coding time' \
+'top:Show the top languages' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'waka languages help commands' commands "$@"
+}
+(( $+functions[_waka__languages__help__help_commands] )) ||
+_waka__languages__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka languages help help commands' commands "$@"
+}
+(( $+functions[_waka__languages__help__list_commands] )) ||
+_waka__languages__help__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka languages help list commands' commands "$@"
+}
+(( $+functions[_waka__languages__help__top_commands] )) ||
+_waka__languages__help__top_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka languages help top commands' commands "$@"
+}
+(( $+functions[_waka__languages__list_commands] )) ||
+_waka__languages__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka languages list commands' commands "$@"
+}
+(( $+functions[_waka__languages__top_commands] )) ||
+_waka__languages__top_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka languages top commands' commands "$@"
+}
+(( $+functions[_waka__leaderboard_commands] )) ||
+_waka__leaderboard_commands() {
+    local commands; commands=(
+'show:Show the public leaderboard' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'waka leaderboard commands' commands "$@"
+}
+(( $+functions[_waka__leaderboard__help_commands] )) ||
+_waka__leaderboard__help_commands() {
+    local commands; commands=(
+'show:Show the public leaderboard' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'waka leaderboard help commands' commands "$@"
+}
+(( $+functions[_waka__leaderboard__help__help_commands] )) ||
+_waka__leaderboard__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka leaderboard help help commands' commands "$@"
+}
+(( $+functions[_waka__leaderboard__help__show_commands] )) ||
+_waka__leaderboard__help__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka leaderboard help show commands' commands "$@"
+}
+(( $+functions[_waka__leaderboard__show_commands] )) ||
+_waka__leaderboard__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka leaderboard show commands' commands "$@"
+}
+(( $+functions[_waka__projects_commands] )) ||
+_waka__projects_commands() {
+    local commands; commands=(
+'list:List all projects with coding time' \
+'top:Show the most active projects' \
+'show:Show detailed stats for a project' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'waka projects commands' commands "$@"
+}
+(( $+functions[_waka__projects__help_commands] )) ||
+_waka__projects__help_commands() {
+    local commands; commands=(
+'list:List all projects with coding time' \
+'top:Show the most active projects' \
+'show:Show detailed stats for a project' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'waka projects help commands' commands "$@"
+}
+(( $+functions[_waka__projects__help__help_commands] )) ||
+_waka__projects__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka projects help help commands' commands "$@"
+}
+(( $+functions[_waka__projects__help__list_commands] )) ||
+_waka__projects__help__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka projects help list commands' commands "$@"
+}
+(( $+functions[_waka__projects__help__show_commands] )) ||
+_waka__projects__help__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka projects help show commands' commands "$@"
+}
+(( $+functions[_waka__projects__help__top_commands] )) ||
+_waka__projects__help__top_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka projects help top commands' commands "$@"
+}
+(( $+functions[_waka__projects__list_commands] )) ||
+_waka__projects__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka projects list commands' commands "$@"
+}
+(( $+functions[_waka__projects__show_commands] )) ||
+_waka__projects__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka projects show commands' commands "$@"
+}
+(( $+functions[_waka__projects__top_commands] )) ||
+_waka__projects__top_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka projects top commands' commands "$@"
+}
+(( $+functions[_waka__prompt_commands] )) ||
+_waka__prompt_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka prompt commands' commands "$@"
+}
+(( $+functions[_waka__report_commands] )) ||
+_waka__report_commands() {
+    local commands; commands=(
+'generate:Generate a productivity report for a date range' \
+'summary:Show a brief productivity summary' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'waka report commands' commands "$@"
+}
+(( $+functions[_waka__report__generate_commands] )) ||
+_waka__report__generate_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka report generate commands' commands "$@"
+}
+(( $+functions[_waka__report__help_commands] )) ||
+_waka__report__help_commands() {
+    local commands; commands=(
+'generate:Generate a productivity report for a date range' \
+'summary:Show a brief productivity summary' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'waka report help commands' commands "$@"
+}
+(( $+functions[_waka__report__help__generate_commands] )) ||
+_waka__report__help__generate_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka report help generate commands' commands "$@"
+}
+(( $+functions[_waka__report__help__help_commands] )) ||
+_waka__report__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka report help help commands' commands "$@"
+}
+(( $+functions[_waka__report__help__summary_commands] )) ||
+_waka__report__help__summary_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka report help summary commands' commands "$@"
+}
+(( $+functions[_waka__report__summary_commands] )) ||
+_waka__report__summary_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka report summary commands' commands "$@"
+}
+(( $+functions[_waka__stats_commands] )) ||
+_waka__stats_commands() {
+    local commands; commands=(
+'today:Show today'\''s coding activity' \
+'yesterday:Show yesterday'\''s coding activity' \
+'week:Show the last 7 days of activity' \
+'month:Show the last 30 days of activity' \
+'year:Show the last 365 days of activity' \
+'range:Show activity for a custom date range' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'waka stats commands' commands "$@"
+}
+(( $+functions[_waka__stats__help_commands] )) ||
+_waka__stats__help_commands() {
+    local commands; commands=(
+'today:Show today'\''s coding activity' \
+'yesterday:Show yesterday'\''s coding activity' \
+'week:Show the last 7 days of activity' \
+'month:Show the last 30 days of activity' \
+'year:Show the last 365 days of activity' \
+'range:Show activity for a custom date range' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'waka stats help commands' commands "$@"
+}
+(( $+functions[_waka__stats__help__help_commands] )) ||
+_waka__stats__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka stats help help commands' commands "$@"
+}
+(( $+functions[_waka__stats__help__month_commands] )) ||
+_waka__stats__help__month_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka stats help month commands' commands "$@"
+}
+(( $+functions[_waka__stats__help__range_commands] )) ||
+_waka__stats__help__range_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka stats help range commands' commands "$@"
+}
+(( $+functions[_waka__stats__help__today_commands] )) ||
+_waka__stats__help__today_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka stats help today commands' commands "$@"
+}
+(( $+functions[_waka__stats__help__week_commands] )) ||
+_waka__stats__help__week_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka stats help week commands' commands "$@"
+}
+(( $+functions[_waka__stats__help__year_commands] )) ||
+_waka__stats__help__year_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka stats help year commands' commands "$@"
+}
+(( $+functions[_waka__stats__help__yesterday_commands] )) ||
+_waka__stats__help__yesterday_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka stats help yesterday commands' commands "$@"
+}
+(( $+functions[_waka__stats__month_commands] )) ||
+_waka__stats__month_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka stats month commands' commands "$@"
+}
+(( $+functions[_waka__stats__range_commands] )) ||
+_waka__stats__range_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka stats range commands' commands "$@"
+}
+(( $+functions[_waka__stats__today_commands] )) ||
+_waka__stats__today_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka stats today commands' commands "$@"
+}
+(( $+functions[_waka__stats__week_commands] )) ||
+_waka__stats__week_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka stats week commands' commands "$@"
+}
+(( $+functions[_waka__stats__year_commands] )) ||
+_waka__stats__year_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka stats year commands' commands "$@"
+}
+(( $+functions[_waka__stats__yesterday_commands] )) ||
+_waka__stats__yesterday_commands() {
+    local commands; commands=()
+    _describe -t commands 'waka stats yesterday commands' commands "$@"
+}
+
+if [ "$funcstack[1]" = "_waka" ]; then
+    _waka "$@"
+else
+    compdef _waka waka
+fi
