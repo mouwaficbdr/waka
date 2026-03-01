@@ -106,7 +106,7 @@ waka leaderboard show [--page N]
 ### Interactive Dashboard (TUI)
 
 ```bash
-waka dash [--refresh DURATION]
+waka dashboard [--refresh SECONDS]
 ```
 
 **Live TUI dashboard** powered by [ratatui](https://ratatui.rs/) with:
@@ -123,10 +123,8 @@ Press `?` for help, `q` or Esc to quit.
 
 ### Reports
 
-_Coming in Phase 3._
-
 ```bash
-waka report generate --from 2024-01-01 --to 2024-31 [--format md|html|json|csv] [-o report.md]
+waka report generate --from 2024-01-01 --to 2024-01-31 [--format md|html|json|csv] [-o report.md]
 waka report summary [--period week|month]
 ```
 
@@ -238,12 +236,19 @@ See [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) for the full phased roadmap.
 - ✅ Interactive TUI dashboard with 5 views
 - ✅ Standardized error messages
 
-**Phase 3 (v0.4.0) — Next:**
+**Phase 3 (v0.4.0) — Complete:**
 
-- Report generation (Markdown, HTML, JSON, CSV)
-- `waka update` command for self-update
-- Man pages and mdBook documentation
-- `waka-api` published to crates.io
+- ✅ Report generation (Markdown, HTML, JSON, CSV)
+- ✅ `waka update` command for self-update
+- ✅ Man pages and mdBook documentation
+- ✅ `waka-api` crates.io-ready
+
+**Phase 4 (v1.0.0) — Complete:**
+
+- ✅ Stabilized public API surface (`#[non_exhaustive]`, `STABLE_INTERFACES.md`)
+- ✅ 80%+ test coverage on all library crates
+- ✅ Windows Credential Manager integration validated
+- ✅ Full cross-platform CI (Linux, macOS, Windows)
 
 ## Contributing
 
