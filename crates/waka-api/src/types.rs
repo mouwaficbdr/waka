@@ -87,6 +87,51 @@ pub struct SummaryResponse {
     pub end: String,
     /// ISO 8601 start of the requested range.
     pub start: String,
+    /// Cumulative total across all days in the requested range.
+    #[serde(default)]
+    pub cumulative_total: Option<CumulativeTotal>,
+    /// Daily coding average for the requested range.
+    #[serde(default)]
+    pub daily_average: Option<DailyAverage>,
+}
+
+/// Cumulative coding total returned as part of [`SummaryResponse`].
+#[non_exhaustive]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct CumulativeTotal {
+    /// Total seconds across all days.
+    pub seconds: f64,
+    /// Human-readable total (e.g. `"14 hrs 22 mins"`).
+    pub text: String,
+    /// Total in decimal format (e.g. `"14.38"`).
+    #[serde(default)]
+    pub decimal: String,
+    /// Total in digital clock format (e.g. `"14:22"`).
+    #[serde(default)]
+    pub digital: String,
+}
+
+/// Daily average returned as part of [`SummaryResponse`].
+#[non_exhaustive]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct DailyAverage {
+    /// Number of days in the range with no coding activity logged.
+    #[serde(default)]
+    pub holidays: u32,
+    /// Total number of days in the range.
+    #[serde(default)]
+    pub days_including_holidays: u32,
+    /// Number of days in the range excluding days with no activity.
+    #[serde(default)]
+    pub days_minus_holidays: u32,
+    /// Average seconds per day, excluding the "Other" language.
+    pub seconds: f64,
+    /// Human-readable daily average, excluding the "Other" language.
+    pub text: String,
+    /// Average seconds per day, including all languages.
+    pub seconds_including_other_language: f64,
+    /// Human-readable daily average, including all languages.
+    pub text_including_other_language: String,
 }
 
 /// Coding activity summary for a single calendar day.
@@ -134,6 +179,18 @@ pub struct SummaryEntry {
     pub text: String,
     /// Total duration in seconds (fractional).
     pub total_seconds: f64,
+    /// Lines added by AI coding assistants (present on project entries).
+    #[serde(default)]
+    pub ai_additions: u32,
+    /// Lines removed by AI coding assistants (present on project entries).
+    #[serde(default)]
+    pub ai_deletions: u32,
+    /// Lines added by the developer via keyboard input (present on project entries).
+    #[serde(default)]
+    pub human_additions: u32,
+    /// Lines removed by the developer via keyboard input (present on project entries).
+    #[serde(default)]
+    pub human_deletions: u32,
 }
 
 /// A machine / hostname time-breakdown entry.
@@ -183,6 +240,18 @@ pub struct GrandTotal {
     pub text: String,
     /// Total duration in seconds (fractional).
     pub total_seconds: f64,
+    /// Lines added by AI coding assistants (e.g. GitHub Copilot) this day.
+    #[serde(default)]
+    pub ai_additions: u32,
+    /// Lines removed by AI coding assistants this day.
+    #[serde(default)]
+    pub ai_deletions: u32,
+    /// Lines added by the developer via keyboard input this day.
+    #[serde(default)]
+    pub human_additions: u32,
+    /// Lines removed by the developer via keyboard input this day.
+    #[serde(default)]
+    pub human_deletions: u32,
 }
 
 /// Date range metadata attached to a [`SummaryData`] entry.
@@ -228,10 +297,16 @@ pub struct Project {
     pub has_public_url: bool,
     /// Human-readable last-heartbeat description (e.g. `"2 hours ago"`).
     pub human_readable_last_heartbeat_at: String,
+    /// Human-readable first-heartbeat description.
+    /// Only set for accounts created after 2024-02-05.
+    pub human_readable_first_heartbeat_at: Option<String>,
     /// Unique project identifier (UUID).
     pub id: String,
     /// ISO 8601 timestamp of the last received heartbeat.
     pub last_heartbeat_at: String,
+    /// ISO 8601 timestamp of the first received heartbeat.
+    /// Only set for accounts created after 2024-02-05.
+    pub first_heartbeat_at: Option<String>,
     /// Project name.
     pub name: String,
     /// Linked repository URL (if configured).
