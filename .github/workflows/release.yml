@@ -16,7 +16,7 @@ jobs:
     name: Pre-release CI
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
@@ -46,7 +46,7 @@ jobs:
     # Only publish waka-api after v0.4.0 (Phase 3)
     if: startsWith(github.ref_name, 'v0.4') || startsWith(github.ref_name, 'v1.')
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - name: Publish waka-api
         run: cargo publish -p waka-api
@@ -61,7 +61,7 @@ jobs:
     needs: dist
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Install git-cliff
@@ -74,3 +74,4 @@ jobs:
           commit_message: "chore(changelog): update CHANGELOG for ${{ github.ref_name }}"
           file_pattern: CHANGELOG.md
           commit_options: "--no-verify"
+
