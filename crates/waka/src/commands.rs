@@ -11,6 +11,7 @@ use anyhow::{bail, Context as _, Result};
 use chrono::{Local, NaiveDate};
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
 use waka_api::{SummaryParams, WakaClient};
+use waka_cache::CacheStore;
 use waka_config::{Config, CredentialStore, ProfileConfig};
 use waka_render::{
     detect_output_format, OutputFormat as RenderFormat, RenderOptions, SummaryRenderer,
@@ -59,10 +60,10 @@ async fn auth_cmd(cmd: AuthCommands, global: GlobalOpts) -> Result<()> {
 
 /// Implements `waka stats today/yesterday/week/month/year/range`.
 ///
-/// Loads the config, retrieves credentials, fetches data from the `WakaTime`
-/// API, then renders the result using `waka-render`.
+/// Loads the config, retrieves credentials, optionally hits the local cache,
+/// fetches data from the `WakaTime` API, then renders the result.
 async fn stats(cmd: StatsCommands, global: &GlobalOpts) -> Result<()> {
-    // ── 1. Load config (best-effort — fall back to defaults) ─────────────────
+    // ── 1. Config + credentials ───────────────────────────────────────────────
     let config = Config::load().unwrap_or_default();
     let profile = stats_profile_name(global);
     let api_url = config
@@ -70,7 +71,6 @@ async fn stats(cmd: StatsCommands, global: &GlobalOpts) -> Result<()> {
         .get(&profile)
         .map_or_else(|| ProfileConfig::default().api_url, |p| p.api_url.clone());
 
-    // ── 2. Retrieve API key ───────────────────────────────────────────────────
     let store = CredentialStore::new(&profile);
     let api_key = store.get_api_key().with_context(|| {
         format!(
@@ -79,9 +79,7 @@ async fn stats(cmd: StatsCommands, global: &GlobalOpts) -> Result<()> {
         )
     })?;
 
-    // ── 3. Build client ───────────────────────────────────────────────────────
-    // Ensure the base URL ends with '/' so that Url::join("users/current")
-    // appends correctly (without trailing slash it strips the last path segment).
+    // ── 2. Build client ───────────────────────────────────────────────────────
     let api_url_normalized = if api_url.ends_with('/') {
         api_url.clone()
     } else {
@@ -90,28 +88,100 @@ async fn stats(cmd: StatsCommands, global: &GlobalOpts) -> Result<()> {
     let client = WakaClient::with_base_url(api_key.expose(), &api_url_normalized)
         .with_context(|| format!("invalid api_url in profile '{profile}': {api_url}"))?;
 
-    // ── 4. Build params from subcommand + filters ─────────────────────────────
+    // ── 3. Build params ───────────────────────────────────────────────────────
     let (params, label) = stats_build_params(cmd)?;
+    let cache_key = params.cache_key();
+    let ttl = Duration::from_secs(config.cache.ttl_seconds);
 
-    // ── 5. Fetch ──────────────────────────────────────────────────────────────
-    let pb = stats_spinner(&format!("Fetching {label} stats …"));
-    let result = client.summaries(params).await;
-    pb.finish_and_clear();
+    // ── 4. Cache lookup ───────────────────────────────────────────────────────
+    let cache_enabled = config.cache.enabled && !global.no_cache;
+    let cache = if cache_enabled {
+        CacheStore::open(&profile).ok()
+    } else {
+        None
+    };
 
-    let resp = result.with_context(|| format!("failed to fetch {label} stats from WakaTime"))?;
-
-    // ── 6. Resolve output format ──────────────────────────────────────────────
-    let format = stats_resolve_format(global, &config);
     let color = !global.no_color && std::io::stdout().is_terminal();
+
+    // `(resp, footer_line)` — footer_line is shown below the table when set.
+    let (resp, footer) = if let Some(ref c) = cache {
+        match c.get::<waka_api::SummaryResponse>(&cache_key) {
+            Ok(Some(entry)) if !entry.is_expired() => {
+                // ── FRESH HIT ──────────────────────────────────────────────
+                let age = entry.age_human();
+                let indicator = if color {
+                    console::style(format!("(cached {age})")).dim().to_string()
+                } else {
+                    format!("(cached {age})")
+                };
+                (entry.value, Some(indicator))
+            }
+            Ok(stale) => {
+                // ── EXPIRED HIT or MISS — try network ─────────────────────
+                let pb = stats_spinner(&format!("Fetching {label} stats …"));
+                let result = client.summaries(params).await;
+                pb.finish_and_clear();
+
+                match result {
+                    Ok(fresh) => {
+                        // Store fresh data in cache.
+                        let _ = c.set(&cache_key, &fresh, ttl);
+                        (fresh, None)
+                    }
+                    Err(e) => {
+                        if let Some(stale_entry) = stale {
+                            // Network failed but we have stale data — show it.
+                            let badge = if color {
+                                console::style("⚠ offline (showing stale data)")
+                                    .yellow()
+                                    .to_string()
+                            } else {
+                                "⚠ offline (showing stale data)".to_owned()
+                            };
+                            (stale_entry.value, Some(badge))
+                        } else {
+                            // No stale data — propagate error.
+                            return Err(e).with_context(|| {
+                                format!("failed to fetch {label} stats from WakaTime")
+                            });
+                        }
+                    }
+                }
+            }
+            Err(_) => {
+                // Cache read error — fall through to network.
+                let pb = stats_spinner(&format!("Fetching {label} stats …"));
+                let result = client.summaries(params).await;
+                pb.finish_and_clear();
+                let r = result
+                    .with_context(|| format!("failed to fetch {label} stats from WakaTime"))?;
+                let _ = c.set(&cache_key, &r, ttl);
+                (r, None)
+            }
+        }
+    } else {
+        // ── CACHE DISABLED OR --no-cache ───────────────────────────────────
+        let pb = stats_spinner(&format!("Fetching {label} stats …"));
+        let result = client.summaries(params).await;
+        pb.finish_and_clear();
+        let r = result.with_context(|| format!("failed to fetch {label} stats from WakaTime"))?;
+        (r, None)
+    };
+
+    // ── 5. Render ─────────────────────────────────────────────────────────────
+    let format = stats_resolve_format(global, &config);
     let opts = RenderOptions {
         color,
         format,
         ..RenderOptions::default()
     };
 
-    // ── 7. Render and print ───────────────────────────────────────────────────
     let output = SummaryRenderer::render(&resp, &opts);
     print!("{output}");
+
+    if let Some(f) = footer {
+        println!("{f}");
+    }
 
     Ok(())
 }

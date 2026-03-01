@@ -70,6 +70,37 @@ impl SummaryParams {
         self
     }
 
+    /// Returns a stable cache key string that uniquely identifies this set of
+    /// parameters.
+    ///
+    /// Format: `summaries:{start}:{end}` (with optional `:project:{name}` suffix).
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use waka_api::SummaryParams;
+    /// use chrono::NaiveDate;
+    ///
+    /// let p = SummaryParams::for_range(
+    ///     NaiveDate::from_ymd_opt(2025, 1, 6).unwrap(),
+    ///     NaiveDate::from_ymd_opt(2025, 1, 12).unwrap(),
+    /// ).project("my-saas");
+    ///
+    /// assert_eq!(p.cache_key(), "summaries:2025-01-06:2025-01-12:project:my-saas");
+    /// ```
+    #[must_use]
+    pub fn cache_key(&self) -> String {
+        let base = format!(
+            "summaries:{}:{}",
+            self.start.format("%Y-%m-%d"),
+            self.end.format("%Y-%m-%d"),
+        );
+        match &self.project {
+            Some(p) => format!("{base}:project:{p}"),
+            None => base,
+        }
+    }
+
     /// Converts to a list of `(key, value)` pairs suitable for a query string.
     ///
     /// Dates are formatted as `YYYY-MM-DD` as required by the `WakaTime` API.
@@ -166,5 +197,22 @@ mod tests {
             .branches("main");
         let pairs = p.to_query_pairs();
         assert_eq!(pairs.len(), 4);
+    }
+
+    // ── cache_key ──────────────────────────────────────────────────────────────
+
+    #[test]
+    fn cache_key_no_project() {
+        let p = SummaryParams::for_range(date(2025, 1, 6), date(2025, 1, 12));
+        assert_eq!(p.cache_key(), "summaries:2025-01-06:2025-01-12");
+    }
+
+    #[test]
+    fn cache_key_with_project() {
+        let p = SummaryParams::for_range(date(2025, 1, 6), date(2025, 1, 12)).project("my-saas");
+        assert_eq!(
+            p.cache_key(),
+            "summaries:2025-01-06:2025-01-12:project:my-saas"
+        );
     }
 }
