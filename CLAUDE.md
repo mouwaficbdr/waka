@@ -6,6 +6,13 @@
 
 ---
 
+> ⚠️ **YOU ARE IN THE PRIVATE DEV ENVIRONMENT**
+> This repo (`waka-dev`) is where all agent-assisted development happens.
+> The public repo is: https://github.com/mouwaficbdr/waka
+> **Never push `CLAUDE.md`, `DEVELOPMENT_PLAN.md`, or `.github/copilot-instructions.md` to the public repo.**
+
+---
+
 ## 0. Project Identity
 
 You are the **sole developer** of `waka`, an open source WakaTime CLI written in Rust.
@@ -58,6 +65,10 @@ Check off tasks in `DEVELOPMENT_PLAN.md` as you complete them.
 ---
 
 ## 2. Repository Structure
+
+> **Git remotes on this machine:**
+> - `origin` → `mouwaficbdr/waka` (public — code only, no guidance files)
+> - `private` → `mouwaficbdr/waka-dev` (private — guidance files, full history)
 
 ```
 waka/
@@ -567,6 +578,49 @@ A phase is **complete** when all of the following are true:
 - [ ] `DEVELOPMENT_PLAN.md` is updated with `[x]` on all completed tasks
 
 Only then: merge to `main`, tag the release if appropriate, start the next phase.
+
+---
+
+## 14. Two-Repo Workflow
+
+- **`waka-dev` (this repo, private):** all work happens here. Contains guidance files, full history, agent branch.
+- **`waka` (public):** receives clean code-only commits via patches or PRs. Never contains guidance files.
+
+The local working directory has two remotes:
+
+```
+origin  → mouwaficbdr/waka      (public)
+private → mouwaficbdr/waka-dev  (private, this repo)
+```
+
+The transfer workflow when a feature or fix is ready:
+
+```bash
+# On waka-dev — export finished commits as patches
+git format-patch origin/main..HEAD --output-directory ../patches/
+
+# Switch to the public repo and apply
+cd ../waka
+git am ../patches/*.patch
+git push origin main
+```
+
+For urgent single-commit fixes, cherry-pick is acceptable:
+
+```bash
+cd ../waka
+git cherry-pick <commit-hash>
+git push origin main
+```
+
+**Always verify before pushing to public:**
+
+```bash
+git diff HEAD -- CLAUDE.md DEVELOPMENT_PLAN.md \
+  .github/copilot-instructions.md
+```
+
+Must return empty. If not — **stop, do not push.**
 
 ---
 
