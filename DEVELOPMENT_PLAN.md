@@ -1,5 +1,9 @@
 # DEVELOPMENT_PLAN.md — `waka` Phased Task List
 
+> **Project Status: v1.0.0 — RELEASED** 🎉
+> Public repo: https://github.com/mouwaficbdr/waka
+> All 4 phases complete · 222 tests · 8.1 MB binary
+
 > This is your **working task list**. Mark each task `[x]` as you complete it.
 > Do not start a phase until the previous one is fully complete and green.
 > Each task maps to one or more commits. Each commit must be green.
@@ -475,7 +479,7 @@ _Goal: Reports, update command, man pages, full distribution, waka-api on crates
 - [x] Verify all Phase 3 completion criteria
 - [x] Tag: `v0.4.0`
 
-## Phase 4 — Stability v1.0
+## Phase 4 — Stability v1.0 ✅ Completed 2026-03-01
 
 _Goal: Stable interfaces, security audit, 80%+ test coverage, Windows validation._
 
@@ -513,3 +517,25 @@ _Goal: Stable interfaces, security audit, 80%+ test coverage, Windows validation
 - Each task should ideally produce 1-3 commits
 - When a task reveals unexpected complexity, break it into sub-tasks and document here
 - When discovering spec gaps, document in `SPEC_GAPS.md`
+
+---
+
+## Post v1.0 Maintenance
+
+### Bug fixes & patch releases
+
+- [ ] Triage incoming GitHub issues
+- [ ] Release v1.0.1 patch if critical bugs reported within 30 days
+
+### Community
+
+- [ ] Respond to PRs within 7 days
+- [ ] Tag good first issues for contributors
+
+### Future features (v1.1.0+)
+
+- [ ] `waka diff` — compare two periods side by side
+- [ ] `waka export` — bulk export to multiple formats at once
+- [ ] `waka alias` — save custom stat queries
+- [ ] Investigate self-hosted WakaTime instance support
+- [ ] Watch community issues for most-requested features
