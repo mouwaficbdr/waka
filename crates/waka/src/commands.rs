@@ -52,7 +52,7 @@ pub async fn dispatch(cmd: Commands, global: GlobalOpts) -> Result<()> {
         Commands::Goals { cmd } => goals(cmd, &global).await,
         Commands::Leaderboard { cmd } => leaderboard(cmd, &global).await,
         Commands::Report { cmd } => report(cmd),
-        Commands::Dashboard(args) => dashboard(args),
+        Commands::Dashboard(args) => dashboard(args, &global).await,
         Commands::Prompt(args) => {
             prompt(args, &global);
             Ok(())
@@ -748,8 +748,17 @@ fn report(cmd: ReportCommands) -> Result<()> {
 
 // ─── dashboard ────────────────────────────────────────────────────────────────
 
-fn dashboard(_args: DashboardArgs) -> Result<()> {
-    bail!("not yet implemented: dashboard")
+async fn dashboard(args: DashboardArgs, global: &GlobalOpts) -> Result<()> {
+    let config = Config::load().unwrap_or_default();
+    let profile = stats_profile_name(global);
+    let client = build_api_client(&profile, &config)?;
+    let refresh_interval = std::time::Duration::from_secs(args.refresh);
+
+    waka_tui::run(client, refresh_interval)
+        .await
+        .with_context(|| "failed to run TUI dashboard")?;
+
+    Ok(())
 }
 
 // ─── prompt ───────────────────────────────────────────────────────────────────
