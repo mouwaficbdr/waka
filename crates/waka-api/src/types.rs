@@ -202,22 +202,27 @@ pub struct DailyAverage {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SummaryData {
     /// Time broken down by activity category (coding, browsing, etc.).
+    #[serde(default)]
     pub categories: Vec<SummaryEntry>,
     /// Time broken down by detected dependency / library.
     #[serde(default)]
     pub dependencies: Vec<SummaryEntry>,
     /// Time broken down by editor.
+    #[serde(default)]
     pub editors: Vec<SummaryEntry>,
     /// Daily grand total across all activity.
     pub grand_total: GrandTotal,
     /// Time broken down by programming language.
+    #[serde(default)]
     pub languages: Vec<SummaryEntry>,
     /// Time broken down by machine / hostname.
     #[serde(default)]
     pub machines: Vec<MachineEntry>,
     /// Time broken down by operating system.
+    #[serde(default)]
     pub operating_systems: Vec<SummaryEntry>,
     /// Time broken down by project.
+    #[serde(default)]
     pub projects: Vec<SummaryEntry>,
     /// Time broken down by branch — only present when the `project` URL
     /// parameter is used in the request.
@@ -245,6 +250,10 @@ pub struct SummaryEntry {
     /// Percentage of total time for the period (0.0–100.0).
     pub percent: f64,
     /// Whole seconds component (0–59).
+    ///
+    /// The `WakaTime` API occasionally omits this field (e.g. in `stats/all_time`
+    /// project entries). Defaults to `0` when absent.
+    #[serde(default)]
     pub seconds: u32,
     /// Full human-readable duration (e.g. `"3 hrs 30 mins"`).
     pub text: String,
@@ -284,6 +293,9 @@ pub struct MachineEntry {
     /// Percentage of total time for the period (0.0–100.0).
     pub percent: f64,
     /// Whole seconds component (0–59).
+    ///
+    /// Defaults to `0` when absent — the API occasionally omits this field.
+    #[serde(default)]
     pub seconds: u32,
     /// Full human-readable duration (e.g. `"1 hr 15 mins"`).
     pub text: String,
@@ -724,16 +736,21 @@ pub struct LeaderboardResponse {
     /// Language filter applied (if any).
     pub language: Option<String>,
     /// ISO 8601 timestamp when the leaderboard was last updated.
-    pub modified_at: String,
+    /// The `WakaTime` API occasionally omits this field.
+    pub modified_at: Option<String>,
     /// Current page number (1-based).
+    #[serde(default)]
     pub page: u32,
     /// Date range this leaderboard covers.
-    pub range: LeaderboardRange,
+    pub range: Option<LeaderboardRange>,
     /// Heartbeat timeout in minutes used for ranking.
+    #[serde(default)]
     pub timeout: u32,
     /// Total number of pages available.
+    #[serde(default)]
     pub total_pages: u32,
     /// Whether the leaderboard is restricted to write-only accounts.
+    #[serde(default)]
     pub writes_only: bool,
 }
 

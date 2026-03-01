@@ -404,8 +404,8 @@ pub enum ReportCommands {
         output: Option<std::path::PathBuf>,
 
         /// Report format.
-        #[arg(short = 'f', long, value_name = "FORMAT", default_value = "md")]
-        format: ReportFormat,
+        #[arg(id = "report_format", short = 'F', long = "output-format", value_name = "FORMAT", default_value = "md")]
+        output_format: ReportFormat,
     },
 
     /// Show a brief productivity summary.

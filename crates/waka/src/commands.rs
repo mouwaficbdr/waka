@@ -752,8 +752,8 @@ async fn report(cmd: ReportCommands, global: &GlobalOpts) -> Result<()> {
             from,
             to,
             output,
-            format,
-        } => report_generate(from, to, output, format, global).await,
+            output_format,
+        } => report_generate(from, to, output, output_format, global).await,
         ReportCommands::Summary { period } => report_summary(period, global).await,
     }
 }
