@@ -1,8 +1,22 @@
 //! `waka` — `WakaTime` CLI.
 //!
 //! Entry point for the `waka` binary. Parses CLI arguments and dispatches
-//! to command handlers. All user-facing errors are printed to stderr.
+//! to command handlers. All user-facing errors are printed to stderr and the
+//! process exits with the code defined in SPEC.md Annexe B.
 
-fn main() {
-    println!("waka v{}", env!("CARGO_PKG_VERSION"));
+mod cli;
+mod commands;
+mod error;
+
+use clap::Parser;
+use cli::Cli;
+
+#[tokio::main]
+async fn main() {
+    let cli = Cli::parse();
+
+    if let Err(err) = commands::dispatch(cli.command).await {
+        eprintln!("Error: {err:#}");
+        std::process::exit(error::exit_code(&err));
+    }
 }
