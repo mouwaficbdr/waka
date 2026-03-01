@@ -19,10 +19,12 @@
 
 pub mod client;
 pub mod error;
+pub mod params;
 pub mod types;
 
 pub use client::WakaClient;
 pub use error::ApiError;
+pub use params::SummaryParams;
 pub use types::{
     BestDay, Goal, GoalChartEntry, GoalChartRange, GoalsResponse, GrandTotal, LeaderboardEntry,
     LeaderboardRange, LeaderboardResponse, LeaderboardUser, MachineEntry, Project,

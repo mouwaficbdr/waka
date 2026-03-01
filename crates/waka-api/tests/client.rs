@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-use waka_api::{ApiError, WakaClient};
+use waka_api::{ApiError, SummaryParams, WakaClient};
 use wiremock::matchers::{header, header_exists, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -187,4 +187,86 @@ async fn me_sends_basic_auth_header() {
 fn with_base_url_rejects_invalid_url() {
     let err = WakaClient::with_base_url("key", "not a url");
     assert!(err.is_err(), "expected Err for invalid URL, got Ok");
+}
+
+// ─── summaries ────────────────────────────────────────────────────────────────
+
+#[tokio::test]
+async fn summaries_returns_response_on_200() {
+    use chrono::NaiveDate;
+    use wiremock::matchers::query_param;
+
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/users/current/summaries"))
+        .and(query_param("start", "2025-01-13"))
+        .and(query_param("end", "2025-01-13"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_string(fixture("summaries_today.json"))
+                .insert_header("content-type", "application/json"),
+        )
+        .mount(&server)
+        .await;
+
+    let c = client(&server);
+    let date = NaiveDate::from_ymd_opt(2025, 1, 13).unwrap();
+    let params = SummaryParams::for_range(date, date);
+    let resp = c.summaries(params).await.expect("should succeed on 200");
+
+    assert!(!resp.data.is_empty(), "response data should not be empty");
+}
+
+#[tokio::test]
+async fn summaries_sends_project_query_param() {
+    use chrono::NaiveDate;
+    use wiremock::matchers::query_param;
+
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/users/current/summaries"))
+        .and(query_param("project", "my-saas"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_string(fixture("summaries_today.json"))
+                .insert_header("content-type", "application/json"),
+        )
+        .mount(&server)
+        .await;
+
+    let c = client(&server);
+    let date = NaiveDate::from_ymd_opt(2025, 1, 13).unwrap();
+    let params = SummaryParams::for_range(date, date).project("my-saas");
+    c.summaries(params)
+        .await
+        .expect("should forward project param");
+}
+
+#[tokio::test]
+async fn summaries_returns_unauthorized_on_401() {
+    use chrono::NaiveDate;
+
+    let server = MockServer::start().await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/v1/users/current/summaries"))
+        .respond_with(
+            ResponseTemplate::new(401)
+                .set_body_string(fixture("errors/401_unauthorized.json"))
+                .insert_header("content-type", "application/json"),
+        )
+        .mount(&server)
+        .await;
+
+    let c = client(&server);
+    let date = NaiveDate::from_ymd_opt(2025, 1, 13).unwrap();
+    let params = SummaryParams::for_range(date, date);
+    let err = c.summaries(params).await.expect_err("should fail on 401");
+
+    assert!(
+        matches!(err, ApiError::Unauthorized),
+        "expected Unauthorized, got {err:?}"
+    );
 }

@@ -7,7 +7,8 @@ use serde::de::DeserializeOwned;
 use tracing::{debug, warn};
 
 use crate::error::ApiError;
-use crate::types::UserResponse;
+use crate::params::SummaryParams;
+use crate::types::{SummaryResponse, UserResponse};
 
 /// Base URL for the production `WakaTime` API.
 const DEFAULT_BASE_URL: &str = "https://wakatime.com/api/v1/";
@@ -197,6 +198,25 @@ impl WakaClient {
     pub async fn me(&self) -> Result<crate::types::User, ApiError> {
         let resp: UserResponse = self.get("users/current", &[]).await?;
         Ok(resp.data)
+    }
+
+    /// Returns coding summaries for the date range described by `params`.
+    ///
+    /// Calls `GET /users/current/summaries`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ApiError::Unauthorized`] if the API key is invalid.
+    /// Returns [`ApiError::NetworkError`] on connection or timeout failures.
+    /// Returns [`ApiError::ParseError`] if the response cannot be deserialized.
+    pub async fn summaries(&self, params: SummaryParams) -> Result<SummaryResponse, ApiError> {
+        // Convert owned pairs to borrowed slices for the generic get() call.
+        let owned = params.to_query_pairs();
+        let borrowed: Vec<(&str, &str)> = owned
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.as_str()))
+            .collect();
+        self.get("users/current/summaries", &borrowed).await
     }
 }
 
