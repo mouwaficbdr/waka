@@ -140,4 +140,26 @@ impl App {
             self.refresh_interval.saturating_sub(elapsed)
         })
     }
+
+    /// Returns the number of items in the current view's list.
+    ///
+    /// Used for navigation bounds checking.
+    #[allow(clippy::match_same_arms)]
+    pub fn current_view_items_count(&self) -> usize {
+        match self.view {
+            View::Main => 0, // Main view has no navigation
+            View::Projects => self
+                .summary_today
+                .as_ref()
+                .and_then(|s| s.data.first())
+                .map_or(0, |d| d.projects.len()),
+            View::Languages => self
+                .summary_today
+                .as_ref()
+                .and_then(|s| s.data.first())
+                .map_or(0, |d| d.languages.len()),
+            View::Goals => self.goals.as_ref().map_or(0, |g| g.data.len()),
+            View::Activity => 0, // Activity view has no navigation
+        }
+    }
 }

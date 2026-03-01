@@ -21,11 +21,14 @@ pub fn render(f: &mut Frame, app: &App) {
         render_error_state(f, size, app);
     } else if app.loading && app.summary_today.is_none() {
         render_loading_state(f, size);
-    } else if app.view == View::Main {
-        render_main_view(f, size, app);
     } else {
-        // Other views (Projects, Languages, Goals, Activity) are placeholders for now
-        render_placeholder(f, size, app);
+        match app.view {
+            View::Main => render_main_view(f, size, app),
+            View::Projects => render_projects_view(f, size, app),
+            View::Languages => render_languages_view(f, size, app),
+            View::Goals => render_goals_view(f, size, app),
+            View::Activity => render_activity_view(f, size, app),
+        }
     }
 
     // Render help overlay if visible.
@@ -129,21 +132,374 @@ fn render_main_view(f: &mut Frame, area: Rect, app: &App) {
     status_bar::render_status_bar(f, status_area, time_until_refresh, &last_update_str);
 }
 
-/// Renders a placeholder view for non-main views.
-fn render_placeholder(f: &mut Frame, area: Rect, app: &App) {
-    let title = format!("waka dashboard — view: {:?}", app.view);
+/// Renders the Projects detail view (View 2).
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss
+)]
+fn render_projects_view(f: &mut Frame, area: Rect, app: &App) {
+    // Layout: main content + status bar
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(1), Constraint::Length(1)])
+        .split(area);
+
+    let main_area = chunks[0];
+    let status_area = chunks[1];
+
     let block = Block::default()
-        .title(title.as_str())
+        .title(" Projects — ↑↓: navigate, Enter: details ")
         .borders(Borders::ALL)
         .style(Style::default().fg(Color::Cyan));
 
-    let text = vec![
-        Line::from("This view is not yet implemented."),
-        Line::from("(Task 2.8)"),
-    ];
+    let Some(ref summary_today) = app.summary_today else {
+        let para = Paragraph::new("No project data available").block(block);
+        f.render_widget(para, main_area);
+        render_status_bar_simple(f, status_area);
+        return;
+    };
 
-    let paragraph = Paragraph::new(text).block(block);
-    f.render_widget(paragraph, area);
+    // Sort projects by time descending
+    let mut projects = summary_today
+        .data
+        .first()
+        .map_or_else(Vec::new, |d| d.projects.clone());
+    projects.sort_by(|a, b| b.total_seconds.partial_cmp(&a.total_seconds).unwrap());
+
+    if projects.is_empty() {
+        let para = Paragraph::new("No projects found").block(block);
+        f.render_widget(para, main_area);
+        render_status_bar_simple(f, status_area);
+        return;
+    }
+
+    // Build lines with selection highlight
+    let mut lines = vec![];
+    for (idx, proj) in projects.iter().enumerate() {
+        let hours = (proj.total_seconds / 3600.0).floor() as u64;
+        let minutes = ((proj.total_seconds % 3600.0) / 60.0).floor() as u64;
+        let time_str = format!("{hours}h {minutes:02}m");
+        let percent_str = format!("{:.1}%", proj.percent);
+
+        let bar_filled = ((proj.percent / 100.0) * 30.0).floor() as usize;
+        let bar_empty = 30 - bar_filled;
+        let bar = format!("{}{}", "█".repeat(bar_filled), "░".repeat(bar_empty));
+
+        let style = if idx == app.list_index {
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default()
+        };
+
+        let line = Line::from(vec![
+            Span::raw(if idx == app.list_index {
+                " ▶ "
+            } else {
+                "   "
+            }),
+            Span::styled(format!("{:<20}", proj.name), style),
+            Span::styled(bar, Style::default().fg(Color::Green)),
+            Span::raw("  "),
+            Span::styled(format!("{time_str:>10}"), Style::default().fg(Color::Cyan)),
+            Span::raw("  "),
+            Span::styled(
+                format!("{percent_str:>6}"),
+                Style::default().fg(Color::Yellow),
+            ),
+        ]);
+        lines.push(line);
+    }
+
+    let para = Paragraph::new(lines).block(block);
+    f.render_widget(para, main_area);
+    render_status_bar_simple(f, status_area);
+}
+
+/// Renders the Languages detail view (View 3).
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss
+)]
+fn render_languages_view(f: &mut Frame, area: Rect, app: &App) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(1), Constraint::Length(1)])
+        .split(area);
+
+    let main_area = chunks[0];
+    let status_area = chunks[1];
+
+    let block = Block::default()
+        .title(" Languages — ↑↓: navigate ")
+        .borders(Borders::ALL)
+        .style(Style::default().fg(Color::Cyan));
+
+    let Some(ref summary_today) = app.summary_today else {
+        let para = Paragraph::new("No language data available").block(block);
+        f.render_widget(para, main_area);
+        render_status_bar_simple(f, status_area);
+        return;
+    };
+
+    let mut langs = summary_today
+        .data
+        .first()
+        .map_or_else(Vec::new, |d| d.languages.clone());
+    langs.sort_by(|a, b| b.total_seconds.partial_cmp(&a.total_seconds).unwrap());
+
+    if langs.is_empty() {
+        let para = Paragraph::new("No languages found").block(block);
+        f.render_widget(para, main_area);
+        render_status_bar_simple(f, status_area);
+        return;
+    }
+
+    let mut lines = vec![];
+    for (idx, lang) in langs.iter().enumerate() {
+        let hours = (lang.total_seconds / 3600.0).floor() as u64;
+        let minutes = ((lang.total_seconds % 3600.0) / 60.0).floor() as u64;
+        let time_str = format!("{hours}h {minutes:02}m");
+        let percent_str = format!("{:.1}%", lang.percent);
+
+        let bar_filled = ((lang.percent / 100.0) * 30.0).floor() as usize;
+        let bar_empty = 30 - bar_filled;
+        let bar = format!("{}{}", "█".repeat(bar_filled), "░".repeat(bar_empty));
+
+        let style = if idx == app.list_index {
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default()
+        };
+
+        let line = Line::from(vec![
+            Span::raw(if idx == app.list_index {
+                " ▶ "
+            } else {
+                "   "
+            }),
+            Span::styled(format!("{:<15}", lang.name), style),
+            Span::styled(bar, Style::default().fg(Color::Green)),
+            Span::raw("  "),
+            Span::styled(format!("{time_str:>10}"), Style::default().fg(Color::Cyan)),
+            Span::raw("  "),
+            Span::styled(
+                format!("{percent_str:>6}"),
+                Style::default().fg(Color::Yellow),
+            ),
+        ]);
+        lines.push(line);
+    }
+
+    let para = Paragraph::new(lines).block(block);
+    f.render_widget(para, main_area);
+    render_status_bar_simple(f, status_area);
+}
+
+/// Renders the Goals detail view (View 4).
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss
+)]
+fn render_goals_view(f: &mut Frame, area: Rect, app: &App) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(1), Constraint::Length(1)])
+        .split(area);
+
+    let main_area = chunks[0];
+    let status_area = chunks[1];
+
+    let block = Block::default()
+        .title(" Goals — ↑↓: navigate ")
+        .borders(Borders::ALL)
+        .style(Style::default().fg(Color::Cyan));
+
+    let Some(ref goals) = app.goals else {
+        let para = Paragraph::new("No goals data available").block(block);
+        f.render_widget(para, main_area);
+        render_status_bar_simple(f, status_area);
+        return;
+    };
+
+    if goals.data.is_empty() {
+        let para = Paragraph::new("No goals configured").block(block);
+        f.render_widget(para, main_area);
+        render_status_bar_simple(f, status_area);
+        return;
+    }
+
+    let mut lines = vec![];
+    for (idx, goal) in goals.data.iter().enumerate() {
+        let status_symbol = match goal.status.as_str() {
+            "success" => "✓",
+            "failure" => "✗",
+            "pending" => "⋯",
+            _ => "?",
+        };
+
+        let color = match goal.status.as_str() {
+            "success" => Color::Green,
+            "failure" => Color::Red,
+            "pending" => Color::Yellow,
+            _ => Color::Gray,
+        };
+
+        let style = if idx == app.list_index {
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default()
+        };
+
+        let target_secs = goal.seconds;
+        let progress_str = if target_secs > 0.0 {
+            let target_hrs = (target_secs / 3600.0).floor() as u64;
+            format!("Target: {target_hrs}h")
+        } else {
+            "No target".to_string()
+        };
+
+        lines.push(Line::from(vec![
+            Span::raw(if idx == app.list_index {
+                " ▶ "
+            } else {
+                "   "
+            }),
+            Span::styled(status_symbol, Style::default().fg(color)),
+            Span::raw(" "),
+            Span::styled(format!("{:<25}", goal.title), style),
+            Span::styled(progress_str, Style::default().fg(Color::Cyan)),
+        ]));
+
+        lines.push(Line::from(vec![
+            Span::raw("     "),
+            Span::raw(format!(
+                "Period: {}  |  Status: {}",
+                goal.delta, goal.status
+            )),
+        ]));
+        lines.push(Line::from(""));
+    }
+
+    let para = Paragraph::new(lines).block(block);
+    f.render_widget(para, main_area);
+    render_status_bar_simple(f, status_area);
+}
+
+/// Renders the Activity calendar view (View 5) — GitHub-style heatmap.
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss
+)]
+fn render_activity_view(f: &mut Frame, area: Rect, app: &App) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(1), Constraint::Length(1)])
+        .split(area);
+
+    let main_area = chunks[0];
+    let status_area = chunks[1];
+
+    let block = Block::default()
+        .title(" Activity Calendar (Last 30 Days) ")
+        .borders(Borders::ALL)
+        .style(Style::default().fg(Color::Cyan));
+
+    let Some(ref activity_30d) = app.activity_30d else {
+        let para = Paragraph::new("No activity data available").block(block);
+        f.render_widget(para, main_area);
+        render_status_bar_simple(f, status_area);
+        return;
+    };
+
+    if activity_30d.data.is_empty() {
+        let para = Paragraph::new("No activity data").block(block);
+        f.render_widget(para, main_area);
+        render_status_bar_simple(f, status_area);
+        return;
+    }
+
+    // Build heatmap: 5 rows (weekdays), 6 columns (weeks)
+    // Use block characters: ░ (0), ▒ (low), ▓ (med), █ (high)
+    let max_secs = activity_30d
+        .data
+        .iter()
+        .map(|d| d.grand_total.total_seconds)
+        .fold(0.0_f64, f64::max);
+
+    let mut lines = vec![Line::from("")];
+    lines.push(Line::from(Span::styled(
+        "  Each block represents one day:",
+        Style::default().fg(Color::Gray),
+    )));
+    lines.push(Line::from(""));
+
+    // Simple grid: show all 30 days in 6 rows of 5
+    let mut day_index = 0;
+    for _row in 0..6 {
+        let mut row_spans = vec![Span::raw("  ")];
+        for _col in 0..5 {
+            if day_index >= activity_30d.data.len() {
+                row_spans.push(Span::raw(" "));
+                day_index += 1;
+                continue;
+            }
+
+            let day = &activity_30d.data[day_index];
+            let ratio = if max_secs > 0.0 {
+                (day.grand_total.total_seconds / max_secs).clamp(0.0, 1.0)
+            } else {
+                0.0
+            };
+
+            let (ch, color) = if ratio < 0.25 {
+                ('░', Color::DarkGray)
+            } else if ratio < 0.5 {
+                ('▒', Color::Green)
+            } else if ratio < 0.75 {
+                ('▓', Color::Green)
+            } else {
+                ('█', Color::Green)
+            };
+
+            row_spans.push(Span::styled(
+                format!("{ch}{ch}"),
+                Style::default().fg(color),
+            ));
+            row_spans.push(Span::raw(" "));
+            day_index += 1;
+        }
+        lines.push(Line::from(row_spans));
+    }
+
+    lines.push(Line::from(""));
+    lines.push(Line::from(vec![
+        Span::raw("  "),
+        Span::styled("░░", Style::default().fg(Color::DarkGray)),
+        Span::raw(" Less  "),
+        Span::styled("██", Style::default().fg(Color::Green)),
+        Span::raw(" More"),
+    ]));
+
+    let para = Paragraph::new(lines).block(block);
+    f.render_widget(para, main_area);
+    render_status_bar_simple(f, status_area);
+}
+
+/// Helper to render a simple status bar without refresh timer.
+fn render_status_bar_simple(f: &mut Frame, area: Rect) {
+    let line = Line::from(vec![Span::raw(" Tab: switch view  ·  ?: help  ·  q: quit")]);
+    let para = Paragraph::new(line).style(Style::default().fg(Color::Gray));
+    f.render_widget(para, area);
 }
 
 /// Renders an error state.

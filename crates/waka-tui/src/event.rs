@@ -201,9 +201,9 @@ pub fn handle_key_event(app: &mut crate::app::App, key: KeyEvent) {
             app.list_up();
         }
         Down => {
-            // Max will be determined by the current view's data length.
-            // For now, just move down by 1 (capped in app.list_down).
-            app.list_down(100);
+            // Get the max for the current view's data.
+            let max = app.current_view_items_count();
+            app.list_down(max);
         }
         _ => {}
     }
