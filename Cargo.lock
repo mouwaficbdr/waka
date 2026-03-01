@@ -3260,7 +3260,7 @@ dependencies = [
 
 [[package]]
 name = "waka"
-version = "0.4.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -3286,7 +3286,7 @@ dependencies = [
 
 [[package]]
 name = "waka-api"
-version = "0.4.0"
+version = "1.0.0"
 dependencies = [
  "chrono",
  "insta",
@@ -3301,7 +3301,7 @@ dependencies = [
 
 [[package]]
 name = "waka-cache"
-version = "0.4.0"
+version = "1.0.0"
 dependencies = [
  "chrono",
  "directories",
@@ -3314,7 +3314,7 @@ dependencies = [
 
 [[package]]
 name = "waka-config"
-version = "0.4.0"
+version = "1.0.0"
 dependencies = [
  "base64",
  "chrono",
@@ -3329,7 +3329,7 @@ dependencies = [
 
 [[package]]
 name = "waka-render"
-version = "0.4.0"
+version = "1.0.0"
 dependencies = [
  "chrono",
  "comfy-table",
@@ -3343,7 +3343,7 @@ dependencies = [
 
 [[package]]
 name = "waka-tui"
-version = "0.4.0"
+version = "1.0.0"
 dependencies = [
  "chrono",
  "crossterm",
