@@ -3,8 +3,7 @@
 The WakaTime CLI you always deserved. Fast, beautiful, composable.
 
 [![CI](https://github.com/mouwaficbdr/waka/actions/workflows/ci.yml/badge.svg)](https://github.com/mouwaficbdr/waka/actions/workflows/ci.yml)
-[![Crates.io Version](https://img.shields.io/crates/v/waka-api.svg)](https://crates.io/crates/waka-api)
-[![Crates.io Downloads](https://img.shields.io/crates/d/waka-api.svg)](https://crates.io/crates/waka-api)
+[![crates.io](https://img.shields.io/crates/v/waka-api.svg)](https://crates.io/crates/waka-api)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ![waka — WakaTime CLI](demo.gif)
@@ -13,13 +12,8 @@ The WakaTime CLI you always deserved. Fast, beautiful, composable.
 
 ## Installation
 
-**Build from source:**
-
-```bash
-git clone https://github.com/mouwaficbdr/waka.git
-cargo build --release
-# binary is at: ./target/release/waka
-```
+> **Note:** The `waka` binary is not available via `cargo install`.
+> Use Homebrew or the universal installer below.
 
 **Homebrew (macOS / Linux):**
 
