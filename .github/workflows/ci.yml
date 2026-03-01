@@ -103,16 +103,16 @@ jobs:
           fi
 
   # ────────────────────────────────────────────────
-  # Job 6: MSRV Check (1.82.0)
+  # Job 6: MSRV Check (1.88.0)
   # ────────────────────────────────────────────────
   msrv:
-    name: MSRV (1.82.0)
+    name: MSRV (1.88.0)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.82.0"
+          toolchain: "1.88.0"
       - uses: Swatinem/rust-cache@v2
       - name: Check MSRV compatibility
         run: cargo check --all-features

@@ -12,7 +12,7 @@ resolver = "2"
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.82.0"
+rust-version = "1.88.0"   # Effective MSRV — transitive deps require ≥1.88; see SPEC_GAPS.md
 authors = ["waka contributors"]
 license = "MIT"
 repository = "https://github.com/mouwaficbdr/waka"
