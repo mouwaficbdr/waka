@@ -44,6 +44,8 @@ set edit:completion:arg-completer[waka] = {|@words|
             cand completions 'Generate shell completions'
             cand config 'Manage waka configuration'
             cand cache 'Manage the local response cache'
+            cand update 'Update waka to the latest version'
+            cand changelog 'Show the changelog from the installed version to the latest'
             cand help 'Print this message or the help of the given subcommand(s)'
         }
         &'waka;auth'= {
@@ -657,10 +659,12 @@ set edit:completion:arg-completer[waka] = {|@words|
             cand --to 'End date (YYYY-MM-DD)'
             cand -o 'Output file path'
             cand --output 'Output file path'
-            cand -f 'Report format'
-            cand --format 'Report format'
+            cand -F 'Report format'
+            cand --output-format 'Report format'
             cand -p 'Use a specific profile'
             cand --profile 'Use a specific profile'
+            cand -f 'Output format: table, json, csv, plain'
+            cand --format 'Output format: table, json, csv, plain'
             cand --no-cache 'Skip the cache and force a fresh API request'
             cand --no-color 'Disable colors (equivalent to `NO_COLOR=1`)'
             cand --quiet 'Suppress non-essential output'
@@ -958,6 +962,36 @@ set edit:completion:arg-completer[waka] = {|@words|
         }
         &'waka;cache;help;help'= {
         }
+        &'waka;update'= {
+            cand -p 'Use a specific profile'
+            cand --profile 'Use a specific profile'
+            cand -f 'Output format: table, json, csv, plain'
+            cand --format 'Output format: table, json, csv, plain'
+            cand --no-cache 'Skip the cache and force a fresh API request'
+            cand --no-color 'Disable colors (equivalent to `NO_COLOR=1`)'
+            cand --quiet 'Suppress non-essential output'
+            cand --verbose 'Enable verbose mode (shows HTTP requests)'
+            cand --csv-bom 'Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)'
+            cand -h 'Print help'
+            cand --help 'Print help'
+            cand -V 'Print version'
+            cand --version 'Print version'
+        }
+        &'waka;changelog'= {
+            cand -p 'Use a specific profile'
+            cand --profile 'Use a specific profile'
+            cand -f 'Output format: table, json, csv, plain'
+            cand --format 'Output format: table, json, csv, plain'
+            cand --no-cache 'Skip the cache and force a fresh API request'
+            cand --no-color 'Disable colors (equivalent to `NO_COLOR=1`)'
+            cand --quiet 'Suppress non-essential output'
+            cand --verbose 'Enable verbose mode (shows HTTP requests)'
+            cand --csv-bom 'Prepend a UTF-8 BOM to CSV output (for Windows Excel compatibility)'
+            cand -h 'Print help'
+            cand --help 'Print help'
+            cand -V 'Print version'
+            cand --version 'Print version'
+        }
         &'waka;help'= {
             cand auth 'Manage API key and authentication'
             cand stats 'Show coding statistics'
@@ -972,6 +1006,8 @@ set edit:completion:arg-completer[waka] = {|@words|
             cand completions 'Generate shell completions'
             cand config 'Manage waka configuration'
             cand cache 'Manage the local response cache'
+            cand update 'Update waka to the latest version'
+            cand changelog 'Show the changelog from the installed version to the latest'
             cand help 'Print this message or the help of the given subcommand(s)'
         }
         &'waka;help;auth'= {
@@ -1098,6 +1134,10 @@ set edit:completion:arg-completer[waka] = {|@words|
         &'waka;help;cache;info'= {
         }
         &'waka;help;cache;path'= {
+        }
+        &'waka;help;update'= {
+        }
+        &'waka;help;changelog'= {
         }
         &'waka;help;help'= {
         }
