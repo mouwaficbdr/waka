@@ -74,4 +74,3 @@ jobs:
           commit_message: "chore(changelog): update CHANGELOG for ${{ github.ref_name }}"
           file_pattern: CHANGELOG.md
           commit_options: "--no-verify"
-
