@@ -1417,8 +1417,9 @@ fn detect_install_method() -> &'static str {
         if path_str.contains("/Cellar/") || path_str.contains("/homebrew/") {
             return "homebrew";
         }
-        // cargo install places binaries in ~/.cargo/bin
-        if path_str.contains("/.cargo/bin/") {
+        // cargo install places binaries in ~/.cargo/bin (Unix) or
+        // %USERPROFILE%\.cargo\bin (Windows).
+        if path_str.contains("/.cargo/bin/") || path_str.contains(r"\.cargo\bin\") {
             return "cargo";
         }
     }
