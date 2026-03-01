@@ -23,16 +23,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: rustsec/audit-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+      - name: Run cargo audit
+        run: cargo audit --deny unsound --deny yanked
+        # --deny unsound: fail on soundness issues
+        # --deny yanked: fail on yanked crates
+        # unmaintained warnings do NOT fail the build
 
   deny:
     name: cargo deny (licenses + advisories)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: EmbarkStudios/cargo-deny-action@v1
+      - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check
           arguments: --all-features

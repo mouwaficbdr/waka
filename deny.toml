@@ -36,17 +36,6 @@ allow = [
     "CC0-1.0",
     "Zlib",
 ]
-deny = [
-    "GPL-2.0",
-    "GPL-3.0",
-    "LGPL-2.0",
-    "LGPL-2.1",
-    "LGPL-3.0",
-    "AGPL-3.0",
-]
-copyleft = "deny"
-allow-osi-fsf-free = "neither"
-default = "deny"
 unused-allowed-license = "warn"
 
 # ─────────────────────────────────────────
@@ -70,3 +59,10 @@ deny = [
 unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+
+# ─────────────────────────────────────────
+# Cargo configuration
+# ─────────────────────────────────────────
+[cargo]
+# Do not pin to a specific Cargo version for MSRV checks
+msrv-pin = false
