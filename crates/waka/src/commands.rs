@@ -22,8 +22,8 @@ use crate::auth;
 use crate::cli::{
     AuthCommands, CacheCommands, Commands, CompletionShell, ConfigCommands, DashboardArgs,
     EditorsCommands, GlobalOpts, GoalsCommands, LanguagesCommands, LeaderboardCommands,
-    OutputFormat as CliFormat, ProjectsCommands, PromptArgs, ReportCommands, StatsCommands,
-    StatsFilterOpts,
+    OutputFormat as CliFormat, ProjectsCommands, PromptArgs, PromptStyle, ReportCommands,
+    StatsCommands, StatsFilterOpts,
 };
 
 /// Dispatch a parsed [`Commands`] variant to the appropriate handler.
@@ -41,7 +41,10 @@ pub async fn dispatch(cmd: Commands, global: GlobalOpts) -> Result<()> {
         Commands::Leaderboard { cmd } => leaderboard(cmd),
         Commands::Report { cmd } => report(cmd),
         Commands::Dashboard(args) => dashboard(args),
-        Commands::Prompt(args) => prompt(args),
+        Commands::Prompt(args) => {
+            prompt(args, &global);
+            Ok(())
+        }
         Commands::Completions { shell } => {
             completions(shell);
             Ok(())
@@ -570,8 +573,110 @@ fn dashboard(_args: DashboardArgs) -> Result<()> {
 
 // ─── prompt ───────────────────────────────────────────────────────────────────
 
-fn prompt(_args: PromptArgs) -> Result<()> {
-    bail!("not yet implemented: prompt")
+/// Implements `waka prompt`.
+///
+/// Reads today's total coding time from the local cache and prints a compact
+/// string suitable for embedding in a shell prompt or tmux status bar.
+///
+/// **Never returns an error** — any failure (cache miss, expired entry,
+/// corrupted DB) results in empty output so that the caller's prompt is never
+/// broken. The operation is cache-only: no network request is ever made.
+///
+/// # Output formats
+///
+/// | `--format` | Example output |
+/// |---|---|
+/// | `simple`   | `⏱ 6h 42m` |
+/// | `detailed` | `⏱ 6h 42m \| my-saas` |
+// `needless_pass_by_value`: PromptArgs is a simple options struct — no heap allocation.
+#[allow(clippy::needless_pass_by_value)]
+fn prompt(args: PromptArgs, global: &GlobalOpts) {
+    // All errors are swallowed — a broken prompt is never acceptable.
+    if let Some(output) = prompt_inner(&args, global) {
+        println!("{output}");
+    }
+}
+
+/// Formats a prompt output string from pre-computed values.
+///
+/// Extracted as a pure function for testability.
+fn format_prompt_output(total_secs: u64, style: PromptStyle, top_project: Option<&str>) -> String {
+    let hours = total_secs / 3_600;
+    let mins = (total_secs % 3_600) / 60;
+
+    let time_str = if hours > 0 {
+        format!("\u{23F1} {hours}h {mins}m")
+    } else {
+        format!("\u{23F1} {mins}m")
+    };
+
+    match style {
+        PromptStyle::Simple => time_str,
+        PromptStyle::Detailed => match top_project {
+            Some(proj) => format!("{time_str} | {proj}"),
+            None => time_str,
+        },
+    }
+}
+
+/// Core logic for [`prompt`]. Returns `None` on any failure (cache miss,
+/// expired entry, I/O error).  The 100ms budget is inherently satisfied
+/// because this function only reads from sled (no network I/O).
+fn prompt_inner(args: &PromptArgs, global: &GlobalOpts) -> Option<String> {
+    let profile = global.profile.as_deref().unwrap_or("default");
+
+    // Open the cache — silently skip on failure.
+    let store = CacheStore::open(profile).ok()?;
+
+    // Build the same cache key that `waka stats today` writes.
+    let cache_key = SummaryParams::today().cache_key();
+
+    // Retrieve the entry. Miss or expired → silent empty output.
+    let entry = store
+        .get::<waka_api::SummaryResponse>(&cache_key)
+        .ok()
+        .flatten()?;
+
+    if entry.is_expired() {
+        return None;
+    }
+
+    let response = &entry.value;
+
+    // Sum grand totals across all days using integer fields to avoid f64→u64 casts.
+    // (Today is always a single day, but be defensive for multi-day ranges.)
+    let total_secs: u64 = response
+        .data
+        .iter()
+        .map(|d| {
+            u64::from(d.grand_total.hours) * 3_600
+                + u64::from(d.grand_total.minutes) * 60
+                + u64::from(d.grand_total.seconds)
+        })
+        .sum();
+
+    if total_secs == 0 {
+        return None;
+    }
+
+    // Find the top project by total_seconds across all days.
+    let top_project: Option<String> = {
+        let mut acc = std::collections::HashMap::<&str, f64>::new();
+        for day in &response.data {
+            for p in &day.projects {
+                *acc.entry(p.name.as_str()).or_insert(0.0) += p.total_seconds;
+            }
+        }
+        acc.into_iter()
+            .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
+            .map(|(name, _)| name.to_owned())
+    };
+
+    Some(format_prompt_output(
+        total_secs,
+        args.format,
+        top_project.as_deref(),
+    ))
 }
 
 // ─── completions ──────────────────────────────────────────────────────────────
@@ -1192,6 +1297,44 @@ mod tests {
     fn version_is_newer_returns_false_for_malformed_input() {
         assert!(!version_is_newer("not-a-version", "0.1.0"));
         assert!(!version_is_newer("0.1.0", "not-a-version"));
+    }
+
+    // ── format_prompt_output ──────────────────────────────────────────────────
+
+    #[test]
+    fn prompt_simple_hours_and_minutes() {
+        let out = format_prompt_output(6 * 3_600 + 42 * 60, PromptStyle::Simple, None);
+        assert_eq!(out, "⏱ 6h 42m");
+    }
+
+    #[test]
+    fn prompt_simple_minutes_only() {
+        let out = format_prompt_output(42 * 60, PromptStyle::Simple, None);
+        assert_eq!(out, "⏱ 42m");
+    }
+
+    #[test]
+    fn prompt_simple_zero_minutes() {
+        let out = format_prompt_output(5, PromptStyle::Simple, None);
+        assert_eq!(out, "⏱ 0m");
+    }
+
+    #[test]
+    fn prompt_detailed_with_project() {
+        let out = format_prompt_output(6 * 3_600 + 42 * 60, PromptStyle::Detailed, Some("my-saas"));
+        assert_eq!(out, "⏱ 6h 42m | my-saas");
+    }
+
+    #[test]
+    fn prompt_detailed_without_project_falls_back_to_simple() {
+        let out = format_prompt_output(6 * 3_600 + 42 * 60, PromptStyle::Detailed, None);
+        assert_eq!(out, "⏱ 6h 42m");
+    }
+
+    #[test]
+    fn prompt_exactly_one_hour() {
+        let out = format_prompt_output(3_600, PromptStyle::Simple, None);
+        assert_eq!(out, "⏱ 1h 0m");
     }
 
     // ── parse_duration ────────────────────────────────────────────────────────

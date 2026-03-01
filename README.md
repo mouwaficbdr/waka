@@ -131,6 +131,33 @@ Cache is TTL-aware and stored per-profile under the platform cache directory:
 waka config doctor   # full diagnostic: API key, network, cache, shell completions, update check
 ```
 
+### Shell Prompt Integration
+
+`waka prompt` reads today's total from the local cache only — no network call, always fast.
+
+```bash
+waka prompt                   # ⏱ 6h 42m
+waka prompt --format detailed # ⏱ 6h 42m | my-saas
+```
+
+**Starship** ([starship.rs](https://starship.rs/)) module:
+
+```toml
+# ~/.config/starship.toml
+[custom.waka]
+command = "waka prompt --format simple 2>/dev/null"
+when = "true"
+format = "[$output]($style) "
+style = "dimmed yellow"
+```
+
+**tmux** status bar:
+
+```bash
+# ~/.tmux.conf
+set -g status-right "#(waka prompt 2>/dev/null) | %H:%M"
+```
+
 ### Shell Completions
 
 ```bash
@@ -180,7 +207,7 @@ Color output respects `NO_COLOR`, `TERM=dumb`, and `--no-color`.
 
 See [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) for the full phased roadmap.
 
-Coming next: TUI interactive dashboard, shell prompt integration, goal notifications,
+Coming next: TUI interactive dashboard, goal progress bars with notifications,
 update checker.
 
 ## Contributing
