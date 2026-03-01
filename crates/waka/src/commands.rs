@@ -353,7 +353,7 @@ fn build_api_client(profile: &str, config: &Config) -> Result<WakaClient> {
         .with_context(|| format!("invalid api_url in profile '{profile}': {api_url}"))
 }
 
-/// Converts a [`Period`] (CLI value) to its [`StatsRange`] equivalent.
+/// Converts a [`crate::cli::Period`] (CLI value) to its [`StatsRange`] equivalent.
 #[must_use]
 fn period_to_stats_range(period: crate::cli::Period) -> StatsRange {
     match period {
