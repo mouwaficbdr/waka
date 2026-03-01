@@ -7,14 +7,21 @@
 //! # Example
 //!
 //! ```rust,no_run
-//! // async fn example() {
-//! //     // Client construction and endpoint calls are added in tasks 0.4/0.5.
-//! // }
+//! use waka_api::WakaClient;
+//!
+//! async fn example() -> Result<(), waka_api::ApiError> {
+//!     let client = WakaClient::new("waka_xxxxxx");
+//!     let me = client.me().await?;
+//!     println!("Hello {}", me.username);
+//!     Ok(())
+//! }
 //! ```
 
+pub mod client;
 pub mod error;
 pub mod types;
 
+pub use client::WakaClient;
 pub use error::ApiError;
 pub use types::{
     BestDay, Goal, GoalChartEntry, GoalChartRange, GoalsResponse, GrandTotal, LeaderboardEntry,
