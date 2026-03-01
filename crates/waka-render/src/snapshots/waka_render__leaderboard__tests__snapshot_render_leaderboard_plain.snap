@@ -1,0 +1,9 @@
+---
+source: crates/waka-render/src/leaderboard.rs
+expression: out
+---
+ 1. Alice Coder — 84h 0m (daily avg: 12h 0m) — TypeScript
+ 2. Bob Hacker — 70h 0m (daily avg: 10h 0m) — Python
+ 3. Carol Dev — 56h 0m (daily avg: 8h 0m) — Go
+ 4. Jane Developer — 42h 0m (daily avg: 6h 0m) — Rust
+ 5. Dave Script — 35h 0m (daily avg: 5h 0m) — JavaScript

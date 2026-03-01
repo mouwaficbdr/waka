@@ -15,7 +15,7 @@ use waka_api::{StatsRange, SummaryEntry, SummaryParams, WakaClient};
 use waka_cache::CacheStore;
 use waka_config::{Config, CredentialStore, ProfileConfig};
 use waka_render::{
-    detect_output_format, should_use_color, BreakdownRenderer, GoalRenderer,
+    detect_output_format, should_use_color, BreakdownRenderer, GoalRenderer, LeaderboardRenderer,
     OutputFormat as RenderFormat, RenderOptions, SummaryRenderer,
 };
 
@@ -50,7 +50,7 @@ pub async fn dispatch(cmd: Commands, global: GlobalOpts) -> Result<()> {
         Commands::Languages { cmd } => languages(cmd, &global).await,
         Commands::Editors { cmd } => editors(cmd, &global).await,
         Commands::Goals { cmd } => goals(cmd, &global).await,
-        Commands::Leaderboard { cmd } => leaderboard(cmd),
+        Commands::Leaderboard { cmd } => leaderboard(cmd, &global).await,
         Commands::Report { cmd } => report(cmd),
         Commands::Dashboard(args) => dashboard(args),
         Commands::Prompt(args) => {
@@ -708,12 +708,31 @@ fn goals_notify_success(title: &str) {
 
 // ─── leaderboard ──────────────────────────────────────────────────────────────
 
-// `needless_pass_by_value`: cmd is consumed by the match for exhaustive checking.
-#[allow(clippy::needless_pass_by_value)]
-fn leaderboard(cmd: LeaderboardCommands) -> Result<()> {
+async fn leaderboard(cmd: LeaderboardCommands, global: &GlobalOpts) -> Result<()> {
+    let config = Config::load().unwrap_or_default();
+    let profile = stats_profile_name(global);
+    let client = build_api_client(&profile, &config)?;
+    let format = stats_resolve_format(global, &config);
+    let color = !global.no_color && should_use_color();
+    let opts = RenderOptions {
+        color,
+        format,
+        csv_bom: global.csv_bom,
+        ..RenderOptions::default()
+    };
+
     match cmd {
-        LeaderboardCommands::Show { .. } => bail!("not yet implemented: leaderboard show"),
+        LeaderboardCommands::Show { page } => {
+            let pb = stats_spinner("Fetching leaderboard …");
+            let resp = client.leaderboard(page).await;
+            pb.finish_and_clear();
+            let resp = resp.with_context(|| "failed to fetch leaderboard from WakaTime")?;
+            let output = LeaderboardRenderer::render(&resp, &opts);
+            print!("{output}");
+        }
     }
+
+    Ok(())
 }
 
 // ─── report ───────────────────────────────────────────────────────────────────

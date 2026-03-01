@@ -1,0 +1,10 @@
+---
+source: crates/waka-render/src/leaderboard.rs
+expression: out
+---
+rank,user,total_seconds,daily_average,top_language
+1,Alice Coder,302400,43200,TypeScript
+2,Bob Hacker,252000,36000,Python
+3,Carol Dev,201600,28800,Go
+4,Jane Developer,151200,21600,Rust
+5,Dave Script,126000,18000,JavaScript

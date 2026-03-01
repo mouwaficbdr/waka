@@ -1,0 +1,195 @@
+{
+  "current_user": {
+    "rank": 4,
+    "running_total": {
+      "daily_average": 21600.0,
+      "human_readable_daily_average": "6 hrs",
+      "human_readable_total": "42 hrs",
+      "languages": [
+        { "name": "Rust", "percent": 72.1, "total_seconds": 109080.0, "digital": "30:18", "hours": 30, "minutes": 18, "seconds": 0, "text": "30 hrs 18 mins", "decimal": "30.3" },
+        { "name": "TOML", "percent": 14.5, "total_seconds": 21924.0, "digital": "6:05", "hours": 6, "minutes": 5, "seconds": 24, "text": "6 hrs 5 mins", "decimal": "6.1" }
+      ],
+      "modified_at": "2025-01-13T10:00:00Z",
+      "total_seconds": 151200.0
+    },
+    "user": {
+      "display_name": "Jane Developer",
+      "email": null,
+      "full_name": "Jane Developer",
+      "human_readable_website": "janedeveloper.dev",
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "is_email_public": false,
+      "is_hireable": false,
+      "location": "Berlin, Germany",
+      "photo": "https://wakatime.com/photo/a1b2c3d4",
+      "photo_public": true,
+      "profile_url": "https://wakatime.com/@janedeveloper",
+      "public_email": null,
+      "username": "janedeveloper",
+      "website": null
+    }
+  },
+  "data": [
+    {
+      "rank": 1,
+      "running_total": {
+        "daily_average": 43200.0,
+        "human_readable_daily_average": "12 hrs",
+        "human_readable_total": "84 hrs",
+        "languages": [
+          { "name": "TypeScript", "percent": 88.0, "total_seconds": 267264.0, "digital": "74:14", "hours": 74, "minutes": 14, "seconds": 24, "text": "74 hrs 14 mins", "decimal": "74.2" }
+        ],
+        "modified_at": "2025-01-13T10:00:00Z",
+        "total_seconds": 302400.0
+      },
+      "user": {
+        "display_name": "Alice Coder",
+        "email": null,
+        "full_name": null,
+        "human_readable_website": null,
+        "id": "bbbbbbbb-0001-0000-0000-000000000001",
+        "is_email_public": false,
+        "is_hireable": true,
+        "location": "San Francisco, CA",
+        "photo": null,
+        "photo_public": false,
+        "profile_url": "https://wakatime.com/@alicecoder",
+        "public_email": null,
+        "username": "alicecoder",
+        "website": null
+      }
+    },
+    {
+      "rank": 2,
+      "running_total": {
+        "daily_average": 36000.0,
+        "human_readable_daily_average": "10 hrs",
+        "human_readable_total": "70 hrs",
+        "languages": [
+          { "name": "Python", "percent": 95.0, "total_seconds": 239400.0, "digital": "66:30", "hours": 66, "minutes": 30, "seconds": 0, "text": "66 hrs 30 mins", "decimal": "66.5" }
+        ],
+        "modified_at": "2025-01-13T10:00:00Z",
+        "total_seconds": 252000.0
+      },
+      "user": {
+        "display_name": "Bob Hacker",
+        "email": null,
+        "full_name": null,
+        "human_readable_website": null,
+        "id": "bbbbbbbb-0002-0000-0000-000000000002",
+        "is_email_public": false,
+        "is_hireable": false,
+        "location": "Tokyo, Japan",
+        "photo": null,
+        "photo_public": false,
+        "profile_url": "https://wakatime.com/@bobhacker",
+        "public_email": null,
+        "username": "bobhacker",
+        "website": null
+      }
+    },
+    {
+      "rank": 3,
+      "running_total": {
+        "daily_average": 28800.0,
+        "human_readable_daily_average": "8 hrs",
+        "human_readable_total": "56 hrs",
+        "languages": [
+          { "name": "Go", "percent": 60.0, "total_seconds": 120960.0, "digital": "33:36", "hours": 33, "minutes": 36, "seconds": 0, "text": "33 hrs 36 mins", "decimal": "33.6" },
+          { "name": "C", "percent": 40.0, "total_seconds": 80640.0, "digital": "22:24", "hours": 22, "minutes": 24, "seconds": 0, "text": "22 hrs 24 mins", "decimal": "22.4" }
+        ],
+        "modified_at": "2025-01-13T10:00:00Z",
+        "total_seconds": 201600.0
+      },
+      "user": {
+        "display_name": "Carol Dev",
+        "email": null,
+        "full_name": null,
+        "human_readable_website": null,
+        "id": "bbbbbbbb-0003-0000-0000-000000000003",
+        "is_email_public": false,
+        "is_hireable": false,
+        "location": "London, UK",
+        "photo": null,
+        "photo_public": false,
+        "profile_url": "https://wakatime.com/@caroldev",
+        "public_email": null,
+        "username": "caroldev",
+        "website": null
+      }
+    },
+    {
+      "rank": 4,
+      "running_total": {
+        "daily_average": 21600.0,
+        "human_readable_daily_average": "6 hrs",
+        "human_readable_total": "42 hrs",
+        "languages": [
+          { "name": "Rust", "percent": 72.1, "total_seconds": 109080.0, "digital": "30:18", "hours": 30, "minutes": 18, "seconds": 0, "text": "30 hrs 18 mins", "decimal": "30.3" },
+          { "name": "TOML", "percent": 14.5, "total_seconds": 21924.0, "digital": "6:05", "hours": 6, "minutes": 5, "seconds": 24, "text": "6 hrs 5 mins", "decimal": "6.1" }
+        ],
+        "modified_at": "2025-01-13T10:00:00Z",
+        "total_seconds": 151200.0
+      },
+      "user": {
+        "display_name": "Jane Developer",
+        "email": null,
+        "full_name": "Jane Developer",
+        "human_readable_website": "janedeveloper.dev",
+        "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "is_email_public": false,
+        "is_hireable": false,
+        "location": "Berlin, Germany",
+        "photo": "https://wakatime.com/photo/a1b2c3d4",
+        "photo_public": true,
+        "profile_url": "https://wakatime.com/@janedeveloper",
+        "public_email": null,
+        "username": "janedeveloper",
+        "website": null
+      }
+    },
+    {
+      "rank": 5,
+      "running_total": {
+        "daily_average": 18000.0,
+        "human_readable_daily_average": "5 hrs",
+        "human_readable_total": "35 hrs",
+        "languages": [
+          { "name": "JavaScript", "percent": 100.0, "total_seconds": 126000.0, "digital": "35:00", "hours": 35, "minutes": 0, "seconds": 0, "text": "35 hrs", "decimal": "35.0" }
+        ],
+        "modified_at": "2025-01-13T10:00:00Z",
+        "total_seconds": 126000.0
+      },
+      "user": {
+        "display_name": "Dave Script",
+        "email": null,
+        "full_name": null,
+        "human_readable_website": null,
+        "id": "bbbbbbbb-0005-0000-0000-000000000005",
+        "is_email_public": false,
+        "is_hireable": true,
+        "location": "Paris, France",
+        "photo": null,
+        "photo_public": false,
+        "profile_url": "https://wakatime.com/@davescript",
+        "public_email": null,
+        "username": "davescript",
+        "website": null
+      }
+    }
+  ],
+  "language": null,
+  "modified_at": "2025-01-13T10:00:00Z",
+  "page": 1,
+  "range": {
+    "end_date": "2025-01-13",
+    "end_text": "Jan 13",
+    "name": "last_7_days",
+    "start_date": "2025-01-07",
+    "start_text": "Jan 7",
+    "text": "Last 7 Days"
+  },
+  "timeout": 15,
+  "total_pages": 10,
+  "writes_only": false
+}

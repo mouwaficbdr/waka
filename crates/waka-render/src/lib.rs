@@ -8,6 +8,7 @@
 pub mod breakdown;
 pub mod format;
 pub mod goals;
+pub mod leaderboard;
 pub mod options;
 pub mod summary;
 
@@ -15,5 +16,6 @@ pub mod summary;
 pub use breakdown::BreakdownRenderer;
 pub use format::{format_bar, format_duration};
 pub use goals::GoalRenderer;
+pub use leaderboard::LeaderboardRenderer;
 pub use options::{detect_output_format, should_use_color, OutputFormat, RenderOptions};
 pub use summary::SummaryRenderer;
