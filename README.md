@@ -1,143 +1,193 @@
 # waka
 
-[![CI](https://github.com/mouwaficbdr/waka/actions/workflows/ci.yml/badge.svg)](https://github.com/mouwaficbdr/waka/actions/workflows/ci.yml)
-[![Security Audit](https://github.com/mouwaficbdr/waka/actions/workflows/audit.yml/badge.svg)](https://github.com/mouwaficbdr/waka/actions/workflows/audit.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Crates.io](https://img.shields.io/crates/v/waka-cli.svg)](https://crates.io/crates/waka-cli)
+The WakaTime CLI you always deserved. Fast, beautiful, composable.
 
-**The WakaTime CLI you always deserved.** Fast, beautiful, composable.
+[![CI](https://github.com/mouwaficbdr/waka/actions/workflows/ci.yml/badge.svg)](https://github.com/mouwaficbdr/waka/actions/workflows/ci.yml)
+[![Crates.io Version](https://img.shields.io/crates/v/waka-cli.svg)](https://crates.io/crates/waka-cli)
+[![Crates.io Downloads](https://img.shields.io/crates/d/waka-cli.svg)](https://crates.io/crates/waka-cli)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+<!-- SCREENSHOT: insert demo.gif here once generated -->
 
 ---
 
 ## Installation
 
-```bash
-# Cargo
-cargo install waka-cli
+**Cargo:**
 
-# macOS / Linux (Homebrew)
+```bash
+cargo install waka-cli
+```
+
+**Homebrew (macOS / Linux):**
+
+```bash
 brew tap mouwaficbdr/waka
 brew install waka
+```
 
-# Universal installer
+**Universal installer (cargo-dist):**
+
+```bash
 curl -sSfL https://github.com/mouwaficbdr/waka/releases/latest/download/waka-installer.sh | sh
 ```
+
+---
 
 ## Quick Start
 
 ```bash
-# Set up your API key (from https://wakatime.com/settings/api-key)
-waka auth login
-
-# Today's coding stats
-waka stats today
-
-# Last 7 days
-waka stats week
-
-# Output as JSON and pipe to jq
-waka stats today --format json | jq '.languages[0]'
-
-# Export to CSV (with Windows BOM for Excel)
-waka stats week --format csv --csv-bom > week.csv
+waka auth login          # authenticate with your WakaTime API key
+waka stats today         # view today's coding activity
+waka stats week          # view the last 7 days
+waka dashboard           # launch the interactive TUI
 ```
 
-## Features
+---
 
-_All features listed here are fully implemented._
+## Commands
 
-### Authentication
+### `waka auth` — Authentication
 
-```bash
-waka auth login [--api-key <KEY>] [--profile <NAME>]
-waka auth logout [--profile <NAME>]
-waka auth status
-waka auth show-key
-waka auth switch <PROFILE>
-```
+| Command                   | Description                                                     |
+| ------------------------- | --------------------------------------------------------------- |
+| `auth login`              | Log in with your WakaTime API key (interactive or `--api-key`) |
+| `auth logout`             | Remove the stored API key                                       |
+| `auth status`             | Show whether you are currently logged in                        |
+| `auth show-key`           | Display the stored API key (masked by default)                  |
+| `auth switch <PROFILE>`   | Switch to a different profile                                   |
 
-Multi-profile support: keep separate `work` and `personal` profiles.
-API keys are stored securely in the OS keychain (macOS Keychain, GNOME Keyring, Windows Credential Manager) with a plain-text fallback at `600` permissions.
+API keys are stored in the OS keychain (macOS Keychain, GNOME Keyring, Windows Credential Manager) with a `0600` plain-text fallback. Multi-profile support: use `-p work` or `-p personal` on any command.
 
-### Coding Stats
+### `waka stats` — Coding Statistics
 
-```bash
-waka stats today
-waka stats yesterday
-waka stats week
-waka stats month
-waka stats year
-waka stats range --from 2024-01-01 --to 2024-01-31
+| Command                                 | Description                    |
+| --------------------------------------- | ------------------------------ |
+| `stats today`                           | Today's coding activity        |
+| `stats yesterday`                       | Yesterday's coding activity    |
+| `stats week`                            | Last 7 days                    |
+| `stats month`                           | Last 30 days                   |
+| `stats year`                            | Last 365 days                  |
+| `stats range --from DATE --to DATE`     | Custom date range (YYYY-MM-DD) |
 
-# Filter by project or language
-waka stats week --project my-app --language Rust
-```
+All stats subcommands accept `--project <NAME>` and `--language <LANG>` filters.
 
-### Projects, Languages & Editors
+### `waka projects` — Projects
 
-```bash
-waka projects list [--sort-by time|name] [--limit N]
-waka projects top [--period 7d|30d|1y]
-waka projects show <PROJECT> [--from DATE] [--to DATE]
+| Command                      | Description                           |
+| ---------------------------- | ------------------------------------- |
+| `projects list`              | List all projects with coding time    |
+| `projects top`               | Show the most active projects         |
+| `projects show <PROJECT>`    | Detailed stats for one project        |
 
-waka languages list [--period 7d]
-waka languages top [--limit N]
+`projects list` accepts `--sort-by time|name` and `--limit N`.  
+`projects top` accepts `--period 7d|30d|1y`.  
+`projects show` accepts `--from DATE` and `--to DATE`.
 
-waka editors list [--period 7d]
-waka editors top [--limit N]
-```
+### `waka languages` — Languages
 
-### Goals
+| Command              | Description                          |
+| -------------------- | ------------------------------------ |
+| `languages list`     | List all languages with coding time  |
+| `languages top`      | Show top languages                   |
 
-```bash
-waka goals list
-waka goals show <GOAL_ID>
-waka goals watch [--notify] [--interval SECONDS]
-```
+`languages list` accepts `--period 7d|30d|1y`. `languages top` accepts `--limit N`.
 
-Goal watching monitors your progress in real-time and sends desktop notifications when goals are achieved (requires `notify-send` on Linux).
+### `waka editors` — Editors
 
-### Leaderboard
+| Command            | Description                        |
+| ------------------ | ---------------------------------- |
+| `editors list`     | List all editors with coding time  |
+| `editors top`      | Show top editors                   |
 
-```bash
-waka leaderboard show [--page N]
-```
+`editors list` accepts `--period 7d|30d|1y`. `editors top` accepts `--limit N`.
 
-### Interactive Dashboard (TUI)
+### `waka goals` — Goals
+
+| Command                  | Description                                    |
+| ------------------------ | ---------------------------------------------- |
+| `goals list`             | List all active goals                          |
+| `goals show <GOAL_ID>`   | Show details for a specific goal               |
+| `goals watch`            | Refresh goals periodically (`--interval SECS`) |
+
+`goals watch --notify` sends a desktop notification when a goal is reached (requires `notify-send` on Linux).
+
+### `waka leaderboard` — Leaderboard
+
+| Command              | Description                        |
+| -------------------- | ---------------------------------- |
+| `leaderboard show`   | Show the public leaderboard        |
+
+Accepts `--page N` for pagination.
+
+### `waka report` — Reports
+
+| Command                                   | Description                    |
+| ----------------------------------------- | ------------------------------ |
+| `report generate --from DATE --to DATE`   | Generate a productivity report |
+| `report summary`                          | Brief productivity summary     |
+
+`report generate` accepts `-f/--format md|html|json|csv` and `-o FILE`.  
+`report summary` accepts `--period week|month`.
+
+### `waka dashboard` — Interactive TUI
 
 ```bash
 waka dashboard [--refresh SECONDS]
 ```
 
-**Live TUI dashboard** powered by [ratatui](https://ratatui.rs/) with:
+Live TUI dashboard powered by [ratatui](https://ratatui.rs/):
 
 - 5 views: Main (overview), Projects, Languages, Goals, Activity (30-day heatmap)
-- Auto-refresh every 5 minutes (configurable with `--refresh`)
-- Keyboard navigation: Tab/1-5 to switch views, ↑/↓ to scroll lists
-- `r` key for manual refresh
-- `e` key to export current view data to JSON
-- Offline indicator and loading spinner
-- Graceful terminal resize handling
+- Auto-refresh every 60 seconds (configurable with `--refresh`)
+- Keyboard navigation: `Tab` / `1–5` to switch views, `↑↓` to scroll
+- `r` to refresh, `e` to export current view to JSON, `?` for help, `q` / Esc to quit
 
-Press `?` for help, `q` or Esc to quit.
-
-### Reports
+### `waka prompt` — Shell Prompt Integration
 
 ```bash
-waka report generate --from 2024-01-01 --to 2024-01-31 [--format md|html|json|csv] [-o report.md]
-waka report summary [--period week|month]
+waka prompt [--format simple|detailed]
 ```
 
-### Cache Management
+Reads today's total from the local cache only — no network call, always fast.
+
+```
+⏱ 6h 42m                   # simple (default)
+⏱ 6h 42m | my-saas          # detailed
+```
+
+### `waka completions` — Shell Completions
 
 ```bash
-waka cache info          # entry count, disk usage, last write
-waka cache path          # print the cache directory
-waka cache clear         # remove all cached entries
-waka cache clear --older 24h   # remove entries older than 24h
+waka completions bash        # Bash
+waka completions zsh         # Zsh
+waka completions fish        # Fish
+waka completions powershell  # PowerShell
+waka completions elvish      # Elvish
 ```
 
-Cache is TTL-aware and stored per-profile under the platform cache directory:
+### `waka config` — Configuration
+
+| Command                      | Description                          |
+| ---------------------------- | ------------------------------------ |
+| `config get <KEY>`           | Get the value of a config key        |
+| `config set <KEY> <VALUE>`   | Set the value of a config key        |
+| `config edit`                | Open the config file in `$EDITOR`    |
+| `config path`                | Print the path to the config file    |
+| `config reset`               | Reset config to defaults             |
+| `config doctor`              | Run a full diagnostic check          |
+
+### `waka cache` — Cache Management
+
+| Command        | Description                         |
+| -------------- | ----------------------------------- |
+| `cache info`   | Entry count, disk usage, last write |
+| `cache path`   | Print the cache directory path      |
+| `cache clear`  | Remove all cached entries           |
+
+`cache clear --older <DURATION>` removes only entries older than a given duration (e.g. `24h`, `7d`).
+
+Cache location by platform:
 
 | Platform | Path                               |
 | -------- | ---------------------------------- |
@@ -145,22 +195,58 @@ Cache is TTL-aware and stored per-profile under the platform cache directory:
 | macOS    | `~/Library/Caches/waka/<profile>/` |
 | Windows  | `%LOCALAPPDATA%\waka\<profile>\`   |
 
-### Diagnostics
+### `waka update` — Self-Update
 
 ```bash
-waka config doctor   # full diagnostic: API key, network, cache, shell completions, update check
+waka update
 ```
 
-### Shell Prompt Integration
+Updates waka to the latest release.
 
-`waka prompt` reads today's total from the local cache only — no network call, always fast.
+### `waka changelog` — Changelog
 
 ```bash
-waka prompt                   # ⏱ 6h 42m
-waka prompt --format detailed # ⏱ 6h 42m | my-saas
+waka changelog
 ```
 
-**Starship** ([starship.rs](https://starship.rs/)) module:
+Shows the changelog from the installed version to the latest.
+
+---
+
+## Output Formats
+
+Every tabular command supports `--format`:
+
+| Format | Flag             | Notes                                                       |
+| ------ | ---------------- | ----------------------------------------------------------- |
+| Table  | `--format table` | Default when stdout is a TTY                                |
+| Plain  | `--format plain` | Default when piped                                          |
+| JSON   | `--format json`  | Machine-readable                                            |
+| CSV    | `--format csv`   | Spreadsheet-friendly; add `--csv-bom` for Excel on Windows  |
+
+TSV is also supported and can be set as the default via `output.format = "tsv"` in the config file.
+
+Color output respects `NO_COLOR`, `TERM=dumb`, and `--no-color`.
+
+---
+
+## Global Options
+
+| Flag                    | Description                         |
+| ----------------------- | ----------------------------------- |
+| `-p, --profile <NAME>`  | Use a specific profile              |
+| `-f, --format <FORMAT>` | Output format                       |
+| `--no-cache`            | Skip cache, force fresh API request |
+| `--no-color`            | Disable colors                      |
+| `--quiet`               | Suppress non-essential output       |
+| `--verbose`             | Show HTTP request details           |
+| `--csv-bom`             | Prepend UTF-8 BOM to CSV output     |
+
+---
+
+## Shell Integration
+
+**Starship** ([starship.rs](https://starship.rs/)):
 
 ```toml
 # ~/.config/starship.toml
@@ -178,81 +264,32 @@ style = "dimmed yellow"
 set -g status-right "#(waka prompt 2>/dev/null) | %H:%M"
 ```
 
-### Shell Completions
+---
 
-```bash
-# Bash
-waka completions bash >> ~/.bashrc
+## `waka-api` — Rust Library
 
-# Zsh
-waka completions zsh > ~/.zsh/completions/_waka
+The HTTP client is available as a standalone crate for Rust developers who want to build their own WakaTime integrations:
 
-# Fish
-waka completions fish > ~/.config/fish/completions/waka.fish
-
-# PowerShell
-waka completions powershell | Out-String | Invoke-Expression
-
-# Elvish
-waka completions elvish > ~/.config/elvish/lib/waka.elv
+```toml
+# Cargo.toml
+[dependencies]
+waka-api = "1"
 ```
 
-## Output Formats
+```rust
+use waka_api::{WakaClient, SummaryParams};
 
-Every tabular command supports `--format`:
+let client = WakaClient::new("your-api-key");
+let summary = client.summaries(SummaryParams::today()).await?;
+```
 
-| Format | Flag             | Notes                                                      |
-| ------ | ---------------- | ---------------------------------------------------------- |
-| Table  | `--format table` | Default when stdout is a TTY                               |
-| Plain  | `--format plain` | Default when piped                                         |
-| JSON   | `--format json`  | Machine-readable                                           |
-| CSV    | `--format csv`   | Spreadsheet-friendly; add `--csv-bom` for Excel on Windows |
-| TSV    | `--format tsv`   | Tab-separated                                              |
+Full documentation at [docs.rs/waka-api](https://docs.rs/waka-api).
 
-Color output respects `NO_COLOR`, `TERM=dumb`, and `--no-color`.
-
-## Global Options
-
-| Flag                    | Description                         |
-| ----------------------- | ----------------------------------- |
-| `-p, --profile <NAME>`  | Use a specific profile              |
-| `-f, --format <FORMAT>` | Output format                       |
-| `--no-cache`            | Skip cache, force fresh API request |
-| `--no-color`            | Disable colors                      |
-| `--quiet`               | Suppress non-essential output       |
-| `--verbose`             | Show HTTP request details           |
-| `--csv-bom`             | Prepend UTF-8 BOM to CSV output     |
-
-## Roadmap
-
-See [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) for the full phased roadmap.
-
-**Phase 2 (v0.3.0) — Complete:**
-
-- ✅ Shell prompt integration (`waka prompt`)
-- ✅ Update checker (runs in background on every command)
-- ✅ Goals list, show, and watch with notifications
-- ✅ Leaderboard command
-- ✅ Interactive TUI dashboard with 5 views
-- ✅ Standardized error messages
-
-**Phase 3 (v0.4.0) — Complete:**
-
-- ✅ Report generation (Markdown, HTML, JSON, CSV)
-- ✅ `waka update` command for self-update
-- ✅ Man pages and mdBook documentation
-- ✅ `waka-api` crates.io-ready
-
-**Phase 4 (v1.0.0) — Complete:**
-
-- ✅ Stabilized public API surface (`#[non_exhaustive]`, `STABLE_INTERFACES.md`)
-- ✅ 80%+ test coverage on all library crates
-- ✅ Windows Credential Manager integration validated
-- ✅ Full cross-platform CI (Linux, macOS, Windows)
+---
 
 ## Contributing
 
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
+Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request — it covers the development setup, commit format, and coding standards used in this project.
 
 ## License
 
