@@ -8,6 +8,7 @@ mod auth;
 mod cli;
 mod commands;
 mod error;
+mod spinner;
 
 use clap::Parser;
 use cli::Cli;

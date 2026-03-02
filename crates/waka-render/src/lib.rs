@@ -12,6 +12,7 @@
 //! `FORCE_COLOR` are handled uniformly.
 
 pub mod breakdown;
+pub mod error;
 pub mod format;
 pub mod goals;
 pub mod leaderboard;
@@ -22,6 +23,7 @@ pub mod utils;
 
 // Flatten the most-used items to the crate root for ergonomic imports.
 pub use breakdown::BreakdownRenderer;
+pub use error::render_error;
 pub use format::{format_bar, format_duration};
 pub use goals::GoalRenderer;
 pub use leaderboard::LeaderboardRenderer;

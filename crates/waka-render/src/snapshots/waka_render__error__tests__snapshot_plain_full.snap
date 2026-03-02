@@ -1,0 +1,9 @@
+---
+source: crates/waka-render/src/error.rs
+expression: out
+---
+Error: Unauthorized
+Reason: The API key is missing or expired.
+Try:
+  · Run `waka auth login` to authenticate.
+  · Check that WAKATIME_API_KEY is set correctly.

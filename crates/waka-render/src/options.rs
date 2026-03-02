@@ -44,6 +44,11 @@ pub struct RenderOptions {
     /// When `true`, the byte-order mark is prepended so that Windows Excel
     /// auto-detects UTF-8 encoding when opening the file directly.
     pub csv_bom: bool,
+    /// Optional human-readable period label shown in the output header.
+    ///
+    /// Examples: `"Today"`, `"Last 7 Days"`, `"Last 30 Days"`.
+    /// When `None` the date range is extracted from the response data.
+    pub period_label: Option<String>,
 }
 
 impl Default for RenderOptions {
@@ -53,6 +58,7 @@ impl Default for RenderOptions {
             width: terminal_width(),
             format: OutputFormat::default(),
             csv_bom: false,
+            period_label: None,
         }
     }
 }

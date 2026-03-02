@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use anyhow::{bail, Context as _, Result};
 use chrono::{Local, NaiveDate};
-use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
+use indicatif::ProgressBar;
 use waka_api::{StatsRange, SummaryEntry, SummaryParams, WakaClient};
 use waka_cache::CacheStore;
 use waka_config::{Config, CredentialStore, ProfileConfig};
@@ -26,6 +26,7 @@ use crate::cli::{
     OutputFormat as CliFormat, ProjectsCommands, PromptArgs, PromptStyle, ReportCommands,
     ReportFormat, StatsCommands, StatsFilterOpts, SummaryPeriod,
 };
+use crate::spinner::make_spinner;
 
 /// Dispatch a parsed [`Commands`] variant to the appropriate handler.
 ///
@@ -201,10 +202,20 @@ async fn stats(cmd: StatsCommands, global: &GlobalOpts) -> Result<()> {
 
     // ── 5. Render ─────────────────────────────────────────────────────────────
     let format = stats_resolve_format(global, &config);
+    // Convert possessive spinner label ("today's") into display form ("Today").
+    let display_label = match label {
+        "today's" => "Today",
+        "yesterday's" => "Yesterday",
+        "last 7 days'" => "Last 7 Days",
+        "last 30 days'" => "Last 30 Days",
+        "last 365 days'" => "Last 365 Days",
+        other => other,
+    };
     let opts = RenderOptions {
         color,
         format,
         csv_bom: global.csv_bom,
+        period_label: Some(display_label.to_owned()),
         ..RenderOptions::default()
     };
 
@@ -326,22 +337,7 @@ fn stats_resolve_format(global: &GlobalOpts, config: &Config) -> RenderFormat {
 ///
 /// Hidden automatically when stderr is not a TTY.
 fn stats_spinner(msg: &str) -> ProgressBar {
-    let target = if std::io::stderr().is_terminal() {
-        ProgressDrawTarget::stderr()
-    } else {
-        ProgressDrawTarget::hidden()
-    };
-
-    let pb = ProgressBar::with_draw_target(None, target);
-    pb.set_style(
-        ProgressStyle::default_spinner()
-            .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"])
-            .template("{spinner} {msg}")
-            .expect("spinner template is valid"),
-    );
-    pb.set_message(msg.to_owned());
-    pb.enable_steady_tick(Duration::from_millis(80));
-    pb
+    make_spinner(msg)
 }
 
 // ─── shared API-client helpers ────────────────────────────────────────────────

@@ -30,15 +30,15 @@ https://github.com/mouwaficbdr/waka/releases/latest
 > **Note:** Asset filenames include the version number (e.g. `v1.0.0`).
 > Replace `v1.0.0` with the latest version shown on the releases page.
 
-| Platform            | Archive                                               |
-| ------------------- | ----------------------------------------------------- |
-| Linux x86\_64       | `waka-v1.0.0-x86_64-unknown-linux-gnu.tar.gz`         |
-| Linux ARM64         | `waka-v1.0.0-aarch64-unknown-linux-gnu.tar.gz`        |
-| macOS Intel         | `waka-v1.0.0-x86_64-apple-darwin.tar.gz`              |
-| macOS Apple Silicon | `waka-v1.0.0-aarch64-apple-darwin.tar.gz`             |
-| Windows x86\_64     | `waka-v1.0.0-x86_64-pc-windows-msvc.zip`              |
+| Platform            | Archive                                        |
+| ------------------- | ---------------------------------------------- |
+| Linux x86_64        | `waka-v1.0.0-x86_64-unknown-linux-gnu.tar.gz`  |
+| Linux ARM64         | `waka-v1.0.0-aarch64-unknown-linux-gnu.tar.gz` |
+| macOS Intel         | `waka-v1.0.0-x86_64-apple-darwin.tar.gz`       |
+| macOS Apple Silicon | `waka-v1.0.0-aarch64-apple-darwin.tar.gz`      |
+| Windows x86_64      | `waka-v1.0.0-x86_64-pc-windows-msvc.zip`       |
 
-**Quick install (Linux x86\_64):**
+**Quick install (Linux x86_64):**
 
 ```bash
 curl -sSfL https://github.com/mouwaficbdr/waka/releases/latest/download/waka-v1.0.0-x86_64-unknown-linux-gnu.tar.gz \

@@ -5,14 +5,17 @@
 
 use std::fmt::Write as _;
 
-use comfy_table::{presets, Cell, ContentArrangement, Table};
+use chrono::{DateTime, Datelike as _, Utc};
+use owo_colors::OwoColorize as _;
 use waka_api::{SummaryEntry, SummaryResponse};
 
-use crate::format::{format_bar, format_duration};
+use crate::format::format_duration;
 use crate::options::{OutputFormat, RenderOptions};
+use crate::theme::Theme;
+use crate::utils::humanize_duration;
 
-/// Width (in Unicode characters) of the ASCII progress bar in the table.
-const BAR_WIDTH: u8 = 20;
+/// Width of the language-bar in the rich layout (columns).
+const RICH_BAR_WIDTH: usize = 22;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Internal helpers
@@ -47,6 +50,216 @@ fn grand_total_seconds(resp: &SummaryResponse) -> f64 {
     resp.data.iter().map(|d| d.grand_total.total_seconds).sum()
 }
 
+/// Format an ISO 8601 date-time string as "Month Day, Year" (e.g. "January 13, 2025").
+///
+/// Falls back to the first 10 characters (YYYY-MM-DD) if parsing fails.
+fn fmt_date_long(iso: &str) -> String {
+    iso.parse::<DateTime<Utc>>().map_or_else(
+        |_| iso.get(..10).unwrap_or(iso).to_owned(),
+        |dt| format!("{} {}, {}", dt.format("%B"), dt.day(), dt.year()),
+    )
+}
+
+/// Build the date-range string for the header.
+///
+/// - Single day → `"January 13, 2025"`
+/// - Same year  → `"Jan 24 – Mar 2, 2026"`
+/// - Cross-year → `"Dec 30, 2025 – Jan 5, 2026"`
+fn fmt_date_range(start_iso: &str, end_iso: &str) -> String {
+    let start = start_iso.parse::<DateTime<Utc>>().ok();
+    let end = end_iso.parse::<DateTime<Utc>>().ok();
+
+    match (start, end) {
+        (Some(s), Some(e)) => {
+            let sd = s.date_naive();
+            let ed = e.date_naive();
+            if sd == ed {
+                format!("{} {}, {}", s.format("%B"), s.day(), s.year())
+            } else if s.year() == e.year() {
+                format!(
+                    "{} {} \u{2013} {} {}, {}",
+                    s.format("%b"),
+                    s.day(),
+                    e.format("%b"),
+                    e.day(),
+                    e.year(),
+                )
+            } else {
+                format!(
+                    "{} {}, {} \u{2013} {} {}, {}",
+                    s.format("%b"),
+                    s.day(),
+                    s.year(),
+                    e.format("%b"),
+                    e.day(),
+                    e.year(),
+                )
+            }
+        }
+        _ => fmt_date_long(start_iso),
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Rich layout renderer (Table format)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Renders the new rich visual layout.
+///
+/// With colour:
+/// ```text
+///   ╭────────────────────────────────────────╮
+///   │  Today · January 13, 2025              │
+///   │  6h 42m  total                         │
+///   ╰────────────────────────────────────────╯
+///
+///   Rust         ██████████████░░░░░░░░  2h 15m   49.5%
+///   ...
+///                ─────────────────────────────────────
+///   Total                                   6h 42m
+/// ```
+///
+/// Without colour (ASCII fall-back, no box):
+/// ```text
+///   Today · January 13, 2025
+///   6h 42m  total
+///
+///   Rust         ##############--------  2h 15m   49.5%
+///   ...
+///                #############################
+///   Total                                   6h 42m
+/// ```
+fn render_rich(resp: &SummaryResponse, opts: &RenderOptions) -> String {
+    let color = opts.color;
+    let theme = if color {
+        Theme::colored()
+    } else {
+        Theme::plain()
+    };
+
+    let total = grand_total_seconds(resp);
+    let langs = aggregate(resp.data.iter().map(|d| d.languages.clone()));
+
+    // --- Header strings (unstyled, for length calculations) ---
+    let date_str = fmt_date_range(&resp.start, &resp.end);
+    let period_str: &str = opts
+        .period_label
+        .as_deref()
+        .or_else(|| {
+            resp.data
+                .first()
+                .and_then(|d| d.range.text.as_deref())
+                .filter(|t| !t.is_empty())
+        })
+        .unwrap_or(&date_str);
+
+    let header_line = if period_str == date_str {
+        date_str.clone()
+    } else {
+        format!("{period_str} \u{00B7} {date_str}")
+    };
+
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let total_secs = total.round() as u64;
+    let total_time = humanize_duration(total_secs);
+    let total_line = format!("{total_time}  total");
+
+    // --- Column layout ---
+    let max_name_w = langs.iter().map(|(n, _)| n.len()).max().unwrap_or(8).max(8);
+    let label_col = max_name_w + 3; // 3-space right padding
+
+    let term_w = usize::from(opts.width).max(40);
+    // Box inner width: enough for the header, capped at 66.
+    let min_for_header =
+        header_line.len().max(total_line.len()) + 2 /* inner side padding */;
+    let box_inner = (term_w.saturating_sub(6)).min(66).max(min_for_header);
+
+    let mut out = String::new();
+
+    // --- Header block ---
+    if color {
+        let top_bar = "\u{2500}".repeat(box_inner + 2); // ─ repeated
+        writeln!(out, "  \u{256D}{top_bar}\u{256E}").expect("infallible"); // ╭─╮
+        let pad1 = (box_inner + 2).saturating_sub(header_line.len() + 2);
+        writeln!(
+            out,
+            "  \u{2502}  {}{}\u{2502}",
+            header_line.style(theme.bold),
+            " ".repeat(pad1),
+        )
+        .expect("infallible");
+        let pad2 = (box_inner + 2).saturating_sub(total_line.len() + 2);
+        writeln!(
+            out,
+            "  \u{2502}  {}{}\u{2502}",
+            total_line.style(theme.accent),
+            " ".repeat(pad2),
+        )
+        .expect("infallible");
+        writeln!(out, "  \u{2570}{top_bar}\u{256F}").expect("infallible"); // ╰─╯
+    } else {
+        writeln!(out, "  {header_line}").expect("infallible");
+        writeln!(out, "  {total_line}").expect("infallible");
+    }
+    out.push('\n'); // blank line between header and rows
+
+    // --- Language rows ---
+    for (name, secs) in &langs {
+        let ratio = if total > 0.0 { secs / total } else { 0.0 };
+        #[allow(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            clippy::cast_precision_loss
+        )]
+        let row_secs = secs.round() as u64;
+
+        let time_str = humanize_duration(row_secs);
+        let pct_str = format!("{:.1}%", ratio * 100.0);
+
+        // Build coloured bar: filled portion uses lang colour, empty is muted.
+        #[allow(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            clippy::cast_precision_loss
+        )]
+        let filled = ((ratio * RICH_BAR_WIDTH as f64).round() as usize).min(RICH_BAR_WIDTH);
+        let empty = RICH_BAR_WIDTH - filled;
+        let (fill_ch, empty_ch) = theme.bar_chars();
+        let bar = if color {
+            let lang_style = theme.lang_color(name);
+            format!(
+                "{}{}",
+                fill_ch.repeat(filled).style(lang_style),
+                empty_ch.repeat(empty).style(theme.muted),
+            )
+        } else {
+            fill_ch.repeat(filled) + &empty_ch.repeat(empty)
+        };
+
+        writeln!(
+            out,
+            "  {name:<label_col$}{bar}  {time_str:>6}   {pct_str:>5}"
+        )
+        .expect("infallible");
+    }
+
+    // Separator — aligned with bar start position.
+    let sep_width = RICH_BAR_WIDTH + 2 + 6 + 3 + 5; // bar + "  " + time6 + "   " + pct5
+    let sep = if color {
+        "\u{2500}".repeat(sep_width) // ─
+    } else {
+        "-".repeat(sep_width)
+    };
+    writeln!(out, "  {:<label_col$}{sep}", "").expect("infallible");
+
+    // Total footer row.
+    let total_col = label_col + RICH_BAR_WIDTH + 2;
+    let total_time_str = humanize_duration(total_secs);
+    writeln!(out, "  {:<total_col$}{total_time_str:>6}", "Total",).expect("infallible");
+
+    out
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // SummaryRenderer
 // ─────────────────────────────────────────────────────────────────────────────
@@ -58,55 +271,17 @@ fn grand_total_seconds(resp: &SummaryResponse) -> f64 {
 pub struct SummaryRenderer;
 
 impl SummaryRenderer {
-    /// Renders a [`SummaryResponse`] as a Unicode bordered table.
+    /// Renders a [`SummaryResponse`] using the rich visual layout.
     ///
-    /// The table shows the top languages aggregated across all days in the
-    /// response, with a duration, ASCII progress bar, and percentage column.
+    /// When `opts.color` is `true`, output includes Unicode box-drawing
+    /// characters, language-coloured progress bars, and ANSI colour codes.
+    /// When `false`, output uses ASCII bars and plain text — suitable for
+    /// `NO_COLOR=1` environments while retaining the new layout.
     ///
-    /// `opts.color` is not currently used by this renderer (colour is handled
-    /// by the caller via `owo-colors`). `opts.format` is ignored; the caller
-    /// is responsible for dispatching to the correct renderer.
+    /// JSON, CSV and TSV formats bypass this renderer; see [`SummaryRenderer::render`].
     #[must_use]
-    pub fn render_table(resp: &SummaryResponse, _opts: &RenderOptions) -> String {
-        let total = grand_total_seconds(resp);
-        let langs = aggregate(resp.data.iter().map(|d| d.languages.clone()));
-
-        let mut table = Table::new();
-        table
-            .load_preset(presets::UTF8_FULL)
-            .set_content_arrangement(ContentArrangement::Disabled)
-            .set_header(vec![
-                Cell::new("Language"),
-                Cell::new("Time"),
-                Cell::new("Bar"),
-                Cell::new("%"),
-            ]);
-
-        for (name, secs) in &langs {
-            let ratio = if total > 0.0 { secs / total } else { 0.0 };
-            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-            let secs_u64 = secs.round() as u64;
-            table.add_row(vec![
-                Cell::new(name.as_str()),
-                Cell::new(format_duration(secs_u64)),
-                Cell::new(format_bar(ratio, BAR_WIDTH)),
-                Cell::new(format!("{:.1}%", ratio * 100.0)),
-            ]);
-        }
-
-        // Footer row with grand total.
-        if total > 0.0 {
-            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-            let total_secs_u64 = total.round() as u64;
-            table.add_row(vec![
-                Cell::new("Total"),
-                Cell::new(format_duration(total_secs_u64)),
-                Cell::new(String::new()),
-                Cell::new(String::new()),
-            ]);
-        }
-
-        table.to_string()
+    pub fn render_table(resp: &SummaryResponse, opts: &RenderOptions) -> String {
+        render_rich(resp, opts)
     }
 
     /// Renders a [`SummaryResponse`] as pretty-printed JSON.
@@ -287,6 +462,8 @@ mod tests {
         let resp = fixture_today();
         let opts = RenderOptions {
             color: false,
+            width: 100,
+            period_label: Some("Today".to_owned()),
             ..RenderOptions::default()
         };
         let output = SummaryRenderer::render_table(&resp, &opts);
@@ -309,6 +486,86 @@ mod tests {
         };
         let output = SummaryRenderer::render_plain(&resp, &opts);
         insta::assert_snapshot!(output);
+    }
+
+    #[test]
+    fn render_table_contains_rust_language() {
+        let resp = fixture_today();
+        let opts = RenderOptions {
+            color: false,
+            ..RenderOptions::default()
+        };
+        let out = SummaryRenderer::render_table(&resp, &opts);
+        assert!(out.contains("Rust"), "rich table output should list Rust");
+    }
+
+    #[test]
+    fn render_table_contains_total() {
+        let resp = fixture_today();
+        let opts = RenderOptions {
+            color: false,
+            ..RenderOptions::default()
+        };
+        let out = SummaryRenderer::render_table(&resp, &opts);
+        assert!(
+            out.contains("Total"),
+            "rich table output should include Total row"
+        );
+    }
+
+    #[test]
+    fn render_table_no_color_uses_ascii_bar() {
+        let resp = fixture_today();
+        let opts = RenderOptions {
+            color: false,
+            period_label: Some("Today".to_owned()),
+            ..RenderOptions::default()
+        };
+        let out = SummaryRenderer::render_table(&resp, &opts);
+        assert!(out.contains('#'), "NO_COLOR should use ASCII # for filled");
+        assert!(out.contains('-'), "NO_COLOR should use ASCII - for empty");
+        assert!(
+            !out.contains('█'),
+            "NO_COLOR must not emit Unicode block chars"
+        );
+    }
+
+    #[test]
+    fn render_table_no_color_has_no_box_chars() {
+        let resp = fixture_today();
+        let opts = RenderOptions {
+            color: false,
+            ..RenderOptions::default()
+        };
+        let out = SummaryRenderer::render_table(&resp, &opts);
+        assert!(
+            !out.contains('╭'),
+            "NO_COLOR must not have box-drawing corners"
+        );
+        assert!(
+            !out.contains('│'),
+            "NO_COLOR must not have box-drawing sides"
+        );
+    }
+
+    #[test]
+    fn render_table_colored_has_box_chars() {
+        let resp = fixture_today();
+        let opts = RenderOptions {
+            color: true,
+            width: 100,
+            period_label: Some("Today".to_owned()),
+            ..RenderOptions::default()
+        };
+        let out = SummaryRenderer::render_table(&resp, &opts);
+        assert!(
+            out.contains('╭'),
+            "colored output should have box-drawing corners"
+        );
+        assert!(
+            out.contains('│'),
+            "colored output should have box-drawing sides"
+        );
     }
 
     #[test]
@@ -337,17 +594,6 @@ mod tests {
         let parsed: serde_json::Value =
             serde_json::from_str(&out).expect("render_json must return valid JSON");
         assert!(parsed.get("data").is_some(), "JSON must have a `data` key");
-    }
-
-    #[test]
-    fn render_table_contains_language_header() {
-        let resp = fixture_today();
-        let opts = RenderOptions::default();
-        let out = SummaryRenderer::render_table(&resp, &opts);
-        assert!(
-            out.contains("Language"),
-            "table should have a Language column"
-        );
     }
 
     #[test]
@@ -451,5 +697,27 @@ mod tests {
         let resp = fixture_today();
         let out = SummaryRenderer::render_csv(&resp, false);
         insta::assert_snapshot!(out);
+    }
+
+    // ── fmt helpers ──────────────────────────────────────────────────────────
+
+    #[test]
+    fn fmt_date_long_parses_iso() {
+        let result = fmt_date_long("2025-01-13T00:00:00Z");
+        assert_eq!(result, "January 13, 2025");
+    }
+
+    #[test]
+    fn fmt_date_range_single_day() {
+        let result = fmt_date_range("2025-01-13T00:00:00Z", "2025-01-13T23:00:00Z");
+        assert_eq!(result, "January 13, 2025");
+    }
+
+    #[test]
+    fn fmt_date_range_multi_day_same_year() {
+        let result = fmt_date_range("2026-02-24T00:00:00Z", "2026-03-02T23:00:00Z");
+        assert!(result.contains("Feb"), "should contain abbreviated month");
+        assert!(result.contains("Mar"), "should contain abbreviated month");
+        assert!(result.contains("2026"), "should contain year");
     }
 }

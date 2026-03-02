@@ -4,14 +4,12 @@
 //! show-key. All credential I/O goes through [`CredentialStore`]; all
 //! network I/O goes through [`WakaClient`].
 
-use std::time::Duration;
-
 use anyhow::{bail, Context as _, Result};
-use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
 use waka_api::WakaClient;
 use waka_config::{Config, CredentialError, CredentialStore};
 
 use crate::cli::{AuthLoginArgs, GlobalOpts};
+use crate::spinner::make_spinner;
 
 // ─── Public handlers ──────────────────────────────────────────────────────────
 
@@ -246,21 +244,6 @@ fn mask_key(key: &str) -> String {
     let prefix = &key[..SHOW_PREFIX];
     let suffix = &key[key.len() - SHOW_SUFFIX..];
     format!("{prefix}****{suffix}")
-}
-
-/// Creates a spinner that writes to stderr.
-///
-/// `indicatif` automatically hides the spinner when stderr is not a TTY, so
-/// callers do not need to branch on terminal detection.
-fn make_spinner(message: &str) -> ProgressBar {
-    let pb = ProgressBar::with_draw_target(None, ProgressDrawTarget::stderr());
-    pb.set_style(
-        ProgressStyle::with_template("{spinner} {msg}")
-            .unwrap_or_else(|_| ProgressStyle::default_spinner()),
-    );
-    pb.set_message(message.to_owned());
-    pb.enable_steady_tick(Duration::from_millis(80));
-    pb
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
