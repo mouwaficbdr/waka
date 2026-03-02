@@ -20,7 +20,7 @@ pub fn render(f: &mut Frame, app: &App) {
     if app.error.is_some() && app.summary_today.is_none() {
         render_error_state(f, size, app);
     } else if app.loading && app.summary_today.is_none() {
-        render_loading_state(f, size);
+        render_loading_state(f, size, app.spinner_state);
     } else {
         match app.view {
             View::Main => render_main_view(f, size, app),
@@ -530,14 +530,31 @@ fn render_error_state(f: &mut Frame, area: Rect, app: &App) {
     f.render_widget(paragraph, area);
 }
 
-/// Renders a loading state.
-fn render_loading_state(f: &mut Frame, area: Rect) {
+/// Renders a loading state with animated spinner.
+fn render_loading_state(f: &mut Frame, area: Rect, spinner_state: usize) {
+    let spinner_frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+    let spinner = spinner_frames[spinner_state % spinner_frames.len()];
+
     let block = Block::default()
-        .title("Loading...")
+        .title(" Loading ")
         .borders(Borders::ALL)
         .style(Style::default().fg(Color::Yellow));
 
-    let text = vec![Line::from("Fetching data from WakaTime API...")];
+    let text = vec![
+        Line::from(""),
+        Line::from(vec![
+            Span::raw("  "),
+            Span::styled(
+                format!("{spinner} Loading\u{2026}"),
+                Style::default().fg(Color::Yellow),
+            ),
+        ]),
+        Line::from(""),
+        Line::from(Span::styled(
+            "  Fetching data from WakaTime API\u{2026}",
+            Style::default().fg(Color::DarkGray),
+        )),
+    ];
 
     let paragraph = Paragraph::new(text).block(block);
     f.render_widget(paragraph, area);
@@ -571,7 +588,7 @@ fn render_help_overlay(f: &mut Frame, area: Rect) {
         Line::from("?            Toggle this help"),
         Line::from("Tab / 1-5    Switch view"),
         Line::from("r            Refresh"),
-        Line::from("↑ / ↓        Navigate list"),
+        Line::from("↑/↓ j/k      Navigate list"),
         Line::from("Enter        View details"),
         Line::from(""),
         Line::from("Press any key to close this help."),

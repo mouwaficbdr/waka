@@ -52,9 +52,9 @@ pub fn render_status_bar(
     spans.extend(vec![
         Span::raw(" Last updated: "),
         Span::styled(last_update_str, Style::default().fg(Color::Cyan)),
-        Span::raw("  ·  Auto-refresh in "),
+        Span::raw("  ·  Refresh in "),
         Span::styled(refresh_str, Style::default().fg(Color::Yellow)),
-        Span::raw("  ·  Tab: switch view"),
+        Span::raw("  ·  r:refresh  Tab:switch  q:quit"),
     ]);
 
     let line = Line::from(spans);

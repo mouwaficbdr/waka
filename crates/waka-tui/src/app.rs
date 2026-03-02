@@ -95,7 +95,7 @@ impl App {
             goals: None,
             leaderboard: None,
             error: None,
-            loading: false,
+            loading: true, // Show spinner before first fetch completes
             show_help: false,
             list_index: 0,
             offline: false,

@@ -327,10 +327,10 @@ pub fn handle_key_event(
                 app.error = Some("Exported to waka_export.json".to_string());
             }
         }
-        Up => {
+        Up | Char('k') => {
             app.list_up();
         }
-        Down => {
+        Down | Char('j') => {
             // Get the max for the current view's data.
             let max = app.current_view_items_count();
             app.list_down(max);
