@@ -21,6 +21,9 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 chrono = { workspace = true }
+supports-color = { workspace = true }
+chrono-humanize = { workspace = true }
+unicode-width = { workspace = true }
 
 [dev-dependencies]
 insta = { workspace = true }

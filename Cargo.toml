@@ -81,7 +81,13 @@ crossterm = { version = "0.29", features = ["event-stream"] }
 comfy-table = "7"
 indicatif = "0.17"
 console = "0.15"
-owo-colors = "4"
+owo-colors = { version = "4", features = ["supports-colors"] }
+
+# UI enhancement — Phase 2
+supports-color = "3.0"
+chrono-humanize = "0.2"
+unicode-width = "0.2"
+inquire = { version = "0.7", features = ["crossterm"] }
 
 # Credentials obfuscation
 base64 = "0.22"
