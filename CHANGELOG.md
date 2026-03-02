@@ -19,6 +19,7 @@ Versioning: [Semantic Versioning](https://semver.org/)
 ### 🔧 Miscellaneous
 
 - **changelog**: Update CHANGELOG for v2.0.0 ([`6570ad3`](https://github.com/mouwaficbdr/waka/commit/6570ad361f1967bd8fc7debae970b682e2f26d9c))
+- **release**: V2.0.1 ([`cb96c4b`](https://github.com/mouwaficbdr/waka/commit/cb96c4b2d1e99bc16cb68e92602343af3dcaf66a))
 
 ## [2.0.0] - 2026-03-02
 
