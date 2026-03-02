@@ -34,6 +34,13 @@ chrono = { workspace = true }
 reqwest = { workspace = true }
 directories = { workspace = true }
 
+[target.'cfg(not(target_os = "windows"))'.dependencies]
+flate2 = { workspace = true }
+tar = { workspace = true }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+zip = { workspace = true }
+
 [lints]
 workspace = true
 

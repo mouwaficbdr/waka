@@ -83,6 +83,11 @@ indicatif = "0.17"
 console = "0.15"
 owo-colors = { version = "4", features = ["supports-colors"] }
 
+# Archive extraction (used by waka update)
+flate2 = "1"
+tar = "0.4"
+zip = "2"
+
 # UI enhancement — Phase 2
 supports-color = "3.0"
 chrono-humanize = "0.2"

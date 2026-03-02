@@ -1326,6 +1326,9 @@ fn dirs_check_bash_completions() -> bool {
 /// Fetches the latest release tag from the GitHub API.
 ///
 /// Returns `None` if no releases exist yet, or an error on network failure.
+const GITHUB_API: &str = "https://api.github.com/repos/mouwaficbdr/waka/releases/latest";
+const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 async fn check_latest_version() -> anyhow::Result<Option<String>> {
     // GitHub requires a User-Agent header.
     let client = reqwest::Client::builder()
@@ -1333,10 +1336,7 @@ async fn check_latest_version() -> anyhow::Result<Option<String>> {
         .user_agent(concat!("waka/", env!("CARGO_PKG_VERSION")))
         .build()?;
 
-    let resp = client
-        .get("https://api.github.com/repos/mouwaficbdr/waka/releases/latest")
-        .send()
-        .await?;
+    let resp = client.get(GITHUB_API).send().await?;
 
     // 404 means no releases yet.
     if resp.status() == reqwest::StatusCode::NOT_FOUND {
@@ -1425,129 +1425,193 @@ async fn update_check_background(global: GlobalOpts) {
 
 // ─── update / changelog ───────────────────────────────────────────────────────
 
-/// Detects how `waka` was likely installed, in order of specificity.
-///
-/// Returns a short identifier string used to choose the update strategy.
-fn detect_install_method() -> &'static str {
-    // Homebrew: the binary is typically located under a Cellar or opt/homebrew
-    // path. We check the current executable path.
-    if let Ok(exe) = std::env::current_exe() {
-        let path_str = exe.to_string_lossy();
-        if path_str.contains("/Cellar/") || path_str.contains("/homebrew/") {
-            return "homebrew";
+/// Whether the binary lives under a Homebrew-managed path.
+fn is_homebrew_install() -> bool {
+    std::env::current_exe().is_ok_and(|exe| {
+        let p = exe.to_string_lossy();
+        p.contains("/Cellar/") || p.contains("/homebrew/")
+    })
+}
+
+/// Returns the release asset target triple and archive extension for the
+/// current platform, e.g. `("x86_64-unknown-linux-gnu", "tar.gz")`.
+fn platform_target() -> Result<(&'static str, &'static str)> {
+    match (std::env::consts::OS, std::env::consts::ARCH) {
+        ("linux", "x86_64") => Ok(("x86_64-unknown-linux-gnu", "tar.gz")),
+        ("linux", "aarch64") => Ok(("aarch64-unknown-linux-gnu", "tar.gz")),
+        ("macos", "x86_64") => Ok(("x86_64-apple-darwin", "tar.gz")),
+        ("macos", "aarch64") => Ok(("aarch64-apple-darwin", "tar.gz")),
+        ("windows", "x86_64") => Ok(("x86_64-pc-windows-msvc", "zip")),
+        (os, arch) => bail!(
+            "Unsupported platform {os}/{arch}. Update manually:\n\
+             https://github.com/mouwaficbdr/waka/releases"
+        ),
+    }
+}
+
+/// Extract the `waka` binary from a `.tar.gz` archive and atomically replace
+/// the running executable. Non-Windows only.
+#[cfg(not(target_os = "windows"))]
+fn extract_tar_gz_and_replace(archive_bytes: &[u8], current_exe: &std::path::Path) -> Result<()> {
+    use flate2::read::GzDecoder;
+    use tar::Archive;
+
+    let gz = GzDecoder::new(archive_bytes);
+    let mut archive = Archive::new(gz);
+
+    for entry in archive.entries().context("failed to read tar entries")? {
+        let mut entry = entry.context("corrupt tar entry")?;
+        let path = entry.path().context("invalid tar entry path")?;
+        let file_name = path
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default();
+
+        if file_name == "waka" {
+            let temp_path = current_exe.with_extension("waka.tmp");
+            {
+                let mut dest =
+                    std::fs::File::create(&temp_path).context("cannot create temp file")?;
+                std::io::copy(&mut entry, &mut dest).context("failed to write new binary")?;
+
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt as _;
+                    let mut perms = dest
+                        .metadata()
+                        .context("cannot read temp file metadata")?
+                        .permissions();
+                    perms.set_mode(0o755);
+                    std::fs::set_permissions(&temp_path, perms)
+                        .context("cannot set executable permission")?;
+                }
+            }
+            std::fs::rename(&temp_path, current_exe)
+                .context("failed to replace binary — try with elevated privileges")?;
+            return Ok(());
         }
-        // cargo install places binaries in ~/.cargo/bin (Unix) or
-        // %USERPROFILE%\.cargo\bin (Windows).
-        if path_str.contains("/.cargo/bin/") || path_str.contains(r"\.cargo\bin\") {
-            return "cargo";
+    }
+    bail!("Could not find 'waka' binary in the release archive")
+}
+
+/// Extract `waka.exe` from a `.zip` archive and replace the running binary.
+/// Windows only.
+#[cfg(target_os = "windows")]
+fn extract_zip_and_replace(archive_bytes: &[u8], current_exe: &std::path::Path) -> Result<()> {
+    use std::io::Cursor;
+    use zip::ZipArchive;
+
+    let cursor = Cursor::new(archive_bytes);
+    let mut archive = ZipArchive::new(cursor).context("failed to open zip archive")?;
+
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i).context("corrupt zip entry")?;
+        let name = file.name().to_owned();
+        if name == "waka.exe" || name.ends_with("/waka.exe") {
+            let temp_path = current_exe.with_extension("tmp.exe");
+            let mut dest = std::fs::File::create(&temp_path).context("cannot create temp file")?;
+            std::io::copy(&mut file, &mut dest).context("failed to write new binary")?;
+            drop(dest);
+            std::fs::rename(&temp_path, current_exe)
+                .context("failed to replace binary — try running as Administrator")?;
+            return Ok(());
         }
     }
-    // Snap / flatpak detection via environment variables
-    if std::env::var_os("SNAP").is_some() {
-        return "snap";
-    }
-    if std::env::var_os("FLATPAK_ID").is_some() {
-        return "flatpak";
-    }
-    "cargo" // default: assume cargo install
+    bail!("Could not find 'waka.exe' in the release archive")
 }
 
 /// Implements `waka update`.
 ///
-/// Detects the install method and runs the appropriate updater command,
-/// or prints instructions when automatic update is not possible.
+/// Downloads the latest release from GitHub Releases and atomically replaces
+/// the current binary.
 async fn update_self(global: &GlobalOpts) -> Result<()> {
-    // First, check if a newer version is actually available.
-    if !global.quiet {
-        let pb = stats_spinner("Checking for updates...");
-        let current = env!("CARGO_PKG_VERSION");
-        match check_latest_version().await {
-            Ok(Some(ref latest)) if version_is_newer(latest, current) => {
-                pb.finish_and_clear();
-                eprintln!("  ⬆  Updating waka v{current} → v{latest}");
-            }
-            Ok(Some(ref latest)) => {
-                pb.finish_and_clear();
-                println!("  ✓  Already on the latest version (v{latest})");
-                return Ok(());
-            }
-            Ok(None) => {
-                pb.finish_and_clear();
+    // 1. Fetch latest version.
+    let pb = stats_spinner("Checking for updates…");
+    let latest = match check_latest_version().await {
+        Ok(Some(v)) => v,
+        Ok(None) => {
+            pb.finish_and_clear();
+            if !global.quiet {
                 println!("  ✓  No releases found — you are on the latest build.");
-                return Ok(());
             }
-            Err(e) => {
-                pb.finish_and_clear();
-                bail!("Failed to check for updates: {e}");
-            }
+            return Ok(());
         }
+        Err(e) => {
+            pb.finish_and_clear();
+            bail!("Failed to check for updates: {e}");
+        }
+    };
+    pb.finish_and_clear();
+
+    // 2. Already up-to-date?
+    if !version_is_newer(&latest, CURRENT_VERSION) {
+        if !global.quiet {
+            println!("  ✓  Already on the latest version (v{latest})");
+        }
+        return Ok(());
     }
 
-    let method = detect_install_method();
+    // 3. Homebrew — defer to brew(1).
+    if is_homebrew_install() {
+        println!("  ℹ  Detected Homebrew installation. Run:\n\n       brew upgrade waka\n");
+        return Ok(());
+    }
 
-    match method {
-        "cargo" => {
-            eprintln!("  Running: cargo install waka --force");
-            // Print the command for the user to copy/paste if this fails.
-            // We attempt to exec via std::process::Command so the user sees
-            // live output.
-            let status = std::process::Command::new("cargo")
-                .args(["install", "waka", "--force"])
-                .status()
-                .context("failed to execute `cargo install waka --force`")?;
+    if !global.quiet {
+        println!("  ⬆  Updating waka v{CURRENT_VERSION} → v{latest}");
+    }
 
-            if !status.success() {
-                bail!(
-                    "`cargo install waka --force` exited with status {status}\n\
-                     Try running it manually: cargo install waka --force"
-                );
-            }
-            if !global.quiet {
-                println!("  ✓  waka updated successfully via cargo.");
-            }
-        }
-        "homebrew" => {
-            eprintln!("  Running: brew upgrade waka");
-            let status = std::process::Command::new("brew")
-                .args(["upgrade", "waka"])
-                .status()
-                .context("failed to execute `brew upgrade waka`")?;
+    // 4. Resolve platform asset.
+    let (target, ext) = platform_target()?;
+    let archive_name = format!("waka-v{latest}-{target}.{ext}");
+    let url =
+        format!("https://github.com/mouwaficbdr/waka/releases/download/v{latest}/{archive_name}");
 
-            if !status.success() {
-                bail!(
-                    "`brew upgrade waka` exited with status {status}\n\
-                     Try running it manually: brew upgrade waka"
-                );
-            }
-            if !global.quiet {
-                println!("  ✓  waka updated successfully via Homebrew.");
-            }
-        }
-        "snap" => {
-            eprintln!("  Running: sudo snap refresh waka");
-            let status = std::process::Command::new("sudo")
-                .args(["snap", "refresh", "waka"])
-                .status()
-                .context("failed to execute `sudo snap refresh waka`")?;
+    // 5. Download.
+    let pb = stats_spinner(&format!("Downloading {archive_name}…"));
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(120))
+        .user_agent(concat!("waka/", env!("CARGO_PKG_VERSION")))
+        .build()
+        .context("failed to build HTTP client")?;
 
-            if !status.success() {
-                bail!(
-                    "`sudo snap refresh waka` exited with status {status}\n\
-                     Try running it manually: sudo snap refresh waka"
-                );
-            }
-            if !global.quiet {
-                println!("  ✓  waka updated successfully via snap.");
-            }
-        }
-        _ => {
-            eprintln!(
-                "  ℹ  Install method not auto-detected. Update manually:\n\
-                 \n    cargo install waka --force\n\
-                 \n  Or download the latest release from:\n\
-                 \n    https://github.com/mouwaficbdr/waka/releases\n"
-            );
-        }
+    let resp = client
+        .get(&url)
+        .send()
+        .await
+        .context("download request failed")?;
+
+    if !resp.status().is_success() {
+        pb.finish_and_clear();
+        bail!(
+            "Download failed (HTTP {}): {}\n\
+             Check release assets at: https://github.com/mouwaficbdr/waka/releases",
+            resp.status(),
+            url
+        );
+    }
+
+    let bytes = resp
+        .bytes()
+        .await
+        .context("failed to read download response")?;
+    pb.finish_and_clear();
+
+    // 6. Extract + atomically replace.
+    let pb = stats_spinner("Installing new binary…");
+    let current_exe =
+        std::env::current_exe().context("cannot determine current executable path")?;
+
+    #[cfg(target_os = "windows")]
+    extract_zip_and_replace(&bytes, &current_exe)?;
+
+    #[cfg(not(target_os = "windows"))]
+    extract_tar_gz_and_replace(&bytes, &current_exe)?;
+
+    pb.finish_and_clear();
+
+    if !global.quiet {
+        println!("  ✓  waka updated to v{latest} successfully!");
     }
 
     Ok(())
