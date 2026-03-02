@@ -5,6 +5,21 @@ All notable changes to `waka` are documented here.
 Format: [Conventional Commits](https://www.conventionalcommits.org/)
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [2.0.1] - 2026-03-02
+
+### 🐛 Bug Fixes
+
+- **update**: Replace cargo install with GitHub Releases download ([`b1c7dbd`](https://github.com/mouwaficbdr/waka/commit/b1c7dbd08091d9c60247238e09f6f53d9d1e51e3))
+- **render**: Correct box border width calculation to eliminate visual artifact on right side ([`d7b2856`](https://github.com/mouwaficbdr/waka/commit/d7b285667c815c85fabcd3ae370e8542491c8d1a))
+
+### ⚙️ CI/CD
+
+- Remove invalid [cargo] section from deny.toml ([`fbf32a8`](https://github.com/mouwaficbdr/waka/commit/fbf32a8073a8cab463e3e414a9a99f2dd611808f))
+
+### 🔧 Miscellaneous
+
+- **changelog**: Update CHANGELOG for v2.0.0 ([`6570ad3`](https://github.com/mouwaficbdr/waka/commit/6570ad361f1967bd8fc7debae970b682e2f26d9c))
+
 ## [2.0.0] - 2026-03-02
 
 ### 🚀 Features
