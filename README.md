@@ -13,7 +13,7 @@ The WakaTime CLI you always deserved. Fast, beautiful, composable.
 ## Installation
 
 > **Note:** The `waka` binary is not available via `cargo install`.
-> Use Homebrew or the universal installer below.
+> Use Homebrew or download a pre-built binary from GitHub Releases.
 
 **Homebrew (macOS / Linux):**
 
@@ -22,11 +22,18 @@ brew tap mouwaficbdr/waka
 brew install waka
 ```
 
-**Universal installer (cargo-dist):**
+**Download binary (GitHub Releases):**
 
-```bash
-curl -sSfL https://github.com/mouwaficbdr/waka/releases/latest/download/waka-installer.sh | sh
-```
+Download the latest binary for your platform from:  
+https://github.com/mouwaficbdr/waka/releases/latest
+
+| Platform            | Archive                                        |
+| ------------------- | ---------------------------------------------- |
+| Linux x86\_64       | `waka-x86_64-unknown-linux-gnu.tar.gz`         |
+| Linux ARM64         | `waka-aarch64-unknown-linux-gnu.tar.gz`        |
+| macOS Intel         | `waka-x86_64-apple-darwin.tar.gz`              |
+| macOS Apple Silicon | `waka-aarch64-apple-darwin.tar.gz`             |
+| Windows x86\_64     | `waka-x86_64-pc-windows-msvc.zip`              |
 
 ---
 
