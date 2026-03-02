@@ -7,6 +7,7 @@ use std::fmt::Write as _;
 
 use chrono::{DateTime, Datelike as _, Utc};
 use owo_colors::OwoColorize as _;
+use unicode_width::UnicodeWidthStr as _;
 use waka_api::{SummaryEntry, SummaryResponse};
 
 use crate::format::format_duration;
@@ -165,13 +166,18 @@ fn render_rich(resp: &SummaryResponse, opts: &RenderOptions) -> String {
     let total_line = format!("{total_time}  total");
 
     // --- Column layout ---
-    let max_name_w = langs.iter().map(|(n, _)| n.len()).max().unwrap_or(8).max(8);
+    let max_name_w = langs
+        .iter()
+        .map(|(n, _)| n.width())
+        .max()
+        .unwrap_or(8)
+        .max(8);
     let label_col = max_name_w + 3; // 3-space right padding
 
     let term_w = usize::from(opts.width).max(40);
     // Box inner width: enough for the header, capped at 66.
     let min_for_header =
-        header_line.len().max(total_line.len()) + 2 /* inner side padding */;
+        header_line.width().max(total_line.width()) + 2 /* inner side padding */;
     let box_inner = (term_w.saturating_sub(6)).min(66).max(min_for_header);
 
     let mut out = String::new();
@@ -180,7 +186,7 @@ fn render_rich(resp: &SummaryResponse, opts: &RenderOptions) -> String {
     if color {
         let top_bar = "\u{2500}".repeat(box_inner + 2); // ─ repeated
         writeln!(out, "  \u{256D}{top_bar}\u{256E}").expect("infallible"); // ╭─╮
-        let pad1 = (box_inner + 2).saturating_sub(header_line.len() + 2);
+        let pad1 = (box_inner + 2).saturating_sub(header_line.width() + 2);
         writeln!(
             out,
             "  \u{2502}  {}{}\u{2502}",
@@ -188,7 +194,7 @@ fn render_rich(resp: &SummaryResponse, opts: &RenderOptions) -> String {
             " ".repeat(pad1),
         )
         .expect("infallible");
-        let pad2 = (box_inner + 2).saturating_sub(total_line.len() + 2);
+        let pad2 = (box_inner + 2).saturating_sub(total_line.width() + 2);
         writeln!(
             out,
             "  \u{2502}  {}{}\u{2502}",
