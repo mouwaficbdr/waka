@@ -27,13 +27,23 @@ brew install waka
 Download the latest binary for your platform from:  
 https://github.com/mouwaficbdr/waka/releases/latest
 
-| Platform            | Archive                                        |
-| ------------------- | ---------------------------------------------- |
-| Linux x86\_64       | `waka-x86_64-unknown-linux-gnu.tar.gz`         |
-| Linux ARM64         | `waka-aarch64-unknown-linux-gnu.tar.gz`        |
-| macOS Intel         | `waka-x86_64-apple-darwin.tar.gz`              |
-| macOS Apple Silicon | `waka-aarch64-apple-darwin.tar.gz`             |
-| Windows x86\_64     | `waka-x86_64-pc-windows-msvc.zip`              |
+> **Note:** Asset filenames include the version number (e.g. `v1.0.0`).
+> Replace `v1.0.0` with the latest version shown on the releases page.
+
+| Platform            | Archive                                               |
+| ------------------- | ----------------------------------------------------- |
+| Linux x86\_64       | `waka-v1.0.0-x86_64-unknown-linux-gnu.tar.gz`         |
+| Linux ARM64         | `waka-v1.0.0-aarch64-unknown-linux-gnu.tar.gz`        |
+| macOS Intel         | `waka-v1.0.0-x86_64-apple-darwin.tar.gz`              |
+| macOS Apple Silicon | `waka-v1.0.0-aarch64-apple-darwin.tar.gz`             |
+| Windows x86\_64     | `waka-v1.0.0-x86_64-pc-windows-msvc.zip`              |
+
+**Quick install (Linux x86\_64):**
+
+```bash
+curl -sSfL https://github.com/mouwaficbdr/waka/releases/latest/download/waka-v1.0.0-x86_64-unknown-linux-gnu.tar.gz \
+  | tar -xz && sudo mv waka /usr/local/bin/
+```
 
 ---
 
