@@ -49,7 +49,7 @@ Versioning: [Semantic Versioning](https://semver.org/)
 - Finalize v1.0.0 — update README and mark Phase 4 complete ([`491b2b9`](https://github.com/mouwaficbdr/waka/commit/491b2b98a32b5a939f2aac47939d78b39085ad25))
 - Bump version to 1.0.0 ([`135cd03`](https://github.com/mouwaficbdr/waka/commit/135cd0339763048919a2e6640b653c90da340971))
 - **ci**: Remove nightly-only rustfmt options to fix fmt CI job ([`c301f4b`](https://github.com/mouwaficbdr/waka/commit/c301f4b6680d2d21aaa352e1aaae161d58b82a9b))
-- **release**: Bump version to 2.0.0 ([`4fed9bc`](https://github.com/mouwaficbdr/waka/commit/4fed9bc1574db8514c31ada5a71312823e4ab1e2))
+- **release**: Bump version to 2.0.0 ([`52747d2`](https://github.com/mouwaficbdr/waka/commit/52747d23154c0c5a98141bfe42bee4c1baff109a))
 
 ## [0.4.0] - 2026-03-01
 
