@@ -7,10 +7,7 @@ Set Theme "Dracula"
 Set Padding 20
 
 Hide
-Type "export PATH=/home/mouwaficbdr/Code/waka/target/release:$PATH"
-Enter
-Sleep 100ms
-Type "waka() { /tmp/waka-demo $@; }"
+Type "export PATH=/usr/local/bin:$PATH"
 Enter
 Sleep 100ms
 Type "clear"
@@ -45,6 +42,6 @@ Sleep 3s
 Type "waka dashboard"
 Sleep 500ms
 Enter
-Sleep 8s
+Sleep 65s
 Type "q"
 Sleep 2s

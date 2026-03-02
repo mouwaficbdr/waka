@@ -27,21 +27,21 @@ brew install waka
 Download the latest binary for your platform from:  
 https://github.com/mouwaficbdr/waka/releases/latest
 
-> **Note:** Asset filenames include the version number (e.g. `v1.0.0`).
-> Replace `v1.0.0` with the latest version shown on the releases page.
+> **Note:** Asset filenames include the version number (e.g. `v2.0.1`).
+> Replace `v2.0.1` with the latest version shown on the releases page.
 
 | Platform            | Archive                                        |
 | ------------------- | ---------------------------------------------- |
-| Linux x86_64        | `waka-v2.0.0-x86_64-unknown-linux-gnu.tar.gz`  |
-| Linux ARM64         | `waka-v2.0.0-aarch64-unknown-linux-gnu.tar.gz` |
-| macOS Intel         | `waka-v2.0.0-x86_64-apple-darwin.tar.gz`       |
-| macOS Apple Silicon | `waka-v2.0.0-aarch64-apple-darwin.tar.gz`      |
-| Windows x86_64      | `waka-v2.0.0-x86_64-pc-windows-msvc.zip`       |
+| Linux x86_64        | `waka-v2.0.1-x86_64-unknown-linux-gnu.tar.gz`  |
+| Linux ARM64         | `waka-v2.0.1-aarch64-unknown-linux-gnu.tar.gz` |
+| macOS Intel         | `waka-v2.0.1-x86_64-apple-darwin.tar.gz`       |
+| macOS Apple Silicon | `waka-v2.0.1-aarch64-apple-darwin.tar.gz`      |
+| Windows x86_64      | `waka-v2.0.1-x86_64-pc-windows-msvc.zip`       |
 
 **Quick install (Linux x86_64):**
 
 ```bash
-curl -sSfL https://github.com/mouwaficbdr/waka/releases/latest/download/waka-v2.0.0-x86_64-unknown-linux-gnu.tar.gz \
+curl -sSfL https://github.com/mouwaficbdr/waka/releases/latest/download/waka-v2.0.1-x86_64-unknown-linux-gnu.tar.gz \
   | tar -xz && sudo mv waka /usr/local/bin/
 ```
 
