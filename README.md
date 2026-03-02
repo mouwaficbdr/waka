@@ -32,16 +32,16 @@ https://github.com/mouwaficbdr/waka/releases/latest
 
 | Platform            | Archive                                        |
 | ------------------- | ---------------------------------------------- |
-| Linux x86_64        | `waka-v1.0.0-x86_64-unknown-linux-gnu.tar.gz`  |
-| Linux ARM64         | `waka-v1.0.0-aarch64-unknown-linux-gnu.tar.gz` |
-| macOS Intel         | `waka-v1.0.0-x86_64-apple-darwin.tar.gz`       |
-| macOS Apple Silicon | `waka-v1.0.0-aarch64-apple-darwin.tar.gz`      |
-| Windows x86_64      | `waka-v1.0.0-x86_64-pc-windows-msvc.zip`       |
+| Linux x86_64        | `waka-v2.0.0-x86_64-unknown-linux-gnu.tar.gz`  |
+| Linux ARM64         | `waka-v2.0.0-aarch64-unknown-linux-gnu.tar.gz` |
+| macOS Intel         | `waka-v2.0.0-x86_64-apple-darwin.tar.gz`       |
+| macOS Apple Silicon | `waka-v2.0.0-aarch64-apple-darwin.tar.gz`      |
+| Windows x86_64      | `waka-v2.0.0-x86_64-pc-windows-msvc.zip`       |
 
 **Quick install (Linux x86_64):**
 
 ```bash
-curl -sSfL https://github.com/mouwaficbdr/waka/releases/latest/download/waka-v1.0.0-x86_64-unknown-linux-gnu.tar.gz \
+curl -sSfL https://github.com/mouwaficbdr/waka/releases/latest/download/waka-v2.0.0-x86_64-unknown-linux-gnu.tar.gz \
   | tar -xz && sudo mv waka /usr/local/bin/
 ```
 
@@ -62,13 +62,13 @@ waka dashboard           # launch the interactive TUI
 
 ### `waka auth` — Authentication
 
-| Command                 | Description                                                    |
-| ----------------------- | -------------------------------------------------------------- |
-| `auth login`            | Log in with your WakaTime API key (interactive or `--api-key`) |
-| `auth logout`           | Remove the stored API key                                      |
-| `auth status`           | Show whether you are currently logged in                       |
-| `auth show-key`         | Display the stored API key (masked by default)                 |
-| `auth switch <PROFILE>` | Switch to a different profile                                  |
+| Command                 | Description                                                                |
+| ----------------------- | -------------------------------------------------------------------------- |
+| `auth login`            | Log in interactively (masked prompt + welcome message) or with `--api-key` |
+| `auth logout`           | Remove the stored API key                                                  |
+| `auth status`           | Show whether you are currently logged in                                   |
+| `auth show-key`         | Display the stored API key (masked by default)                             |
+| `auth switch <PROFILE>` | Switch to a different profile                                              |
 
 API keys are stored in the OS keychain (macOS Keychain, GNOME Keyring, Windows Credential Manager) with a `0600` plain-text fallback. Multi-profile support: use `-p work` or `-p personal` on any command.
 
@@ -153,8 +153,10 @@ Live TUI dashboard powered by [ratatui](https://ratatui.rs/):
 
 - 5 views: Main (overview), Projects, Languages, Goals, Activity (30-day heatmap)
 - Auto-refresh every 60 seconds (configurable with `--refresh`)
-- Keyboard navigation: `Tab` / `1–5` to switch views, `↑↓` to scroll
+- Keyboard navigation: `Tab` / `1–5` to switch views, `↑`/`↓`/`j`/`k` to scroll
 - `r` to refresh, `e` to export current view to JSON, `?` for help, `q` / Esc to quit
+- Status bar: last update time, countdown to next auto-refresh, and shortcut hints
+- Animated loading spinner on first fetch (no more blank "No data" screen)
 
 ### `waka prompt` — Shell Prompt Integration
 

@@ -5,46 +5,51 @@ All notable changes to `waka` are documented here.
 Format: [Conventional Commits](https://www.conventionalcommits.org/)
 Versioning: [Semantic Versioning](https://semver.org/)
 
-## [Unreleased]
-
-### 🐛 Bug Fixes
-
-- **api**: Handle absent 'seconds' field in GrandTotal from WakaTime API ([`a5108e5`](https://github.com/mouwaficbdr/waka/commit/a5108e583039420f2fa752e7028d8691879ad0f6))
-- **api**: Align types with official WakaTime API documentation ([`ff5129e`](https://github.com/mouwaficbdr/waka/commit/ff5129e6dd9c96bfea057bf6df3456d8f0f1b154))
-- **api**: Align all types with official WakaTime API documentation ([`abb041d`](https://github.com/mouwaficbdr/waka/commit/abb041ddeadf7f1e33915aa6acbdd35e9ef4a01f))
-- **api**: Add #[serde(default)] to all optional API fields that may be absent ([`c9a3d77`](https://github.com/mouwaficbdr/waka/commit/c9a3d7779f2c85332220e7c39746a37ef69da306))
-
-### 📚 Documentation
-
-- Finalize README for v1.0.0 public release ([`fb031cf`](https://github.com/mouwaficbdr/waka/commit/fb031cf4dd0a7b908249e4688d63db3ffcd48843))
-- Add VHS demo tape and recording ([`a0e790c`](https://github.com/mouwaficbdr/waka/commit/a0e790c04f13967ab9757aef9b5d69372ab04802))
-- **cli**: Update example version numbers to v1.0.0/v1.1.0 ([`88c4dab`](https://github.com/mouwaficbdr/waka/commit/88c4dab529f5f0139281cbf7ba678a0f4930b6de))
-
-### ⚙️ CI/CD
-
-- Fix ci-success gate, scope RUSTFLAGS to clippy, remove unimplemented pages workflow ([`a23eed6`](https://github.com/mouwaficbdr/waka/commit/a23eed635a68d33741c58d6775f05c590220ccfd))
-
-### 🔧 Miscellaneous
-
-- **agent**: Restore guidance files on private dev branch ([`c82bec1`](https://github.com/mouwaficbdr/waka/commit/c82bec1cb58b2b05ceda78b43f45f81e5b826f02))
-- **agent**: Document two-repo workflow and add safety warning ([`e38f64b`](https://github.com/mouwaficbdr/waka/commit/e38f64b93fa06c8448cd50bc48c30fa999255f51))
-- **agent**: Mark v1.0.0 complete, add post-launch maintenance tasks ([`2cde90c`](https://github.com/mouwaficbdr/waka/commit/2cde90c74ec31a064cf19da3bfb165dfbc7a8f7d))
-- **ci**: Remove nightly-only rustfmt options to fix fmt CI job ([`60590e6`](https://github.com/mouwaficbdr/waka/commit/60590e6b5f4c74ed4ae4f9082794e610300cc06b))
-
-## [1.0.0] - 2026-03-01
+## [2.0.0] - 2026-03-02
 
 ### 🚀 Features
 
 - **stability**: Stabilize public API surface for v1.0 ([`e960c37`](https://github.com/mouwaficbdr/waka/commit/e960c37c2b1517c740414b47818b3ee4eb068848))
+- **waka-render**: Add centralized Theme system and render utilities ([`1419853`](https://github.com/mouwaficbdr/waka/commit/1419853e4736493faf5ca6813b9c4043e673e1b0))
+- **render**: Redesign stats output with rich visual layout ([`24c6a22`](https://github.com/mouwaficbdr/waka/commit/24c6a2217ccba130ae0244a8356478af2cec3ed5))
+- Enrich projects and goals display ([`0e54507`](https://github.com/mouwaficbdr/waka/commit/0e54507613560f9f63c36771c550e3dbb74a3b87))
+- **auth**: Redesign auth login with interactive prompt and welcome message ([`3635125`](https://github.com/mouwaficbdr/waka/commit/363512575a3adf3dbad4be432caa3121a384a130))
+- **tui**: Improve dashboard loading state, navigation, and sparkline ([`5f3c9fa`](https://github.com/mouwaficbdr/waka/commit/5f3c9fa0de963fff5d453ffe3860f7f508c239f9))
 
 ### 🐛 Bug Fixes
 
 - **cli**: Improve Windows path detection for cargo install ([`6923106`](https://github.com/mouwaficbdr/waka/commit/6923106234e6b7f86b5e6b7519f321badd56bbb8))
+- **api**: Handle absent 'seconds' field in GrandTotal from WakaTime API ([`ca801d3`](https://github.com/mouwaficbdr/waka/commit/ca801d3cd3f16c29cc42d9840ed19948519411e9))
+- **api**: Align types with official WakaTime API documentation ([`11a4d22`](https://github.com/mouwaficbdr/waka/commit/11a4d22e2cfcd4ca738fbe56a96f1c33be357fb3))
+- **api**: Align all types with official WakaTime API documentation ([`1e427ab`](https://github.com/mouwaficbdr/waka/commit/1e427ab9e48e69ed1de5a2ce57e56d165e7f252e))
+- **api**: Add #[serde(default)] to all optional API fields that may be absent ([`ab922c5`](https://github.com/mouwaficbdr/waka/commit/ab922c55b7075ff453a5342ed954e027588d7a4c))
+- **waka-api**: Add crate-specific README, fix crates.io display ([`3ab532a`](https://github.com/mouwaficbdr/waka/commit/3ab532a8fd5fdd9bb350ab6ddecca644b786e1fa))
+
+### 📚 Documentation
+
+- Finalize README for v1.0.0 public release ([`01b244c`](https://github.com/mouwaficbdr/waka/commit/01b244cf9f4a4acc6124b4076105fcd30e87b4e7))
+- Add VHS demo tape and recording ([`bd27190`](https://github.com/mouwaficbdr/waka/commit/bd27190d262c371f97391ada04a1bee3489f4b99))
+- **cli**: Update example version numbers to v1.0.0/v1.1.0 ([`21d2fe1`](https://github.com/mouwaficbdr/waka/commit/21d2fe1e08b2b1e3abc8a8540067eecf20b5079f))
+- Update report --output-format flag, regenerate completions and CHANGELOG ([`f233291`](https://github.com/mouwaficbdr/waka/commit/f2332917c4b44f4e177664a2697357af25781aa9))
+- Add generated demo.gif ([`da2bdb7`](https://github.com/mouwaficbdr/waka/commit/da2bdb7e450f990093067d991f381ad896d7b62b))
+- Fix crates.io badge URLs from waka-cli to waka-api ([`5676be8`](https://github.com/mouwaficbdr/waka/commit/5676be8b24a0095e8514b5704584560fdecb5e47))
+- Fix README badges and remove invalid cargo install command ([`103bdbf`](https://github.com/mouwaficbdr/waka/commit/103bdbfa4253c2c2e960729658e873d0876d82e2))
+- Remove non-existent cargo-dist installer, add direct binary download links ([`00fbccf`](https://github.com/mouwaficbdr/waka/commit/00fbccfcf1e33b1ea218db2b95a31335d7647dbc))
+- Fix binary download filenames in README ([`ca5cbc2`](https://github.com/mouwaficbdr/waka/commit/ca5cbc22479384d0214d2fbf240497f61105a417))
+
+### ⚙️ CI/CD
+
+- Fix ci-success gate, scope RUSTFLAGS to clippy, remove unimplemented pages workflow ([`547015e`](https://github.com/mouwaficbdr/waka/commit/547015e6e93c202bd2840a84b1623d0f10fc3e72))
+- Replace broken cargo-dist reusable workflow with direct multi-platform build ([`d67055b`](https://github.com/mouwaficbdr/waka/commit/d67055b24b05771a16c6608773db2c61f00c3e39))
+- Fix publish-crates idempotency and changelog detached HEAD ([`9c1695f`](https://github.com/mouwaficbdr/waka/commit/9c1695fe817caae5fa77beefd307c4e05daa3111))
+- Fix audit workflow — cargo-deny-action v2, fix deny.toml deprecated keys, replace rustsec action with direct cargo-audit ([`02f6111`](https://github.com/mouwaficbdr/waka/commit/02f6111562e1567ae8afe9ad510cc61a56b2e907))
 
 ### 🔧 Miscellaneous
 
 - Finalize v1.0.0 — update README and mark Phase 4 complete ([`491b2b9`](https://github.com/mouwaficbdr/waka/commit/491b2b98a32b5a939f2aac47939d78b39085ad25))
 - Bump version to 1.0.0 ([`135cd03`](https://github.com/mouwaficbdr/waka/commit/135cd0339763048919a2e6640b653c90da340971))
+- **ci**: Remove nightly-only rustfmt options to fix fmt CI job ([`c301f4b`](https://github.com/mouwaficbdr/waka/commit/c301f4b6680d2d21aaa352e1aaae161d58b82a9b))
+- **release**: Bump version to 2.0.0 ([`4fed9bc`](https://github.com/mouwaficbdr/waka/commit/4fed9bc1574db8514c31ada5a71312823e4ab1e2))
 
 ## [0.4.0] - 2026-03-01
 
