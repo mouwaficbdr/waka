@@ -5,6 +5,7 @@
 //! network I/O goes through [`WakaClient`].
 
 use anyhow::{bail, Context as _, Result};
+use chrono::{DateTime, Datelike as _, Utc};
 use waka_api::WakaClient;
 use waka_config::{Config, CredentialError, CredentialStore};
 
@@ -30,7 +31,17 @@ pub async fn login(args: AuthLoginArgs, global: &GlobalOpts) -> Result<()> {
         }
         key.trim().to_owned()
     } else {
-        // Interactive path — warn if a key is already stored for this profile.
+        // Interactive path — print header and prompt via inquire.
+        if !global.quiet {
+            println!();
+            println!(
+                "  {} waka — WakaTime CLI",
+                console::style("◆").cyan().bold()
+            );
+            println!();
+        }
+
+        // Warn if a key is already stored for this profile.
         if !global.quiet {
             let store = CredentialStore::new(&profile);
             match store.get_api_key() {
@@ -45,8 +56,11 @@ pub async fn login(args: AuthLoginArgs, global: &GlobalOpts) -> Result<()> {
         }
 
         // Read the API key from stdin without echoing it.
-        eprint!("WakaTime API key: ");
-        let key = rpassword::read_password().context("failed to read API key from terminal")?;
+        let key = inquire::Password::new("WakaTime API key:")
+            .with_help_message("Find yours at https://wakatime.com/api-key")
+            .without_confirmation()
+            .prompt()
+            .context("failed to read API key from terminal")?;
         if key.trim().is_empty() {
             bail!("API key cannot be empty");
         }
@@ -79,7 +93,20 @@ pub async fn login(args: AuthLoginArgs, global: &GlobalOpts) -> Result<()> {
         Err(e) => return Err(e).context("failed to save API key"),
     }
 
-    println!("✓ Logged in as {} (@{})", user.display_name, user.username);
+    if !global.quiet {
+        println!();
+        println!("  {}  API key verified", console::style("✓").green().bold());
+        println!();
+        println!(
+            "  Welcome, {}! 👋",
+            console::style(&user.display_name).bold()
+        );
+        if let Some(ref plan) = user.plan {
+            println!("  Plan:       {plan}");
+        }
+        println!("  Timezone:   {}", user.timezone);
+        println!();
+    }
     Ok(())
 }
 
@@ -122,13 +149,45 @@ pub async fn status(global: &GlobalOpts) -> Result<()> {
             match result {
                 Ok(user) => {
                     println!(
-                        "✓ Logged in as {} (@{}) [profile: {profile}]",
-                        user.display_name, user.username
+                        "  {}  Logged in  [profile: {profile}]",
+                        console::style("✓").green().bold()
                     );
+                    println!();
+                    println!(
+                        "  {:<12}  {} (@{})",
+                        "User",
+                        console::style(&user.display_name).bold(),
+                        user.username
+                    );
+                    if let Some(ref email) = user.email {
+                        println!("  {:<12}  {email}", "Email");
+                    }
+                    if let Some(ref plan) = user.plan {
+                        println!("  {:<12}  {plan}", "Plan");
+                    }
+                    println!("  {:<12}  {}", "Timezone", user.timezone);
+                    println!(
+                        "  {:<12}  {}",
+                        "Member since",
+                        parse_date_long(&user.created_at)
+                    );
+                    if let Some(ref hb) = user.last_heartbeat_at {
+                        if let Ok(dt) = hb.parse::<DateTime<Utc>>() {
+                            println!(
+                                "  {:<12}  {}",
+                                "Last seen",
+                                waka_render::utils::humanize_relative(&dt)
+                            );
+                        }
+                    }
+                    println!();
                 }
                 Err(e) => {
                     // Key exists but the API rejected it.
-                    println!("✗ API key found but validation failed: {e}");
+                    println!(
+                        "  {}  API key found but validation failed: {e}",
+                        console::style("✗").red()
+                    );
                     println!("  Run `waka auth login` to update your key.");
                 }
             }
@@ -213,6 +272,7 @@ pub async fn switch(profile_name: &str, global: &GlobalOpts) -> Result<()> {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
 /// global `--profile` flag > `"default"`.
 fn profile_name(explicit: Option<&str>, global: &GlobalOpts) -> String {
     explicit
@@ -233,6 +293,16 @@ fn profile_name(explicit: Option<&str>, global: &GlobalOpts) -> String {
 /// "waka_1234567890abcdef1234567890abcdef12345678" → "waka_****5678"
 /// "short" → "[REDACTED]"
 /// ```
+/// Format an ISO 8601 timestamp as `"Month Day, Year"` (e.g. `"January 13, 2025"`).
+///
+/// Falls back to the first 10 characters (YYYY-MM-DD) if parsing fails.
+fn parse_date_long(iso: &str) -> String {
+    iso.parse::<DateTime<Utc>>().map_or_else(
+        |_| iso.get(..10).unwrap_or(iso).to_owned(),
+        |dt| format!("{} {}, {}", dt.format("%B"), dt.day(), dt.year()),
+    )
+}
+
 fn mask_key(key: &str) -> String {
     const SHOW_PREFIX: usize = 5;
     const SHOW_SUFFIX: usize = 4;
