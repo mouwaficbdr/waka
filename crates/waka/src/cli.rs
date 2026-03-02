@@ -281,8 +281,9 @@ pub enum ProjectsCommands {
 
     /// Show detailed stats for a project.
     Show {
-        /// Project name.
-        project_name: String,
+        /// Project name (omit to select interactively when running in a TTY).
+        #[arg(value_name = "PROJECT")]
+        project_name: Option<String>,
 
         /// Start date (YYYY-MM-DD).
         #[arg(long, value_name = "DATE")]

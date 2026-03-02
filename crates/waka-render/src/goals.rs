@@ -6,14 +6,16 @@
 
 use std::fmt::Write as _;
 
-use comfy_table::{presets, Cell, ContentArrangement, Table};
+use owo_colors::OwoColorize as _;
 use waka_api::{Goal, GoalsResponse};
 
 use crate::format::{format_bar, format_duration};
 use crate::options::{OutputFormat, RenderOptions};
+use crate::theme::Theme;
+use crate::utils::humanize_duration;
 
-/// Width of the ASCII progress bar in the goals table.
-const BAR_WIDTH: u8 = 16;
+/// Width of the Unicode progress bar in the rich visual layout.
+const RICH_BAR_WIDTH: u8 = 22;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -104,54 +106,109 @@ impl GoalRenderer {
         }
     }
 
-    // ── table ─────────────────────────────────────────────────────────────────
+    // ── table (rich visual layout) ──────────────────────────────────────────
 
-    /// Renders the goal list as a Unicode bordered table.
+    /// Renders the goal list as a rich visual layout with status icons,
+    /// coloured progress bars and human-readable annotations.
     #[must_use]
-    pub fn render_table(resp: &GoalsResponse, _opts: &RenderOptions) -> String {
+    pub fn render_table(resp: &GoalsResponse, opts: &RenderOptions) -> String {
         if resp.data.is_empty() {
-            return "No goals found.".to_owned();
+            return "  No goals found.\n".to_owned();
         }
 
-        let mut table = Table::new();
-        table
-            .load_preset(presets::UTF8_FULL)
-            .set_content_arrangement(ContentArrangement::Disabled)
-            .set_header(vec![
-                Cell::new("#"),
-                Cell::new("Status"),
-                Cell::new("Title"),
-                Cell::new("Target"),
-                Cell::new("Period"),
-                Cell::new("Bar"),
-                Cell::new("Scope"),
-            ]);
+        let color = opts.color;
+        let theme = if color {
+            Theme::colored()
+        } else {
+            Theme::plain()
+        };
 
-        for (i, goal) in resp.data.iter().enumerate() {
+        let max_title_w = resp
+            .data
+            .iter()
+            .map(|g| g.title.len())
+            .max()
+            .unwrap_or(8)
+            .max(8);
+
+        let total = resp.total;
+        let mut out = String::new();
+
+        // ── Header ──────────────────────────────────────────────────────────
+        write!(out, "  ").unwrap_or_default();
+        if color {
+            write!(out, "{}", "Goals".style(theme.bold)).unwrap_or_default();
+        } else {
+            write!(out, "Goals").unwrap_or_default();
+        }
+        writeln!(out, "  ({total} total)").unwrap_or_default();
+        out.push('\n');
+
+        // ── Rows ────────────────────────────────────────────────────────────
+        for goal in &resp.data {
             let rs = goal.range_status.as_deref().unwrap_or("");
-            let status = format!("{} {}", status_symbol(rs), rs);
-            let target = format_duration(target_secs(goal));
-            let bar = if let Some(ratio) = progress_ratio(goal) {
+
+            // Status icon + colour style for bar.
+            let (icon, icon_style, bar_style): (&str, _, _) = match rs {
+                "success" => ("✓", theme.success, theme.success),
+                "fail" => ("✗", theme.error, theme.error),
+                "ignored" => ("-", theme.muted, theme.muted),
+                _ => ("◐", theme.warning, theme.warning),
+            };
+
+            // Progress bar.
+            let (bar_str, pct_str, annotation) = if let Some(ratio) = progress_ratio(goal) {
                 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
                 let pct = (ratio * 100.0).round() as u64;
-                format!("{} {}%", format_bar(ratio, BAR_WIDTH), pct)
+                let raw_bar = format_bar(ratio, RICH_BAR_WIDTH);
+                let ann = match rs {
+                    "success" => "Done".to_owned(),
+                    "fail" => "\u{26a0} behind pace".to_owned(),
+                    "ignored" => "-".to_owned(),
+                    _ => {
+                        // Show actual / target.
+                        let chart = goal.chart_data.as_ref().and_then(|c| c.last());
+                        if let Some(entry) = chart {
+                            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                            let actual = humanize_duration(entry.actual_seconds.max(0.0) as u64);
+                            let target = format_duration(target_secs(goal));
+                            format!("{actual} / {target}")
+                        } else {
+                            let target = format_duration(target_secs(goal));
+                            format!("? / {target}")
+                        }
+                    }
+                };
+                (raw_bar, format!("{pct:>3}%"), ann)
             } else {
-                String::new()
+                (
+                    "░".repeat(RICH_BAR_WIDTH as usize),
+                    "  ?%".to_owned(),
+                    String::new(),
+                )
             };
-            let scope = format_scope(goal);
 
-            table.add_row(vec![
-                Cell::new(i + 1),
-                Cell::new(&status),
-                Cell::new(&goal.title),
-                Cell::new(&target),
-                Cell::new(&goal.delta),
-                Cell::new(&bar),
-                Cell::new(&scope),
-            ]);
+            let pad = " ".repeat(max_title_w.saturating_sub(goal.title.len()));
+
+            if color {
+                let icon_s = format!("{}", icon.style(icon_style));
+                let title_s = goal.title.clone();
+                let bar_s = format!("{}", bar_str.style(bar_style));
+                let pct_s = pct_str.clone();
+                let ann_s = annotation.clone();
+                writeln!(out, "  {icon_s}  {title_s}{pad}  {bar_s}  {pct_s}  {ann_s}")
+                    .unwrap_or_default();
+            } else {
+                let title = &goal.title;
+                writeln!(
+                    out,
+                    "  {icon}  {title}{pad}  {bar_str}  {pct_str}  {annotation}"
+                )
+                .unwrap_or_default();
+            }
         }
 
-        format!("{table}\nTotal: {}\n", resp.total)
+        out
     }
 
     // ── plain list ────────────────────────────────────────────────────────────

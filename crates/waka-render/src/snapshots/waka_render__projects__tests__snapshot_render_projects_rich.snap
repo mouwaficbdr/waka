@@ -1,0 +1,8 @@
+---
+source: crates/waka-render/src/projects.rs
+expression: out
+---
+  Projects  2 projects, 0 active today
+
+  ○  waka      2 hours ago
+  ○  my-saas   1 day ago

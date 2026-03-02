@@ -16,7 +16,7 @@ use waka_cache::CacheStore;
 use waka_config::{Config, CredentialStore, ProfileConfig};
 use waka_render::{
     detect_output_format, should_use_color, BreakdownRenderer, GoalRenderer, LeaderboardRenderer,
-    OutputFormat as RenderFormat, RenderOptions, SummaryRenderer,
+    OutputFormat as RenderFormat, ProjectRenderer, RenderOptions, SummaryRenderer,
 };
 
 use crate::auth;
@@ -411,19 +411,13 @@ async fn projects(cmd: ProjectsCommands, global: &GlobalOpts) -> Result<()> {
 
     match cmd {
         ProjectsCommands::List { sort_by, limit } => {
-            // Projects list: use AllTime stats for time data per project.
             let pb = stats_spinner("Fetching projects …");
-            let resp = client.stats(StatsRange::AllTime).await;
+            let resp = client.projects().await;
             pb.finish_and_clear();
             let resp = resp.with_context(|| "failed to fetch project list from WakaTime")?;
 
-            let mut entries = entries_from_stats(&resp.data.projects);
-
-            if matches!(sort_by, crate::cli::ProjectSortBy::Name) {
-                entries.sort_by(|a, b| a.0.cmp(&b.0));
-            }
-
-            let output = BreakdownRenderer::render(&entries, "Project", limit, &opts);
+            let sort_by_name = matches!(sort_by, crate::cli::ProjectSortBy::Name);
+            let output = ProjectRenderer::render_list(&resp, limit, sort_by_name, &opts);
             print!("{output}");
         }
         ProjectsCommands::Top { period } => {
@@ -442,6 +436,31 @@ async fn projects(cmd: ProjectsCommands, global: &GlobalOpts) -> Result<()> {
             from,
             to,
         } => {
+            // Resolve project name: use provided argument or interactive fuzzy
+            // select (only when stdout is a TTY).
+            let name: String = match project_name {
+                Some(n) => n,
+                None => {
+                    if std::io::stdout().is_terminal() {
+                        let pb = stats_spinner("Loading your projects…");
+                        let projects_resp = client.projects().await;
+                        pb.finish_and_clear();
+                        let projects_resp = projects_resp
+                            .with_context(|| "failed to fetch projects from WakaTime")?;
+                        if projects_resp.data.is_empty() {
+                            bail!("No projects found.");
+                        }
+                        let names: Vec<String> =
+                            projects_resp.data.iter().map(|p| p.name.clone()).collect();
+                        inquire::Select::new("Select a project:", names)
+                            .prompt()
+                            .with_context(|| "project selection cancelled")?
+                    } else {
+                        bail!("Specify a project name, e.g.: waka projects show my-project");
+                    }
+                }
+            };
+
             let today = chrono::Local::now().date_naive();
             let start = from.as_deref().map_or(Ok(today), |s| {
                 chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d")
@@ -451,12 +470,11 @@ async fn projects(cmd: ProjectsCommands, global: &GlobalOpts) -> Result<()> {
                 chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d")
                     .with_context(|| format!("--to must be YYYY-MM-DD, got '{s}'"))
             })?;
-            let params = SummaryParams::for_range(start, end).project(&project_name);
-            let pb = stats_spinner(&format!("Fetching stats for '{project_name}' …"));
+            let params = SummaryParams::for_range(start, end).project(&name);
+            let pb = stats_spinner(&format!("Fetching stats for '{name}' …"));
             let resp = client.summaries(params).await;
             pb.finish_and_clear();
-            let resp =
-                resp.with_context(|| format!("failed to fetch stats for '{project_name}'"))?;
+            let resp = resp.with_context(|| format!("failed to fetch stats for '{name}'"))?;
             print!("{}", SummaryRenderer::render(&resp, &opts));
         }
     }
