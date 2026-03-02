@@ -60,9 +60,4 @@ unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 
-# ─────────────────────────────────────────
-# Cargo configuration
-# ─────────────────────────────────────────
-[cargo]
-# Do not pin to a specific Cargo version for MSRV checks
-msrv-pin = false
+
