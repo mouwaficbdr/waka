@@ -18,7 +18,7 @@ Use [GitHub's private vulnerability reporting](https://github.com/mouwaficbdr/wa
 
 ### Option 2: Email
 
-Send details to: **security@DOMAIN** (replace before publishing)
+Send details to: **badaroumouwafic@gmail.com**
 
 ### What to include
 
