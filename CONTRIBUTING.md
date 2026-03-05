@@ -26,16 +26,15 @@ git checkout -b feat/my-feature
 
 ## Development Workflow
 
-Read `CLAUDE.md` — it contains the authoritative development guidelines.
+Read `CONVENTIONS.md` — it contains the authoritative development guidelines.
 
 The short version:
 
 1. Find a task in `DEVELOPMENT_PLAN.md` or pick up an issue
-2. Read the relevant spec in `SPEC.md`
-3. Implement with tests
-4. Run the pre-commit checklist
-5. Commit with a conventional commit message
-6. Open a PR
+2. Implement with tests
+3. Run the pre-commit checklist
+4. Commit with a conventional commit message
+5. Open a PR
 
 ## Pre-commit Checklist
 
@@ -142,8 +141,6 @@ cp man/*.1 /usr/local/share/man/man1/
 ```
 
 ## Architecture
-
-Read `CLAUDE.md §7` for the architecture and crate boundary rules. The one-line version:
 
 > `waka-api` must be independently publishable. Never import project crates into it.
 
