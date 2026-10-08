@@ -261,7 +261,7 @@ fn render_rich(resp: &SummaryResponse, opts: &RenderOptions) -> String {
     // Total footer row.
     let total_col = label_col + RICH_BAR_WIDTH + 2;
     let total_time_str = humanize_duration(total_secs);
-    writeln!(out, "  {:<total_col$}{total_time_str:>6}", "Total",).expect("infallible");
+    writeln!(out, "  {:<total_col$}{total_time_str:>6}", "Total").expect("infallible");
 
     out
 }
