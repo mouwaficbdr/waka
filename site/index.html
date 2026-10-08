@@ -1,0 +1,1034 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>waka · The WakaTime CLI you always deserved</title>
+<meta name="description" content="waka is a fast, beautiful, composable WakaTime CLI written in Rust. Coding stats, an interactive TUI dashboard, reports and shell prompt integration, all from your terminal.">
+<meta name="theme-color" content="#0b0c11">
+<meta property="og:title" content="waka · The WakaTime CLI you always deserved">
+<meta property="og:description" content="Fast, beautiful, composable. Your WakaTime stats without leaving the terminal.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2313141c'/%3E%3Cpath d='M8 11l5 5-5 5' stroke='%235ce1e6' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Crect x='16' y='19' width='9' height='3' rx='1.5' fill='%2350fa7b'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0b0c11;
+  --bg-2: #101119;
+  --panel: #1a1b25;
+  --panel-2: #20212d;
+  --line: rgba(255, 255, 255, .08);
+  --line-2: rgba(255, 255, 255, .14);
+  --text: #ecedf3;
+  --muted: #8d8fa6;
+  --dim: #5d5f74;
+  --cyan: #5ce1e6;
+  --green: #50fa7b;
+  --yellow: #f1fa8c;
+  --red: #ff6e6e;
+  --purple: #bd93f9;
+  /* GitHub Linguist colours, as used by waka-render */
+  --l-rust: rgb(206, 64, 32);
+  --l-ts: rgb(43, 116, 137);
+  --l-py: rgb(53, 114, 165);
+  --l-bash: rgb(137, 224, 81);
+  --l-toml: rgb(156, 66, 33);
+  --l-md: rgb(8, 63, 185);
+  --l-yaml: rgb(203, 65, 84);
+  --radius: 16px;
+  --display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --body: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 400 16px/1.6 var(--body);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+a { color: inherit; text-decoration: none; }
+code, kbd, pre { font-family: var(--mono); }
+::selection { background: rgba(92, 225, 230, .3); }
+
+.wrap { width: min(1160px, 100% - 32px); margin-inline: auto; }
+
+/* ───────────── Background ───────────── */
+.bg-grid {
+  position: absolute; inset: 0 0 auto 0; height: 1100px; pointer-events: none; z-index: 0;
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 30%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 30%, transparent 75%);
+  opacity: .55;
+}
+.bg-glow {
+  position: absolute; pointer-events: none; z-index: 0; filter: blur(90px); opacity: .5;
+  width: 620px; height: 420px; border-radius: 50%;
+}
+.bg-glow.a { top: -140px; left: 50%; transform: translateX(-80%); background: radial-gradient(circle, rgba(92,225,230,.55), transparent 65%); }
+.bg-glow.b { top: 120px; left: 50%; transform: translateX(10%); background: radial-gradient(circle, rgba(80,250,123,.32), transparent 65%); }
+
+/* ───────────── Nav ───────────── */
+.nav {
+  position: sticky; top: 0; z-index: 50;
+  backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px);
+  background: rgba(11, 12, 17, .72);
+  border-bottom: 1px solid transparent;
+  transition: border-color .3s;
+}
+.nav.scrolled { border-bottom-color: var(--line); }
+.nav .wrap { display: flex; align-items: center; gap: 24px; height: 64px; }
+.logo { display: inline-flex; align-items: center; gap: 2px; font: 700 20px/1 var(--mono); letter-spacing: -.02em; }
+.logo .chev { color: var(--cyan); margin-right: 8px; }
+.logo .cur { display: inline-block; width: 10px; height: 18px; background: var(--green); margin-left: 3px; animation: blink 1.1s steps(1) infinite; border-radius: 1px; }
+@keyframes blink { 50% { opacity: 0; } }
+.nav-links { display: flex; gap: 4px; margin-left: auto; align-items: center; }
+.nav-links a { color: var(--muted); font-size: 14.5px; padding: 8px 12px; border-radius: 8px; transition: color .2s, background .2s; }
+.nav-links a:hover { color: var(--text); background: rgba(255,255,255,.04); }
+.nav-links .gh { color: var(--text); border: 1px solid var(--line-2); display: inline-flex; gap: 8px; align-items: center; margin-left: 6px; }
+.nav-links .gh svg { width: 16px; height: 16px; }
+@media (max-width: 760px) { .nav-links a:not(.gh) { display: none; } }
+
+/* ───────────── Hero ───────────── */
+.hero { position: relative; padding: 72px 0 40px; overflow: clip; }
+.hero > .wrap { position: relative; z-index: 1; }
+.hero-head { text-align: center; max-width: 860px; margin: 0 auto; }
+.pill {
+  display: inline-flex; align-items: center; gap: 10px;
+  font: 500 13px/1 var(--mono); color: var(--muted);
+  padding: 7px 14px 7px 8px; border: 1px solid var(--line-2); border-radius: 999px;
+  background: rgba(255,255,255,.02);
+  transition: border-color .2s, color .2s;
+}
+.pill:hover { border-color: rgba(92,225,230,.5); color: var(--text); }
+.pill b { color: var(--bg); background: var(--green); padding: 4px 8px; border-radius: 999px; font-weight: 700; }
+h1 {
+  font: 800 clamp(42px, 7.4vw, 92px)/.98 var(--display);
+  letter-spacing: -.045em; margin: 28px 0 22px;
+}
+h1 .grad {
+  background: linear-gradient(100deg, var(--cyan) 10%, var(--green) 90%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.lede { font-size: clamp(17px, 2vw, 20px); color: var(--muted); max-width: 640px; margin: 0 auto; }
+.lede strong { color: var(--text); font-weight: 500; }
+.cta-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 36px; }
+
+.copy-cmd {
+  display: inline-flex; align-items: center; gap: 14px;
+  font: 500 15px/1 var(--mono);
+  background: var(--panel); border: 1px solid var(--line-2); border-radius: 12px;
+  padding: 0 6px 0 18px; height: 52px; color: var(--text); cursor: pointer;
+  transition: border-color .2s, transform .2s;
+  max-width: 100%;
+}
+.copy-cmd:hover { border-color: rgba(92,225,230,.55); }
+.copy-cmd .p { color: var(--cyan); }
+.copy-cmd .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.copy-cmd .ic {
+  display: grid; place-items: center; width: 40px; height: 40px; border-radius: 8px;
+  background: rgba(255,255,255,.05); color: var(--muted); flex: none; transition: color .2s, background .2s;
+}
+.copy-cmd.ok .ic { color: var(--green); background: rgba(80,250,123,.12); }
+.copy-cmd svg { width: 17px; height: 17px; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 10px; height: 52px; padding: 0 22px;
+  border-radius: 12px; font: 600 15px/1 var(--body);
+  transition: transform .2s, box-shadow .2s, background .2s;
+}
+.btn svg { width: 18px; height: 18px; }
+.btn-primary { background: var(--text); color: var(--bg); }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 30px -10px rgba(92,225,230,.6); }
+.btn-ghost { border: 1px solid var(--line-2); color: var(--text); }
+.btn-ghost:hover { background: rgba(255,255,255,.04); }
+
+/* ───────────── Terminal window ───────────── */
+.term {
+  position: relative;
+  background: linear-gradient(180deg, #1d1e29, #191a23);
+  border: 1px solid var(--line-2); border-radius: var(--radius);
+  box-shadow: 0 50px 120px -40px rgba(0,0,0,.9), 0 0 0 1px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.05);
+  overflow: hidden;
+}
+.term-bar {
+  display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 16px;
+  border-bottom: 1px solid var(--line); background: rgba(255,255,255,.015);
+}
+.dot { width: 12px; height: 12px; border-radius: 50%; background: #3a3b4a; }
+.term-bar .dot:nth-child(1) { background: #ff5f57; }
+.term-bar .dot:nth-child(2) { background: #febc2e; }
+.term-bar .dot:nth-child(3) { background: #28c840; }
+.term-title { flex: 1; text-align: center; font: 500 12.5px/1 var(--mono); color: var(--dim); margin-right: 52px; }
+.term-body {
+  font: 400 14px/1.6 var(--mono); padding: 22px 24px 26px; color: #e6e6ef;
+  white-space: pre; overflow-x: auto;
+}
+.term-body .ln { min-height: 1.6em; }
+.c-cy { color: var(--cyan); } .c-gr { color: var(--green); } .c-ye { color: var(--yellow); }
+.c-mu { color: var(--muted); } .c-di { color: var(--dim); } .c-re { color: var(--red); } .c-pu { color: var(--purple); }
+.b { font-weight: 700; }
+.caret { display: inline-block; width: .6em; height: 1.15em; vertical-align: -.2em; background: #e6e6ef; animation: blink 1s steps(1) infinite; }
+.hdr-box {
+  display: inline-block; border: 1px solid #c9cad6; border-radius: 6px;
+  padding: 4px 18px; margin: 4px 0 8px 18px; min-width: min(460px, 80%);
+}
+
+.hero-term { margin: 64px auto 0; max-width: 900px; }
+.hero-term .term-body { height: 360px; }
+@media (max-width: 600px) {
+  .term-body { font-size: 11.5px; padding: 16px 14px 18px; }
+  .hero-term .term-body { height: 300px; }
+  .hdr-box { margin-left: 8px; padding: 4px 12px; }
+  .hero { padding-top: 48px; }
+}
+.scene-tabs { display: flex; justify-content: center; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
+.scene-tabs button {
+  font: 500 12.5px/1 var(--mono); color: var(--dim); background: none; border: 1px solid var(--line);
+  padding: 8px 12px; border-radius: 999px; cursor: pointer; transition: all .2s;
+}
+.scene-tabs button:hover { color: var(--muted); }
+.scene-tabs button[aria-pressed="true"] { color: var(--text); border-color: rgba(92,225,230,.5); background: rgba(92,225,230,.07); }
+
+/* ───────────── Stats strip ───────────── */
+.strip { border-block: 1px solid var(--line); margin-top: 88px; background: rgba(255,255,255,.012); }
+.strip .wrap { display: grid; grid-template-columns: repeat(4, 1fr); }
+.stat { padding: 30px 24px; border-left: 1px solid var(--line); }
+.stat:first-child { border-left: 0; }
+.stat .n { font: 700 34px/1 var(--display); letter-spacing: -.03em; }
+.stat .l { color: var(--muted); font-size: 14px; margin-top: 8px; }
+@media (max-width: 760px) {
+  .strip .wrap { grid-template-columns: repeat(2, 1fr); }
+  .stat:nth-child(3) { border-left: 0; }
+  .stat:nth-child(n+3) { border-top: 1px solid var(--line); }
+}
+
+/* ───────────── Sections ───────────── */
+section { position: relative; }
+.sec { padding: 120px 0 0; }
+.eyebrow { font: 500 13px/1 var(--mono); color: var(--cyan); letter-spacing: .04em; text-transform: uppercase; }
+.eyebrow::before { content: "// "; color: var(--dim); }
+h2 { font: 700 clamp(32px, 4.6vw, 54px)/1.04 var(--display); letter-spacing: -.035em; margin: 16px 0 16px; max-width: 760px; }
+.sec-lede { color: var(--muted); font-size: 18px; max-width: 620px; margin: 0; }
+.sec-lede code, .card p code, .pillar code, .note code { white-space: nowrap; }
+
+/* Pillars */
+.pillars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 56px; }
+.pillar {
+  position: relative; padding: 30px; border-radius: var(--radius);
+  background: linear-gradient(180deg, var(--bg-2), rgba(16,17,25,.4));
+  border: 1px solid var(--line); overflow: hidden;
+}
+.pillar .k { font: 700 13px/1 var(--mono); color: var(--dim); }
+.pillar h3 { font: 700 30px/1.1 var(--display); letter-spacing: -.03em; margin: 18px 0 10px; }
+.pillar p { color: var(--muted); margin: 0; font-size: 15.5px; }
+.pillar code { font-size: .9em; color: var(--text); background: rgba(255,255,255,.06); padding: 1px 6px; border-radius: 5px; }
+.pillar::after {
+  content: ""; position: absolute; inset: auto -40% -60% auto; width: 260px; height: 260px; border-radius: 50%;
+  filter: blur(60px); opacity: .18;
+}
+.pillar:nth-child(1)::after { background: var(--cyan); }
+.pillar:nth-child(2)::after { background: var(--green); }
+.pillar:nth-child(3)::after { background: var(--purple); }
+@media (max-width: 860px) { .pillars { grid-template-columns: 1fr; } }
+
+/* Bento features */
+.bento { display: grid; grid-template-columns: repeat(6, 1fr); gap: 18px; margin-top: 56px; }
+.card {
+  grid-column: span 2; padding: 28px; border-radius: var(--radius);
+  background: var(--bg-2); border: 1px solid var(--line);
+  transition: border-color .25s, transform .25s;
+  display: flex; flex-direction: column;
+}
+.card:hover { border-color: var(--line-2); }
+.card.w3 { grid-column: span 3; }
+.card .ico {
+  width: 42px; height: 42px; border-radius: 10px; display: grid; place-items: center;
+  background: rgba(255,255,255,.04); border: 1px solid var(--line); color: var(--cyan); margin-bottom: 20px;
+}
+.card .ico svg { width: 20px; height: 20px; }
+.card h3 { font: 600 19px/1.3 var(--body); letter-spacing: -.01em; margin: 0 0 8px; }
+.card p { color: var(--muted); margin: 0; font-size: 15px; }
+.card p code { color: var(--text); font-size: .88em; }
+.mini {
+  margin-top: 22px; padding: 16px 18px; border-radius: 12px; background: var(--panel);
+  border: 1px solid var(--line); font: 400 13px/1.65 var(--mono); white-space: pre; overflow-x: auto; color: #dcdce6;
+}
+.mini.grow { margin-top: auto; }
+.card > .mini:last-child { margin-top: 22px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+.chip { font: 500 12.5px/1 var(--mono); padding: 7px 10px; border-radius: 7px; background: rgba(255,255,255,.04); border: 1px solid var(--line); color: var(--muted); }
+.chip.on { color: var(--cyan); border-color: rgba(92,225,230,.35); background: rgba(92,225,230,.06); }
+@media (max-width: 980px) { .bento { grid-template-columns: repeat(2, 1fr); } .card, .card.w3 { grid-column: span 1; } }
+@media (max-width: 640px) { .bento { grid-template-columns: 1fr; } }
+
+/* ───────────── TUI showcase ───────────── */
+.tui-wrap { margin-top: 56px; }
+.tui .term-body { white-space: normal; padding: 14px; font-size: 13px; line-height: 1.5; }
+.tui-tabs { display: flex; gap: 2px; flex-wrap: wrap; margin-bottom: 12px; font-family: var(--mono); }
+.tui-tabs button {
+  font: 500 13px/1 var(--mono); background: none; border: 0; color: var(--muted); padding: 7px 10px; cursor: pointer; border-radius: 4px;
+}
+.tui-tabs button .kn { color: var(--dim); margin-right: 6px; }
+.tui-tabs button[aria-selected="true"] { color: var(--bg); background: var(--cyan); font-weight: 700; }
+.tui-tabs button[aria-selected="true"] .kn { color: rgba(0,0,0,.45); }
+.tui-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 8px; }
+.box {
+  position: relative; border: 1px solid #4a4c5e; border-radius: 3px; padding: 14px 12px 10px; min-height: 80px;
+}
+.box > .bt { position: absolute; top: -9px; left: 10px; background: #1b1c26; padding: 0 6px; color: #d7d8e2; font-weight: 500; line-height: 1.2; }
+.s12 { grid-column: span 12; } .s7 { grid-column: span 7; } .s5 { grid-column: span 5; } .s6 { grid-column: span 6; }
+@media (max-width: 760px) { .s7, .s5, .s6 { grid-column: span 12; } }
+.row { display: grid; grid-template-columns: 110px 1fr 74px 48px; gap: 10px; align-items: center; padding: 2px 0; }
+.row .bar { height: 10px; background: repeating-linear-gradient(90deg, rgba(255,255,255,.07) 0 2px, transparent 2px 4px); position: relative; }
+.row .bar i { position: absolute; inset: 0 auto 0 0; background: var(--green); transition: width .9s cubic-bezier(.2,.8,.2,1); }
+.row .t { color: var(--cyan); text-align: right; }
+.row .pc { color: var(--yellow); text-align: right; }
+@media (max-width: 520px) { .row { grid-template-columns: 84px 1fr 62px; } .row .pc { display: none; } }
+.spark { display: flex; align-items: flex-end; gap: 6px; height: 54px; margin-top: 8px; }
+.spark span { flex: 1; background: linear-gradient(180deg, var(--cyan), rgba(92,225,230,.35)); border-radius: 2px 2px 0 0; min-height: 3px; transition: height .8s cubic-bezier(.2,.8,.2,1); }
+.days { display: flex; gap: 6px; color: var(--muted); font-size: 11.5px; margin-top: 4px; }
+.days span { flex: 1; text-align: center; }
+.gauge { margin: 6px 0 10px; }
+.gauge .top { display: flex; justify-content: space-between; gap: 10px; }
+.gauge .track { height: 10px; margin-top: 6px; background: repeating-linear-gradient(90deg, rgba(255,255,255,.07) 0 2px, transparent 2px 4px); position: relative; }
+.gauge .track i { position: absolute; inset: 0 auto 0 0; transition: width .9s cubic-bezier(.2,.8,.2,1); }
+.heat { display: grid; grid-template-columns: repeat(15, 1fr); gap: 4px; }
+.heat span { aspect-ratio: 1; border-radius: 2px; background: rgba(255,255,255,.05); }
+.heat.big { grid-template-columns: repeat(10, 1fr); gap: 6px; max-width: 520px; }
+.heat .h1 { background: rgba(80,250,123,.22); } .heat .h2 { background: rgba(80,250,123,.45); }
+.heat .h3 { background: rgba(80,250,123,.7); } .heat .h4 { background: var(--green); }
+.status {
+  margin-top: 10px; padding: 6px 4px 0; color: var(--muted); font-size: 12.5px; display: flex; flex-wrap: wrap; gap: 6px 14px;
+}
+.status b { color: var(--cyan); font-weight: 500; }
+.status .k { color: var(--text); }
+.tui-panel[hidden] { display: none; }
+.tui-hint { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; margin-top: 18px; color: var(--muted); font-size: 14px; }
+kbd {
+  font: 500 12px/1 var(--mono); padding: 4px 7px; border-radius: 6px; color: var(--text);
+  background: var(--panel); border: 1px solid var(--line-2); border-bottom-width: 2px;
+}
+
+/* ───────────── Pipe section ───────────── */
+.split { display: grid; grid-template-columns: 1fr 1.2fr; gap: 56px; align-items: center; margin-top: 8px; }
+@media (max-width: 920px) { .split { grid-template-columns: 1fr; gap: 36px; } }
+.fmt-list { list-style: none; padding: 0; margin: 32px 0 0; display: grid; gap: 4px; }
+.fmt-list button {
+  width: 100%; text-align: left; display: grid; grid-template-columns: 80px 1fr; gap: 14px; align-items: baseline;
+  padding: 14px 16px; border-radius: 12px; border: 1px solid transparent; background: none; color: var(--muted);
+  font: 400 15px/1.45 var(--body); cursor: pointer; transition: all .2s;
+}
+.fmt-list button code { color: var(--text); font-size: 14px; }
+.fmt-list button:hover { background: rgba(255,255,255,.025); }
+.fmt-list button[aria-pressed="true"] { border-color: var(--line-2); background: var(--bg-2); color: var(--text); }
+.fmt-list button[aria-pressed="true"] code { color: var(--cyan); }
+.pipe-term .term-body { min-height: 300px; }
+
+/* ───────────── Integrations ───────────── */
+.integ { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 56px; }
+@media (max-width: 920px) { .integ { grid-template-columns: 1fr; } }
+.integ .card { grid-column: auto; }
+.prompt-demo {
+  margin-top: 22px; padding: 14px 16px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line);
+  font: 13.5px/1.6 var(--mono); white-space: nowrap; overflow-x: auto;
+}
+.tmux { display: flex; justify-content: space-between; gap: 16px; background: #28c840; color: #0b0c11; padding: 2px 10px; border-radius: 4px; margin-top: 8px; font-weight: 500; }
+.tmux.bar { background: #3b3d52; color: #e6e6ef; }
+
+/* ───────────── Commands ───────────── */
+.cmd-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; margin-top: 56px; }
+@media (max-width: 920px) { .cmd-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) { .cmd-grid { grid-template-columns: 1fr; } }
+.cmd { background: var(--bg); padding: 26px 26px 28px; transition: background .25s; }
+.cmd:hover { background: var(--bg-2); }
+.cmd h4 { margin: 0; font: 700 16px/1 var(--mono); }
+.cmd h4 span { color: var(--dim); font-weight: 400; }
+.cmd p { margin: 10px 0 16px; color: var(--muted); font-size: 14.5px; }
+.cmd ul { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.cmd li { font: 400 12.5px/1 var(--mono); padding: 6px 8px; border-radius: 6px; background: rgba(255,255,255,.04); color: #c8c9d6; }
+
+/* ───────────── Install ───────────── */
+.install { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-top: 56px; align-items: start; }
+@media (max-width: 920px) { .install { grid-template-columns: 1fr; } }
+.tabs { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--bg-2); border: 1px solid var(--line); width: fit-content; max-width: 100%; overflow-x: auto; }
+.tabs button { font: 500 14px/1 var(--body); color: var(--muted); background: none; border: 0; padding: 10px 14px; border-radius: 8px; cursor: pointer; white-space: nowrap; }
+.tabs button[aria-selected="true"] { background: var(--panel-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--line-2); }
+.code {
+  position: relative; margin-top: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+  font: 400 14px/1.75 var(--mono); padding: 20px 56px 20px 20px; white-space: pre; overflow-x: auto; color: #e6e6ef;
+}
+.code .copy {
+  position: absolute; top: 12px; right: 12px; width: 34px; height: 34px; display: grid; place-items: center;
+  border-radius: 8px; border: 1px solid var(--line); background: var(--bg-2); color: var(--muted); cursor: pointer; transition: all .2s;
+}
+.code .copy:hover { color: var(--text); }
+.code .copy.ok { color: var(--green); border-color: rgba(80,250,123,.4); }
+.code .copy svg { width: 15px; height: 15px; }
+.note { color: var(--muted); font-size: 14px; margin-top: 14px; }
+.note code { color: var(--text); font-size: .92em; }
+.platforms { display: grid; gap: 10px; }
+.plat {
+  display: flex; align-items: center; gap: 16px; padding: 16px 18px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg-2);
+}
+.plat .os { font-weight: 600; min-width: 150px; }
+.plat code { color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 520px) { .plat { flex-direction: column; align-items: flex-start; gap: 4px; } .plat code { max-width: 100%; } }
+.steps { counter-reset: s; list-style: none; padding: 0; margin: 28px 0 0; display: grid; gap: 14px; }
+.steps li { counter-increment: s; display: grid; grid-template-columns: 30px 1fr; gap: 14px; align-items: baseline; color: var(--muted); }
+.steps li::before { content: counter(s); font: 700 13px/30px var(--mono); width: 30px; height: 30px; text-align: center; border-radius: 50%; border: 1px solid var(--line-2); color: var(--text); }
+.steps code { color: var(--cyan); }
+
+/* ───────────── Crate ───────────── */
+.crate { display: grid; grid-template-columns: 1fr 1.15fr; gap: 56px; align-items: center; }
+@media (max-width: 920px) { .crate { grid-template-columns: 1fr; gap: 32px; } }
+.tk-k { color: var(--purple); } .tk-t { color: var(--cyan); } .tk-s { color: var(--yellow); } .tk-f { color: var(--green); } .tk-c { color: var(--dim); }
+.links-row { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 26px; }
+.arrow-link { color: var(--cyan); font-weight: 500; display: inline-flex; gap: 6px; align-items: center; }
+.arrow-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+/* ───────────── Final CTA ───────────── */
+.final {
+  position: relative; margin-top: 140px; padding: 88px 32px; border-radius: 28px; text-align: center; overflow: hidden;
+  border: 1px solid var(--line-2);
+  background:
+    radial-gradient(ellipse 60% 80% at 50% 120%, rgba(80,250,123,.18), transparent 70%),
+    radial-gradient(ellipse 50% 70% at 50% -20%, rgba(92,225,230,.2), transparent 70%),
+    var(--bg-2);
+}
+.final h2 { margin-inline: auto; }
+.final .sec-lede { margin-inline: auto; }
+
+footer { margin-top: 96px; border-top: 1px solid var(--line); padding: 36px 0 48px; color: var(--muted); font-size: 14px; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 20px 32px; align-items: center; justify-content: space-between; }
+footer nav { display: flex; gap: 22px; flex-wrap: wrap; }
+footer a:hover { color: var(--text); }
+
+/* Grid children must be allowed to shrink below their <pre> content width. */
+.split > *, .crate > *, .install > *, .integ > *, .bento > *, .pillars > *, .tui-grid > * { min-width: 0; }
+
+/* ───────────── Reveal ───────────── */
+.reveal { opacity: 0; transform: translateY(24px); transition: opacity .8s cubic-bezier(.2,.8,.2,1), transform .8s cubic-bezier(.2,.8,.2,1); }
+.reveal.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .caret, .logo .cur { animation: none; }
+}
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-gh" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.69 5.39-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+</svg>
+
+<header class="nav" id="nav">
+  <div class="wrap">
+    <a class="logo" href="#top" aria-label="waka home"><span class="chev">›</span>waka<span class="cur" aria-hidden="true"></span></a>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="#features">Features</a>
+      <a href="#dashboard">Dashboard</a>
+      <a href="#commands">Commands</a>
+      <a href="#install">Install</a>
+      <a href="https://github.com/mouwaficbdr/waka/tree/main/docs/src">Docs</a>
+      <a class="gh" href="https://github.com/mouwaficbdr/waka"><svg><use href="#i-gh"/></svg>GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+<!-- ═════════════ HERO ═════════════ -->
+<section class="hero">
+  <div class="bg-grid"></div>
+  <div class="bg-glow a"></div>
+  <div class="bg-glow b"></div>
+  <div class="wrap">
+    <div class="hero-head">
+      <a class="pill" href="https://github.com/mouwaficbdr/waka/releases/latest"><b>v2.0.1</b>Rich stats output, redesigned TUI &amp; auth flow</a>
+      <h1>Your coding time,<br><span class="grad">right in your terminal.</span></h1>
+      <p class="lede"><strong>waka</strong> is the WakaTime CLI you always deserved. Fast, beautiful, composable. Written in Rust, built for people who live in the shell.</p>
+      <div class="cta-row">
+        <button class="copy-cmd" data-copy="brew tap mouwaficbdr/waka && brew install waka" aria-label="Copy Homebrew install command">
+          <span class="t"><span class="p">$</span> brew install waka</span>
+          <span class="ic"><svg><use href="#i-copy"/></svg></span>
+        </button>
+        <a class="btn btn-ghost" href="https://github.com/mouwaficbdr/waka"><svg><use href="#i-gh"/></svg>Star on GitHub</a>
+      </div>
+    </div>
+
+    <div class="hero-term reveal">
+      <div class="term">
+        <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="term-title">~/code/my-saas — zsh</span></div>
+        <div class="term-body" id="heroTerm" aria-live="polite"></div>
+      </div>
+      <div class="scene-tabs" id="sceneTabs" role="group" aria-label="Demo commands"></div>
+    </div>
+  </div>
+
+  <div class="strip">
+    <div class="wrap">
+      <div class="stat reveal"><div class="n">15</div><div class="l">top-level commands</div></div>
+      <div class="stat reveal"><div class="n">5</div><div class="l">output formats</div></div>
+      <div class="stat reveal"><div class="n">5</div><div class="l">prebuilt platforms</div></div>
+      <div class="stat reveal"><div class="n">MIT</div><div class="l">open source, forever</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════ PILLARS ═════════════ -->
+<section class="sec" id="features">
+  <div class="wrap">
+    <div class="eyebrow reveal">Why waka</div>
+    <h2 class="reveal">The dashboard tab you can finally close.</h2>
+    <p class="sec-lede reveal">Everything WakaTime knows about your work, one command away. No browser, no context switch, no waiting.</p>
+
+    <div class="pillars">
+      <article class="pillar reveal">
+        <div class="k">01 · fast</div>
+        <h3>Native &amp; cached.</h3>
+        <p>A single Rust binary with a per-profile local cache. Repeat queries come straight from disk; pass <code>--no-cache</code> when you want it fresh.</p>
+      </article>
+      <article class="pillar reveal">
+        <div class="k">02 · beautiful</div>
+        <h3>Made to be read.</h3>
+        <p>Language-coloured bars with official Linguist colours, boxed headers, and a full-screen <code>ratatui</code> dashboard. It degrades gracefully with <code>NO_COLOR</code>.</p>
+      </article>
+      <article class="pillar reveal">
+        <div class="k">03 · composable</div>
+        <h3>Pipes welcome.</h3>
+        <p>Table on a TTY, plain text when piped, or <code>json</code>, <code>csv</code>, <code>tsv</code> on demand. waka plays nicely with <code>jq</code>, spreadsheets and scripts.</p>
+      </article>
+    </div>
+
+    <div class="bento">
+      <article class="card w3 reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></div>
+        <h3>Stats for any period</h3>
+        <p>Today, yesterday, week, month, year or a custom <code>range</code>. Filter by <code>--project</code> or <code>--language</code>.</p>
+        <div class="chips"><span class="chip on">today</span><span class="chip">yesterday</span><span class="chip">week</span><span class="chip">month</span><span class="chip">year</span><span class="chip">range --from --to</span></div>
+      </article>
+      <article class="card w3 reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        <h3>Keychain-first security</h3>
+        <p>Your API key lives in macOS Keychain, GNOME Keyring or Windows Credential Manager, with a <code>0600</code> fallback. Switch between <code>work</code> and <code>personal</code> profiles with <code>-p</code>.</p>
+      </article>
+      <article class="card reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg></div>
+        <h3>Reports</h3>
+        <p>Export a productivity report to Markdown, HTML, JSON or CSV with <code>report generate</code>.</p>
+        <div class="chips"><span class="chip">md</span><span class="chip">html</span><span class="chip">json</span><span class="chip">csv</span></div>
+      </article>
+      <article class="card reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg></div>
+        <h3>Goals that ping you</h3>
+        <p><code>goals watch --notify</code> refreshes in the background and sends a desktop notification when you hit a goal.</p>
+      </article>
+      <article class="card reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg></div>
+        <h3>Self-maintaining</h3>
+        <p><code>waka update</code> pulls the latest release, <code>config doctor</code> diagnoses your setup, <code>changelog</code> shows what's new.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════ DASHBOARD ═════════════ -->
+<section class="sec" id="dashboard">
+  <div class="wrap">
+    <div class="eyebrow reveal">waka dashboard</div>
+    <h2 class="reveal">A live dashboard, without the browser.</h2>
+    <p class="sec-lede reveal">Five views, auto-refresh every 60 seconds, full keyboard navigation and one-key JSON export. Try it: click the tabs or press <kbd>1</kbd>–<kbd>5</kbd>.</p>
+
+    <div class="tui-wrap reveal">
+      <div class="term tui">
+        <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="term-title">waka dashboard</span></div>
+        <div class="term-body">
+          <div class="tui-tabs" role="tablist" aria-label="Dashboard views">
+            <button role="tab" aria-selected="true" data-view="0"><span class="kn">1</span>Main</button>
+            <button role="tab" aria-selected="false" data-view="1"><span class="kn">2</span>Projects</button>
+            <button role="tab" aria-selected="false" data-view="2"><span class="kn">3</span>Languages</button>
+            <button role="tab" aria-selected="false" data-view="3"><span class="kn">4</span>Goals</button>
+            <button role="tab" aria-selected="false" data-view="4"><span class="kn">5</span>Activity</button>
+          </div>
+
+          <!-- Main -->
+          <div class="tui-panel" data-panel="0" role="tabpanel">
+            <div class="tui-grid">
+              <div class="box s7"><span class="bt">Today</span>
+                <div style="font-size:22px;font-weight:700;color:var(--cyan);margin-top:4px">6h 42m</div>
+                <div class="c-mu">Daily goal 4h · <span class="c-gr">reached ✓</span></div>
+              </div>
+              <div class="box s5"><span class="bt">This Week</span>
+                <div><span class="c-cy b">22h 38m</span> &nbsp;<span class="c-mu">Avg: 3h 14m</span></div>
+                <div class="spark" data-spark="38,52,61,44,70,22,100"></div>
+                <div class="days"><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span><span>Mon</span></div>
+              </div>
+              <div class="box s12"><span class="bt">Top Projects</span>
+                <div class="bars" data-bars='[["my-saas","3h 58m",59],["waka","1h 52m",28],["dotfiles","52m",13]]'></div>
+              </div>
+              <div class="box s6"><span class="bt">Languages</span>
+                <div class="bars" data-bars='[["Rust","3h 30m",52],["TypeScript","1h 52m",28],["Bash","48m",12],["TOML","32m",8]]' data-lang="1"></div>
+              </div>
+              <div class="box s6"><span class="bt">Activity (last 30 days)</span>
+                <div class="heat" data-heat="30"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Projects -->
+          <div class="tui-panel" data-panel="1" role="tabpanel" hidden>
+            <div class="tui-grid">
+              <div class="box s12"><span class="bt">Projects · last 7 days</span>
+                <div class="bars" data-bars='[["my-saas","12h 05m",53],["waka","6h 41m",30],["dotfiles","2h 10m",10],["blog","1h 02m",5],["scratch","40m",2]]'></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Languages -->
+          <div class="tui-panel" data-panel="2" role="tabpanel" hidden>
+            <div class="tui-grid">
+              <div class="box s12"><span class="bt">Languages · last 7 days</span>
+                <div class="bars" data-lang="1" data-bars='[["Python","10h 24m",46],["TypeScript","8h 19m",37],["Markdown","2h 8m",9],["Rust","34m",3],["YAML","13m",1]]'></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Goals -->
+          <div class="tui-panel" data-panel="3" role="tabpanel" hidden>
+            <div class="tui-grid">
+              <div class="box s12"><span class="bt">Goals</span>
+                <div class="gauge"><div class="top"><span>Code 4h every day</span><span class="c-gr">6h 42m / 4h ✓</span></div><div class="track"><i data-w="100" style="background:var(--green)"></i></div></div>
+                <div class="gauge"><div class="top"><span>Rust 20h this week</span><span class="c-ye">14h 10m / 20h</span></div><div class="track"><i data-w="71" style="background:var(--yellow)"></i></div></div>
+                <div class="gauge"><div class="top"><span>Ship my-saas: 30h this month</span><span class="c-cy">25h 30m / 30h</span></div><div class="track"><i data-w="85" style="background:var(--cyan)"></i></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Activity -->
+          <div class="tui-panel" data-panel="4" role="tabpanel" hidden>
+            <div class="tui-grid">
+              <div class="box s12"><span class="bt">Activity heatmap · last 30 days</span>
+                <div class="heat big" data-heat="30"></div>
+                <div class="c-mu" style="margin-top:10px">less <span class="c-di">■</span> <span style="color:rgba(80,250,123,.45)">■</span> <span style="color:rgba(80,250,123,.7)">■</span> <span class="c-gr">■</span> more</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="status">
+            <span>Last updated: <b id="tuiTime">14:17:20</b></span>
+            <span>Refresh in <b id="tuiCount">0m 59s</b></span>
+            <span><span class="k">r</span>:refresh <span class="k">e</span>:export <span class="k">Tab</span>:switch <span class="k">?</span>:help <span class="k">q</span>:quit</span>
+          </div>
+        </div>
+      </div>
+      <div class="tui-hint">
+        <span><kbd>Tab</kbd> / <kbd>1–5</kbd> switch views</span>
+        <span><kbd>↑</kbd><kbd>↓</kbd> <kbd>j</kbd><kbd>k</kbd> scroll</span>
+        <span><kbd>e</kbd> export view to JSON</span>
+        <span><kbd>q</kbd> quit</span>
+      </div>
+      <p class="note" style="text-align:center">Interactive mock-up with sample data. The real thing is rendered by <a class="arrow-link" href="https://ratatui.rs/">ratatui</a>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════ COMPOSABLE ═════════════ -->
+<section class="sec" id="composable">
+  <div class="wrap split">
+    <div>
+      <div class="eyebrow reveal">Composable by design</div>
+      <h2 class="reveal">Pretty for humans. Clean for pipes.</h2>
+      <p class="sec-lede reveal">waka detects when stdout is a terminal. Pipe it anywhere and you get plain text, or pick the format your tooling needs.</p>
+      <ul class="fmt-list reveal" id="fmtList">
+        <li><button aria-pressed="true" data-fmt="table"><code>table</code><span>Default on a TTY. Colours, bars, boxed headers.</span></button></li>
+        <li><button aria-pressed="false" data-fmt="plain"><code>plain</code><span>Default when piped. Aligned, colour-free.</span></button></li>
+        <li><button aria-pressed="false" data-fmt="json"><code>json</code><span>The full API payload, ready for <code>jq</code>.</span></button></li>
+        <li><button aria-pressed="false" data-fmt="csv"><code>csv</code><span>Spreadsheet-friendly. <code>--csv-bom</code> for Excel.</span></button></li>
+      </ul>
+    </div>
+    <div class="term pipe-term reveal">
+      <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="term-title">output formats</span></div>
+      <div class="term-body" id="fmtOut"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════ INTEGRATIONS ═════════════ -->
+<section class="sec">
+  <div class="wrap">
+    <div class="eyebrow reveal">Lives in your workflow</div>
+    <h2 class="reveal">Always on screen, never in the way.</h2>
+    <p class="sec-lede reveal"><code>waka prompt</code> reads today's total from the local cache only. No network call, so it's safe to run on every prompt render.</p>
+    <div class="integ">
+      <article class="card reveal">
+        <h3>Starship</h3>
+        <p>A custom module in <code>starship.toml</code>.</p>
+        <div class="prompt-demo"><span class="c-cy">~/code/my-saas</span> <span class="c-pu">on main</span> <span class="c-ye" style="opacity:.75">⏱ 6h 42m</span><br><span class="c-gr">❯</span> <span class="caret" style="height:1em"></span></div>
+        <div class="mini">[custom.waka]
+command = <span class="tk-s">"waka prompt 2>/dev/null"</span>
+when = <span class="tk-s">"true"</span>
+style = <span class="tk-s">"dimmed yellow"</span></div>
+      </article>
+      <article class="card reveal">
+        <h3>tmux</h3>
+        <p>One line in your status bar.</p>
+        <div class="prompt-demo" style="padding:10px"><div class="tmux bar"><span>[0] 1:nvim* 2:zsh</span><span>⏱ 6h 42m | 14:17</span></div></div>
+        <div class="mini">set -g status-right \
+  <span class="tk-s">"#(waka prompt 2>/dev/null) | %H:%M"</span></div>
+      </article>
+      <article class="card reveal">
+        <h3>Completions &amp; man pages</h3>
+        <p>Tab-complete every command and flag in your shell of choice.</p>
+        <div class="chips"><span class="chip on">bash</span><span class="chip on">zsh</span><span class="chip on">fish</span><span class="chip on">powershell</span><span class="chip on">elvish</span></div>
+        <div class="mini grow"><span class="c-cy">$</span> waka completions zsh \
+  > ~/.zfunc/_waka</div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════ COMMANDS ═════════════ -->
+<section class="sec" id="commands">
+  <div class="wrap">
+    <div class="eyebrow reveal">Command reference</div>
+    <h2 class="reveal">Everything, at a glance.</h2>
+    <p class="sec-lede reveal">Predictable verbs, consistent flags. Every tabular command accepts <code>--format</code>, <code>--profile</code> and <code>--no-cache</code>.</p>
+    <div class="cmd-grid reveal">
+      <div class="cmd"><h4><span>waka</span> stats</h4><p>Coding activity for any period.</p><ul><li>today</li><li>yesterday</li><li>week</li><li>month</li><li>year</li><li>range</li></ul></div>
+      <div class="cmd"><h4><span>waka</span> projects</h4><p>Where your time actually goes.</p><ul><li>list</li><li>top</li><li>show &lt;PROJECT&gt;</li></ul></div>
+      <div class="cmd"><h4><span>waka</span> languages</h4><p>Your stack, ranked.</p><ul><li>list</li><li>top</li></ul></div>
+      <div class="cmd"><h4><span>waka</span> editors</h4><p>Which tools you really use.</p><ul><li>list</li><li>top</li></ul></div>
+      <div class="cmd"><h4><span>waka</span> goals</h4><p>Track and get notified.</p><ul><li>list</li><li>show &lt;ID&gt;</li><li>watch --notify</li></ul></div>
+      <div class="cmd"><h4><span>waka</span> report</h4><p>Shareable productivity reports.</p><ul><li>generate</li><li>summary</li></ul></div>
+      <div class="cmd"><h4><span>waka</span> dashboard</h4><p>Full-screen interactive TUI.</p><ul><li>--refresh SECS</li></ul></div>
+      <div class="cmd"><h4><span>waka</span> auth</h4><p>Keychain-backed, multi-profile.</p><ul><li>login</li><li>logout</li><li>status</li><li>show-key</li><li>switch</li></ul></div>
+      <div class="cmd"><h4><span>waka</span> config</h4><p>Tune it, or let it diagnose itself.</p><ul><li>get</li><li>set</li><li>edit</li><li>path</li><li>reset</li><li>doctor</li></ul></div>
+      <div class="cmd"><h4><span>waka</span> cache</h4><p>Inspect and prune local cache.</p><ul><li>info</li><li>path</li><li>clear --older 7d</li></ul></div>
+      <div class="cmd"><h4><span>waka</span> leaderboard</h4><p>See how you stack up.</p><ul><li>show --page N</li></ul></div>
+      <div class="cmd"><h4><span>waka</span> prompt · update · changelog</h4><p>Shell prompt, self-update, release notes.</p><ul><li>prompt --format detailed</li><li>update</li><li>changelog</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════ INSTALL ═════════════ -->
+<section class="sec" id="install">
+  <div class="wrap">
+    <div class="eyebrow reveal">Get started</div>
+    <h2 class="reveal">Up and running in under a minute.</h2>
+    <div class="install">
+      <div class="reveal">
+        <div class="tabs" role="tablist" aria-label="Install method">
+          <button role="tab" aria-selected="true" data-tab="brew">Homebrew</button>
+          <button role="tab" aria-selected="false" data-tab="linux">Linux one-liner</button>
+          <button role="tab" aria-selected="false" data-tab="bin">Binary</button>
+        </div>
+        <div class="code" data-pane="brew"><span class="c-cy">$</span> brew tap mouwaficbdr/waka
+<span class="c-cy">$</span> brew install waka<button class="copy" data-copy="brew tap mouwaficbdr/waka && brew install waka" aria-label="Copy"><svg><use href="#i-copy"/></svg></button></div>
+        <div class="code" data-pane="linux" hidden><span class="c-cy">$</span> curl -sSfL https://github.com/mouwaficbdr/waka/releases/latest/download/waka-v2.0.1-x86_64-unknown-linux-gnu.tar.gz \
+    | tar -xz && sudo mv waka /usr/local/bin/<button class="copy" data-copy="curl -sSfL https://github.com/mouwaficbdr/waka/releases/latest/download/waka-v2.0.1-x86_64-unknown-linux-gnu.tar.gz | tar -xz && sudo mv waka /usr/local/bin/" aria-label="Copy"><svg><use href="#i-copy"/></svg></button></div>
+        <div class="code" data-pane="bin" hidden><span class="c-di"># Grab the archive for your platform from</span>
+<span class="c-cy">https://github.com/mouwaficbdr/waka/releases/latest</span><button class="copy" data-copy="https://github.com/mouwaficbdr/waka/releases/latest" aria-label="Copy"><svg><use href="#i-copy"/></svg></button></div>
+        <p class="note">The <code>waka</code> binary isn't published via <code>cargo install</code>; use Homebrew or a prebuilt release.</p>
+
+        <ol class="steps">
+          <li><span><code>waka auth login</code> and paste your WakaTime API key. It goes straight to your OS keychain.</span></li>
+          <li><span><code>waka stats today</code> to see where your day went.</span></li>
+          <li><span><code>waka dashboard</code> and leave it running on a side monitor.</span></li>
+        </ol>
+      </div>
+      <div class="platforms reveal">
+        <div class="plat"><span class="os">Linux x86_64</span><code>x86_64-unknown-linux-gnu.tar.gz</code></div>
+        <div class="plat"><span class="os">Linux ARM64</span><code>aarch64-unknown-linux-gnu.tar.gz</code></div>
+        <div class="plat"><span class="os">macOS Intel</span><code>x86_64-apple-darwin.tar.gz</code></div>
+        <div class="plat"><span class="os">macOS Apple Silicon</span><code>aarch64-apple-darwin.tar.gz</code></div>
+        <div class="plat"><span class="os">Windows x86_64</span><code>x86_64-pc-windows-msvc.zip</code></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════ CRATE ═════════════ -->
+<section class="sec" id="crate">
+  <div class="wrap crate">
+    <div>
+      <div class="eyebrow reveal">For Rust developers</div>
+      <h2 class="reveal">Build on <code style="font-family:var(--mono);font-size:.82em;color:var(--cyan)">waka-api</code>.</h2>
+      <p class="sec-lede reveal">The HTTP client behind waka ships as a standalone, typed crate. Write your own WakaTime integrations without reinventing the API layer.</p>
+      <div class="links-row reveal">
+        <a class="arrow-link" href="https://docs.rs/waka-api">docs.rs/waka-api <svg width="16" height="16"><use href="#i-arrow"/></svg></a>
+        <a class="arrow-link" href="https://crates.io/crates/waka-api">crates.io <svg width="16" height="16"><use href="#i-arrow"/></svg></a>
+      </div>
+    </div>
+    <div class="reveal">
+      <div class="code" style="margin:0"><span class="tk-c"># Cargo.toml</span>
+[dependencies]
+waka-api = <span class="tk-s">"1"</span></div>
+      <div class="code"><span class="tk-k">use</span> waka_api::{<span class="tk-t">WakaClient</span>, <span class="tk-t">SummaryParams</span>};
+
+<span class="tk-k">let</span> client = <span class="tk-t">WakaClient</span>::<span class="tk-f">new</span>(<span class="tk-s">"your-api-key"</span>);
+<span class="tk-k">let</span> summary = client
+    .<span class="tk-f">summaries</span>(<span class="tk-t">SummaryParams</span>::<span class="tk-f">today</span>())
+    .<span class="tk-k">await</span>?;</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════ FINAL CTA ═════════════ -->
+<section class="wrap">
+  <div class="final reveal">
+    <div class="eyebrow">ready?</div>
+    <h2>Stop alt-tabbing to check your stats.</h2>
+    <p class="sec-lede">Free, open source, MIT-licensed. Contributions welcome.</p>
+    <div class="cta-row">
+      <button class="copy-cmd" data-copy="brew tap mouwaficbdr/waka && brew install waka" aria-label="Copy Homebrew install command">
+        <span class="t"><span class="p">$</span> brew install waka</span>
+        <span class="ic"><svg><use href="#i-copy"/></svg></span>
+      </button>
+      <a class="btn btn-primary" href="https://github.com/mouwaficbdr/waka"><svg><use href="#i-gh"/></svg>View on GitHub</a>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a class="logo" href="#top"><span class="chev">›</span>waka</a>
+    <nav aria-label="Footer">
+      <a href="https://github.com/mouwaficbdr/waka/tree/main/docs/src">Docs</a>
+      <a href="https://github.com/mouwaficbdr/waka/blob/main/CHANGELOG.md">Changelog</a>
+      <a href="https://github.com/mouwaficbdr/waka/blob/main/CONTRIBUTING.md">Contributing</a>
+      <a href="https://github.com/mouwaficbdr/waka/releases">Releases</a>
+      <a href="https://github.com/mouwaficbdr/waka/blob/main/LICENSE">MIT License</a>
+    </nav>
+    <span>Not affiliated with WakaTime.</span>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  /* ── Nav border on scroll ── */
+  const nav = $('#nav');
+  addEventListener('scroll', () => nav.classList.toggle('scrolled', scrollY > 8), { passive: true });
+
+  /* ── Copy buttons ── */
+  async function copy(text) {
+    try { await navigator.clipboard.writeText(text); return true; }
+    catch {
+      const ta = Object.assign(document.createElement('textarea'), { value: text });
+      ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.append(ta); ta.select();
+      let ok = false; try { ok = document.execCommand('copy'); } catch {}
+      ta.remove(); return ok;
+    }
+  }
+  $$('[data-copy]').forEach(btn => btn.addEventListener('click', async () => {
+    if (!(await copy(btn.dataset.copy))) return;
+    const use = btn.querySelector('use');
+    btn.classList.add('ok'); use.setAttribute('href', '#i-check');
+    setTimeout(() => { btn.classList.remove('ok'); use.setAttribute('href', '#i-copy'); }, 1600);
+  }));
+
+  /* ── Terminal rendering helpers (mirror waka-render output) ── */
+  const LANG = { Rust: 'var(--l-rust)', TypeScript: 'var(--l-ts)', Python: 'var(--l-py)', Bash: 'var(--l-bash)', TOML: 'var(--l-toml)', Markdown: 'var(--l-md)', YAML: 'var(--l-yaml)' };
+  const pad = (s, n) => s + ' '.repeat(Math.max(0, n - s.length));
+  const lpad = (s, n) => ' '.repeat(Math.max(0, n - s.length)) + s;
+  function bar(pct, color, w = 20) {
+    const f = Math.max(pct > 0 ? 1 : 0, Math.round(pct / 100 * w));
+    return `<span style="color:${color}">${'█'.repeat(f)}</span><span class="c-di">${'░'.repeat(w - f)}</span>`;
+  }
+  function statsBlock(title, total, rows, cached) {
+    const out = [
+      `<span class="hdr-box"><span class="b">${title}</span>\n<span class="c-cy b">${total}  total</span></span>`,
+      ''
+    ];
+    for (const [name, t, p] of rows) {
+      out.push(`  ${pad(name, 12)}${bar(p, LANG[name] || 'var(--cyan)')}  ${lpad(t, 7)}  ${lpad(p.toFixed(1) + '%', 6)}`);
+    }
+    out.push(`  ${' '.repeat(12)}<span class="c-di">${'─'.repeat(37)}</span>`);
+    out.push(`  ${pad('Total', 12)}${' '.repeat(22)}${lpad(total, 7)}`);
+    if (cached) out.push(`<span class="c-mu">(cached 3m ago)</span>`);
+    return out;
+  }
+  const TODAY = [['Rust', '3h 30m', 52.2], ['TypeScript', '1h 52m', 27.9], ['Bash', '48m', 11.9], ['TOML', '32m', 8.0]];
+  const WEEK = [['Python', '10h 24m', 46.0], ['TypeScript', '8h 19m', 36.8], ['Markdown', '2h 8m', 9.4], ['Rust', '34m', 2.6], ['YAML', '13m', 1.0]];
+
+  const scenes = [
+    { label: 'stats today', cmd: 'waka stats today', out: () => statsBlock('Today · Mar 2, 2026', '6h 42m', TODAY, true) },
+    { label: 'stats week', cmd: 'waka stats week', out: () => statsBlock('Last 7 Days · Feb 23 – Mar 2, 2026', '22h 38m', WEEK, false) },
+    { label: 'pipe to jq', cmd: "waka stats today -f json | jq -r '.data[0].grand_total.text'", out: () => ['6 hrs 42 mins'] },
+    { label: 'prompt', cmd: 'waka prompt --format detailed', out: () => ['<span class="c-ye">⏱ 6h 42m | my-saas</span>'] },
+  ];
+
+  /* ── Hero terminal player ── */
+  const term = $('#heroTerm');
+  const tabsEl = $('#sceneTabs');
+  let idx = 0, timer = null, token = 0;
+  scenes.forEach((s, i) => {
+    const b = document.createElement('button');
+    b.textContent = s.label; b.setAttribute('aria-pressed', 'false');
+    b.addEventListener('click', () => play(i, true));
+    tabsEl.append(b);
+  });
+  const sleep = ms => new Promise(r => { timer = setTimeout(r, ms); });
+  const prompt = '<span class="c-cy">›</span> ';
+
+  async function play(i, manual) {
+    const my = ++token; clearTimeout(timer);
+    idx = i;
+    $$('button', tabsEl).forEach((b, j) => b.setAttribute('aria-pressed', String(j === i)));
+    const s = scenes[i];
+    const lines = s.out();
+    if (reduced) {
+      term.innerHTML = [prompt + esc(s.cmd), ...lines, prompt + '<span class="caret"></span>'].map(l => `<div class="ln">${l}</div>`).join('');
+      return;
+    }
+    term.innerHTML = '';
+    const cmdLine = document.createElement('div'); cmdLine.className = 'ln';
+    term.append(cmdLine);
+    for (let k = 0; k <= s.cmd.length; k++) {
+      if (my !== token) return;
+      cmdLine.innerHTML = prompt + esc(s.cmd.slice(0, k)) + '<span class="caret"></span>';
+      await sleep(k === 0 ? 350 : 28 + Math.random() * 40);
+    }
+    await sleep(380); if (my !== token) return;
+    cmdLine.innerHTML = prompt + esc(s.cmd);
+    for (const l of lines) {
+      if (my !== token) return;
+      const d = document.createElement('div'); d.className = 'ln'; d.innerHTML = l;
+      term.append(d); await sleep(55);
+    }
+    const end = document.createElement('div'); end.className = 'ln';
+    end.innerHTML = prompt + '<span class="caret"></span>'; term.append(end);
+    await sleep(manual ? 6500 : 4200);
+    if (my === token) play((idx + 1) % scenes.length, false);
+  }
+
+  // Start the hero loop only while visible to save CPU.
+  let started = false;
+  new IntersectionObserver(([e]) => {
+    if (e.isIntersecting && !started) { started = true; play(0, false); }
+  }).observe(term);
+
+  /* ── Output-format switcher ── */
+  const fmtOut = $('#fmtOut');
+  const FMT = {
+    table: { cmd: 'waka stats today', lines: () => statsBlock('Today · Mar 2, 2026', '6h 42m', TODAY, false) },
+    plain: { cmd: 'waka stats today | cat', lines: () => [
+      'Language    Time             %', '--------------------------------',
+      'Rust        3h 30m       52.2%', 'TypeScript  1h 52m       27.9%',
+      'Bash        48m          11.9%', 'TOML        32m           8.0%',
+      '--------------------------------', 'Total       6h 42m'] },
+    json: { cmd: "waka stats today -f json | jq '.data[0].grand_total'", lines: () => [
+      '{', '  <span class="c-cy">"digital"</span>: <span class="c-ye">"6:42"</span>,',
+      '  <span class="c-cy">"hours"</span>: <span class="c-pu">6</span>,',
+      '  <span class="c-cy">"minutes"</span>: <span class="c-pu">42</span>,',
+      '  <span class="c-cy">"seconds"</span>: <span class="c-pu">0</span>,',
+      '  <span class="c-cy">"text"</span>: <span class="c-ye">"6 hrs 42 mins"</span>,',
+      '  <span class="c-cy">"total_seconds"</span>: <span class="c-pu">24120.0</span>', '}'] },
+    csv: { cmd: 'waka stats today -f csv > today.csv && cat today.csv', lines: () => [
+      'date,language,total_seconds,time,percent', '2025-01-13,Rust,12600,3h 30m,52.2',
+      '2025-01-13,TypeScript,6720,1h 52m,27.9', '2025-01-13,Bash,2880,48m,11.9', '2025-01-13,TOML,1920,32m,8.0'] },
+  };
+  function showFmt(k) {
+    const f = FMT[k];
+    fmtOut.innerHTML = [prompt + esc(f.cmd), ...f.lines()].map(l => `<div class="ln">${l}</div>`).join('');
+    $$('#fmtList button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.fmt === k)));
+  }
+  $$('#fmtList button').forEach(b => b.addEventListener('click', () => showFmt(b.dataset.fmt)));
+  showFmt('table');
+
+  /* ── Dashboard mock ── */
+  $$('.bars').forEach(el => {
+    const lang = el.dataset.lang;
+    el.innerHTML = JSON.parse(el.dataset.bars).map(([n, t, p]) =>
+      `<div class="row"><span>${n}</span><span class="bar"><i data-w="${p}" style="width:0;${lang ? `background:${LANG[n] || 'var(--green)'}` : ''}"></i></span><span class="t">${t}</span><span class="pc">${p}%</span></div>`
+    ).join('');
+  });
+  $$('.spark').forEach(el => {
+    el.innerHTML = el.dataset.spark.split(',').map(v => `<span data-h="${v}" style="height:0"></span>`).join('');
+  });
+  // Deterministic pseudo-random heatmap so it looks the same on every load.
+  let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  const heatVals = Array.from({ length: 30 }, (_, i) => {
+    const weekend = i % 7 === 5 || i % 7 === 6;
+    const r = rnd(); return weekend ? (r > .6 ? 1 : 0) : r > .85 ? 4 : r > .55 ? 3 : r > .25 ? 2 : 1;
+  });
+  $$('.heat').forEach(el => { el.innerHTML = heatVals.map(v => `<span class="${v ? 'h' + v : ''}"></span>`).join(''); });
+
+  function animatePanel(panel) {
+    $$('[data-w]', panel).forEach(i => { i.style.width = '0'; });
+    $$('[data-h]', panel).forEach(s => { s.style.height = '0'; });
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      $$('[data-w]', panel).forEach(i => { i.style.width = i.dataset.w + '%'; });
+      $$('[data-h]', panel).forEach(s => { s.style.height = s.dataset.h + '%'; });
+    }));
+  }
+  const tuiTabs = $$('.tui-tabs [role=tab]');
+  const panels = $$('.tui-panel');
+  let view = 0;
+  function setView(v) {
+    view = (v + panels.length) % panels.length;
+    tuiTabs.forEach((t, i) => t.setAttribute('aria-selected', String(i === view)));
+    panels.forEach((p, i) => { p.hidden = i !== view; });
+    animatePanel(panels[view]);
+  }
+  tuiTabs.forEach((t, i) => t.addEventListener('click', () => setView(i)));
+  const dash = $('#dashboard');
+  let dashVisible = false;
+  new IntersectionObserver(([e]) => {
+    dashVisible = e.isIntersecting;
+    if (dashVisible && !dash.dataset.done) { dash.dataset.done = '1'; animatePanel(panels[view]); }
+  }, { threshold: .25 }).observe(dash);
+  addEventListener('keydown', e => {
+    if (!dashVisible || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (/^[1-5]$/.test(e.key)) setView(+e.key - 1);
+    else if (e.key === 'Tab' && document.activeElement === document.body) { e.preventDefault(); setView(view + (e.shiftKey ? -1 : 1)); }
+    else if (e.key === 'r') refresh();
+  });
+
+  // Live status bar: countdown to the next auto-refresh, like the real TUI.
+  const tTime = $('#tuiTime'), tCount = $('#tuiCount');
+  let left = 59;
+  const fmtClock = d => d.toTimeString().slice(0, 8);
+  function refresh() { left = 60; tTime.textContent = fmtClock(new Date()); animatePanel(panels[view]); }
+  tTime.textContent = fmtClock(new Date());
+  setInterval(() => {
+    left -= 1; if (left < 0) refresh();
+    tCount.textContent = `0m ${String(Math.max(left, 0)).padStart(2, '0')}s`;
+  }, 1000);
+
+  /* ── Install tabs ── */
+  $$('.tabs [role=tab]').forEach(t => t.addEventListener('click', () => {
+    $$('.tabs [role=tab]').forEach(x => x.setAttribute('aria-selected', String(x === t)));
+    $$('[data-pane]').forEach(p => { p.hidden = p.dataset.pane !== t.dataset.tab; });
+  }));
+
+  /* ── Reveal on scroll ── */
+  if (reduced || !('IntersectionObserver' in window)) { $$('.reveal').forEach(el => el.classList.add('in')); return; }
+  const io = new IntersectionObserver(entries => entries.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+  }), { threshold: .12, rootMargin: '0px 0px -40px 0px' });
+  $$('.reveal').forEach((el, i) => { el.style.transitionDelay = `${(i % 4) * 70}ms`; io.observe(el); });
+})();
+</script>
+</body>
+</html>
