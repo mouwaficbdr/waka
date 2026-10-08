@@ -105,7 +105,7 @@ impl ProjectRenderer {
 
         let mut projects: Vec<&Project> = resp.data.iter().collect();
         if sort_by_name {
-            projects.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+            projects.sort_by_key(|p| p.name.to_lowercase());
         }
 
         let cap = limit.unwrap_or(usize::MAX);
@@ -146,7 +146,7 @@ impl ProjectRenderer {
 
         let mut projects: Vec<&Project> = resp.data.iter().collect();
         if sort_by_name {
-            projects.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+            projects.sort_by_key(|p| p.name.to_lowercase());
         }
 
         let cap = limit.unwrap_or(usize::MAX);
@@ -220,8 +220,7 @@ impl ProjectRenderer {
 fn is_active_today(last_heartbeat_at: &str) -> bool {
     last_heartbeat_at
         .parse::<DateTime<Utc>>()
-        .map(|dt| (Utc::now() - dt).num_hours() < 24)
-        .unwrap_or(false)
+        .is_ok_and(|dt| (Utc::now() - dt).num_hours() < 24)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
