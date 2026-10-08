@@ -9,7 +9,7 @@ src = "src"
 build-dir = "book"
 
 [output.html]
-site-url = "/waka/"
+site-url = "/waka/docs/"
 git-repository-url = "https://github.com/mouwaficbdr/waka"
 edit-url-template = "https://github.com/mouwaficbdr/waka/edit/main/docs/src/{path}"
 no-section-label = false

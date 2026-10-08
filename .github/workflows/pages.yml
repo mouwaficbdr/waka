@@ -1,0 +1,65 @@
+name: Deploy Landing Page
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "docs/**"
+      - ".github/workflows/pages.yml"
+  # Redeploy after each release so the page advertises the new version.
+  # (`release: published` would not fire: releases are created with GITHUB_TOKEN.)
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+  workflow_dispatch:
+
+# Required by actions/deploy-pages (OIDC token + Pages write).
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never cancel an in-flight deployment; queue the next one instead.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy site/ + docs to GitHub Pages
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install mdBook
+        uses: taiki-e/install-action@v2
+        with:
+          tool: mdbook@0.4.40
+
+      - name: Assemble site
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p _site
+          cp -r site/. _site/
+          mdbook build docs -d "$PWD/_site/docs"
+
+          # Replace the version baked into index.html with the latest release tag.
+          baked=$(grep -oP 'name="waka-version" content="\K[^"]+' _site/index.html)
+          latest=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName -q .tagName || true)
+          if [ -n "$latest" ] && [ "$latest" != "$baked" ]; then
+            echo "Updating advertised version: $baked -> $latest"
+            sed -i "s/${baked//./\\.}/$latest/g" _site/index.html
+          fi
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
