@@ -5,6 +5,27 @@ All notable changes to `waka` are documented here.
 Format: [Conventional Commits](https://www.conventionalcommits.org/)
 Versioning: [Semantic Versioning](https://semver.org/)
 
+## [2.0.2] - 2026-10-08
+
+### 🐛 Bug Fixes
+
+- **render**: Satisfy clippy lints introduced in Rust 1.99 (#2) ([`f3a3592`](https://github.com/mouwaficbdr/waka/commit/f3a3592945b6ec0c6c862f494ac7357c15c21007))
+- **build**: Stop forcing target-cpu=native on x86_64 Linux (#4) ([`0d31f35`](https://github.com/mouwaficbdr/waka/commit/0d31f35419367c63b2abff011fef90c751402848))
+- **deps**: Resolve security audit failures (#3) ([`086b656`](https://github.com/mouwaficbdr/waka/commit/086b656f9447146ad9fd27ce7a77ce5a257b3a13))
+
+### 📚 Documentation
+
+- Update README to v2.0.1, refresh demo.gif, remove SPEC docs ([`a3207f5`](https://github.com/mouwaficbdr/waka/commit/a3207f5dc381bd0d4c3e12d463b97effb9749a7c))
+- **site**: Add landing page, docs and GitHub Pages deployment (#1) ([`03e3c34`](https://github.com/mouwaficbdr/waka/commit/03e3c34a6c40df8cd2dcc557942f9f07ccfb05fb))
+
+### ⚙️ CI/CD
+
+- Allow missing permissive licenses in deny.toml ([`2780724`](https://github.com/mouwaficbdr/waka/commit/27807240cd79206044081e5c4730e106ed22cef5))
+
+### 🔧 Miscellaneous
+
+- **changelog**: Update CHANGELOG for v2.0.1 ([`b98232d`](https://github.com/mouwaficbdr/waka/commit/b98232de895b3848f57b8d8179b09e38a5f06c8a))
+
 ## [2.0.1] - 2026-03-02
 
 ### 🐛 Bug Fixes
