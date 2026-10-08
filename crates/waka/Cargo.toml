@@ -14,11 +14,11 @@ categories.workspace = true
 description = "WakaTime CLI — track your coding time from the terminal"
 
 [dependencies]
-waka-api = { path = "../waka-api" }
-waka-cache = { path = "../waka-cache" }
-waka-config = { path = "../waka-config" }
-waka-render = { path = "../waka-render" }
-waka-tui = { path = "../waka-tui" }
+waka-api = { path = "../waka-api", version = "1" }
+waka-cache = { path = "../waka-cache", version = "2" }
+waka-config = { path = "../waka-config", version = "2" }
+waka-render = { path = "../waka-render", version = "2" }
+waka-tui = { path = "../waka-tui", version = "2" }
 tokio = { workspace = true }
 anyhow = { workspace = true }
 clap = { workspace = true }
