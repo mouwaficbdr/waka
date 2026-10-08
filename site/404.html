@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>404 · waka</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0b0c11">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2313141c'/%3E%3Cpath d='M8 11l5 5-5 5' stroke='%235ce1e6' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Crect x='16' y='19' width='9' height='3' rx='1.5' fill='%2350fa7b'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #0b0c11;
+  --panel: #1a1b25;
+  --line-2: rgba(255, 255, 255, .14);
+  --text: #ecedf3;
+  --muted: #8d8fa6;
+  --cyan: #5ce1e6;
+  --green: #50fa7b;
+  --display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --body: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; min-height: 100vh; display: grid; place-items: center; text-align: center;
+  background: var(--bg); color: var(--text); font: 400 16px/1.6 var(--body);
+  padding: 32px;
+}
+a { color: inherit; text-decoration: none; }
+.wrap { max-width: 520px; }
+.code {
+  font: 700 15px/1 var(--mono); color: var(--cyan);
+  margin-bottom: 20px; display: inline-block;
+}
+.code .chev { color: var(--green); margin-right: 2px; }
+h1 { font: 800 clamp(56px, 12vw, 120px)/1 var(--display); letter-spacing: -.04em; margin: 0 0 16px; }
+p { color: var(--muted); font-size: 17px; margin: 0 0 32px; }
+.links { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.btn {
+  display: inline-flex; align-items: center; height: 46px; padding: 0 20px;
+  border-radius: 10px; font: 600 14.5px/1 var(--body); transition: transform .2s, box-shadow .2s, background .2s;
+}
+.btn-primary { background: var(--text); color: var(--bg); }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 30px -10px rgba(92,225,230,.6); }
+.btn-ghost { border: 1px solid var(--line-2); color: var(--text); }
+.btn-ghost:hover { background: var(--panel); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="code"><span class="chev">›</span>waka --help 404</span>
+  <h1>404</h1>
+  <p>Nothing coded here. This page doesn&rsquo;t exist, or it moved.</p>
+  <div class="links">
+    <a class="btn btn-primary" href="/waka/">Back home</a>
+    <a class="btn btn-ghost" href="/waka/docs/">Docs</a>
+    <a class="btn btn-ghost" href="https://github.com/mouwaficbdr/waka">GitHub</a>
+  </div>
+</div>
+</body>
+</html>

@@ -4,6 +4,59 @@
     --sidebar-width: 280px;
 }
 
+/* Retint the built-in "navy" theme to the landing page's palette
+   (site/index.html :root tokens) so docs/ doesn't feel like a different
+   product from the site it's linked from. */
+.navy {
+    --bg: #0b0c11;
+    --fg: #ecedf3;
+
+    --sidebar-bg: #1a1b25;
+    --sidebar-fg: #8d8fa6;
+    --sidebar-non-existant: #5d5f74;
+    --sidebar-active: #5ce1e6;
+    --sidebar-spacer: #20212d;
+
+    --icons: #8d8fa6;
+    --icons-hover: #ecedf3;
+
+    --links: #5ce1e6;
+
+    --inline-code-color: #50fa7b;
+
+    --theme-popup-bg: #1a1b25;
+    --theme-popup-border: rgba(255, 255, 255, .14);
+    --theme-hover: #20212d;
+
+    --quote-bg: #101119;
+    --quote-border: rgba(255, 255, 255, .14);
+
+    --table-border-color: rgba(255, 255, 255, .08);
+    --table-header-bg: #20212d;
+    --table-alternate-bg: #101119;
+
+    --searchbar-border-color: rgba(255, 255, 255, .14);
+    --searchbar-bg: #1a1b25;
+    --searchbar-fg: #ecedf3;
+    --searchbar-shadow-color: rgba(92, 225, 230, .35);
+    --searchresults-header-fg: #8d8fa6;
+    --searchresults-border-color: rgba(255, 255, 255, .14);
+    --searchresults-li-bg: #20212d;
+    --search-mark-bg: rgba(80, 250, 123, .35);
+}
+
+body {
+    font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+}
+
+code, pre, kbd {
+    font-family: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
 .content main {
     max-width: 860px;
 }

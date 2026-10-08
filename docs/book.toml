@@ -13,6 +13,7 @@ site-url = "/waka/docs/"
 git-repository-url = "https://github.com/mouwaficbdr/waka"
 edit-url-template = "https://github.com/mouwaficbdr/waka/edit/main/docs/src/{path}"
 no-section-label = false
+default-theme = "navy"
 additional-css = ["theme/custom.css"]
 
 [output.html.fold]
