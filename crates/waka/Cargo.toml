@@ -33,6 +33,8 @@ serde_json = { workspace = true }
 chrono = { workspace = true }
 reqwest = { workspace = true }
 directories = { workspace = true }
+sha2 = { workspace = true }
+self-replace = { workspace = true }
 
 [target.'cfg(not(target_os = "windows"))'.dependencies]
 flate2 = { workspace = true }

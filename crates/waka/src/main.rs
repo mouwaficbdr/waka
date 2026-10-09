@@ -9,6 +9,7 @@ mod cli;
 mod commands;
 mod error;
 mod spinner;
+mod update;
 
 use clap::Parser;
 use cli::Cli;

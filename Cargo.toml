@@ -85,6 +85,9 @@ owo-colors = { version = "4", features = ["supports-colors"] }
 
 # Archive extraction (used by waka update)
 flate2 = "1"
+# Self-update: digest verification and cross-platform binary replacement
+sha2 = "0.10"
+self-replace = "1"
 tar = "0.4"
 zip = "2"
 
