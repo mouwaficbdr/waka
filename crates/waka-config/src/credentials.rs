@@ -71,8 +71,10 @@ const KEYRING_SERVICE: &str = "waka";
 /// 1. Explicit key supplied at construction time (e.g., `--api-key` flag)
 /// 2. `WAKATIME_API_KEY` environment variable
 /// 3. `WAKA_API_KEY` environment variable
-/// 4. System keychain (macOS Keychain / Linux Secret Service / Windows CM)
-/// 5. `~/.config/waka/credentials` file (base64-obfuscated)
+/// 4. System keychain (macOS Keychain / Windows Credential Manager / Linux
+///    kernel keyring backed by the Secret Service)
+/// 5. Per-profile `credentials` file in the config directory (base64-obfuscated,
+///    `0600`); still tried when the keychain itself is unavailable
 /// 6. `~/.wakatime.cfg` (read-only, backwards-compatibility)
 ///
 /// # Example
@@ -163,15 +165,17 @@ impl CredentialStore {
             return Ok(Sensitive::new(k));
         }
 
-        // 4. System keychain
-        match self.keychain_get() {
+        // 4. System keychain. An unavailable keychain (no Secret Service on a
+        // headless machine, locked keyring, …) must not hide the file fallback
+        // below, which is exactly where `auth login` stores the key then.
+        let keychain_error = match self.keychain_get() {
             Ok(k) => return Ok(Sensitive::new(k)),
-            Err(CredentialError::NotFound) => {} // continue chain
-            Err(e) => return Err(e),
-        }
+            Err(CredentialError::NotFound) => None,
+            Err(e) => Some(e),
+        };
 
-        // 5. ~/.config/waka/credentials file
-        if let Some(path) = credentials_file_path() {
+        // 5. Per-profile credentials file
+        if let Some(path) = credentials_file_path(&self.profile) {
             match read_credentials_file(&path) {
                 Ok(Some(k)) => return Ok(Sensitive::new(k)),
                 Ok(None) | Err(CredentialError::Io(_)) => {} // absent or no key
@@ -184,7 +188,9 @@ impl CredentialStore {
             return Ok(Sensitive::new(k));
         }
 
-        Err(CredentialError::NotFound)
+        // Nothing found: surface the keychain failure if there was one, as it
+        // is more actionable than a plain "not found".
+        Err(keychain_error.unwrap_or(CredentialError::NotFound))
     }
 
     /// Stores the API key in the system keychain.
@@ -201,19 +207,36 @@ impl CredentialStore {
             .map_err(|e| CredentialError::Keychain(e.to_string()))
     }
 
-    /// Deletes the API key from the system keychain.
+    /// Deletes the API key from the system keychain and removes the profile's
+    /// fallback credentials file.
     ///
-    /// Silently succeeds if no entry exists.
+    /// Silently succeeds if neither exists. An unreachable keychain is only an
+    /// error when there was no file to remove either.
     ///
     /// # Errors
     ///
     /// Returns [`CredentialError::Keychain`] if the deletion fails for a
     /// reason other than the entry not existing.
     pub fn delete_api_key(&self) -> Result<(), CredentialError> {
-        let entry = keyring::Entry::new(KEYRING_SERVICE, &self.profile)
-            .map_err(|e| CredentialError::Keychain(e.to_string()))?;
-        match entry.delete_credential() {
-            Ok(()) | Err(keyring::Error::NoEntry) => Ok(()), // success or already gone
+        let keychain_result = keyring::Entry::new(KEYRING_SERVICE, &self.profile)
+            .and_then(|entry| entry.delete_credential());
+
+        // Also remove the profile's fallback file, otherwise the key would
+        // still be resolved after `waka auth logout`.
+        let mut removed_file = false;
+        if let Some(path) = credentials_file_path(&self.profile) {
+            match std::fs::remove_file(&path) {
+                Ok(()) => removed_file = true,
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+                Err(e) => return Err(CredentialError::Io(e)),
+            }
+        }
+
+        match keychain_result {
+            Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+            // The keychain is unreachable, so the key cannot be stored there:
+            // removing the file was the whole logout.
+            Err(_) if removed_file => Ok(()),
             Err(e) => Err(CredentialError::Keychain(e.to_string())),
         }
     }
@@ -227,7 +250,7 @@ impl CredentialStore {
     /// Returns [`CredentialError::NoConfigDir`] if the config path cannot be
     /// resolved, or an I/O error if the write fails.
     pub fn save_to_credentials_file(&self, key: &str) -> Result<(), CredentialError> {
-        let path = credentials_file_path().ok_or(CredentialError::NoConfigDir)?;
+        let path = credentials_file_path(&self.profile).ok_or(CredentialError::NoConfigDir)?;
         write_credentials_file(&path, key)
     }
 
@@ -246,8 +269,33 @@ impl CredentialStore {
 
 // ─── Path helpers ─────────────────────────────────────────────────────────────
 
-fn credentials_file_path() -> Option<PathBuf> {
-    ProjectDirs::from("", "", "waka").map(|d| d.config_dir().join("credentials"))
+/// Returns the fallback credentials file for `profile`.
+///
+/// The `default` profile keeps the historical `credentials` name; other
+/// profiles get their own `credentials-<profile>` file so that keys never
+/// leak from one profile to another.
+fn credentials_file_path(profile: &str) -> Option<PathBuf> {
+    ProjectDirs::from("", "", "waka").map(|d| d.config_dir().join(credentials_file_name(profile)))
+}
+
+/// File name used by [`credentials_file_path`]. Characters outside
+/// `[A-Za-z0-9_-]` are replaced so a profile name can never escape the config
+/// directory (e.g. `--profile ../../x`).
+fn credentials_file_name(profile: &str) -> String {
+    if profile == "default" {
+        return "credentials".to_owned();
+    }
+    let safe: String = profile
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    format!("credentials-{safe}")
 }
 
 fn default_wakatime_cfg_path() -> Option<PathBuf> {
@@ -431,6 +479,18 @@ mod tests {
     }
 
     // ── Credentials file ──────────────────────────────────────────────────────
+
+    #[test]
+    fn credentials_file_names_are_per_profile_and_safe() {
+        assert_eq!(credentials_file_name("default"), "credentials");
+        assert_eq!(credentials_file_name("work"), "credentials-work");
+        assert_eq!(credentials_file_name("my-team_2"), "credentials-my-team_2");
+        let traversal = credentials_file_name("../../etc/x");
+        assert!(
+            !traversal.contains('/') && !traversal.contains(".."),
+            "{traversal}"
+        );
+    }
 
     fn temp_path(name: &str) -> PathBuf {
         std::env::temp_dir().join(format!("waka_creds_{name}"))
