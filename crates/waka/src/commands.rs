@@ -1063,13 +1063,92 @@ fn completions(shell: CompletionShell) {
 #[allow(clippy::needless_pass_by_value)]
 async fn config(cmd: ConfigCommands, global: &GlobalOpts) -> Result<()> {
     match cmd {
-        ConfigCommands::Get { .. } => bail!("not yet implemented: config get"),
-        ConfigCommands::Set { .. } => bail!("not yet implemented: config set"),
-        ConfigCommands::Edit => bail!("not yet implemented: config edit"),
-        ConfigCommands::Path => bail!("not yet implemented: config path"),
-        ConfigCommands::Reset { .. } => bail!("not yet implemented: config reset"),
+        ConfigCommands::Get { key } => {
+            println!("{}", load_config()?.get_key(&key)?);
+            Ok(())
+        }
+        ConfigCommands::Set { key, value } => {
+            let mut config = load_config()?;
+            config.set_key(&key, &value)?;
+            config.save().context("failed to save config")?;
+            if !global.quiet {
+                println!("✓ {key} = {}", config.get_key(&key)?);
+            }
+            Ok(())
+        }
+        ConfigCommands::Edit => config_edit(),
+        ConfigCommands::Path => {
+            println!("{}", Config::path()?.display());
+            Ok(())
+        }
+        ConfigCommands::Reset { confirm } => config_reset(confirm, global),
         ConfigCommands::Doctor => config_doctor(global).await,
     }
+}
+
+/// Opens `config.toml` in `$VISUAL` / `$EDITOR` (falling back to `vi`, or
+/// `notepad` on Windows), creating it with defaults first if needed, then
+/// re-validates the file.
+fn config_edit() -> Result<()> {
+    let path = Config::path()?;
+    if !path.exists() {
+        Config::default()
+            .save()
+            .context("failed to create default config")?;
+    }
+
+    let editor = std::env::var("VISUAL")
+        .or_else(|_| std::env::var("EDITOR"))
+        .unwrap_or_else(|_| if cfg!(windows) { "notepad" } else { "vi" }.to_owned());
+    // Allow editors with arguments, e.g. EDITOR="code --wait".
+    let mut parts = editor.split_whitespace();
+    let program = parts.next().context("$EDITOR is empty")?;
+    let status = std::process::Command::new(program)
+        .args(parts)
+        .arg(&path)
+        .status()
+        .with_context(|| format!("failed to launch editor '{editor}'"))?;
+    if !status.success() {
+        bail!("editor '{editor}' exited with {status}");
+    }
+
+    if let Err(e) = Config::load() {
+        eprintln!(
+            "warning: {} is not valid anymore: {e}\n  Run `waka config edit` again to fix it.",
+            path.display()
+        );
+    }
+    Ok(())
+}
+
+/// Implements `waka config reset`: overwrites `config.toml` with defaults
+/// after confirmation (skipped with `--confirm`).
+fn config_reset(confirm: bool, global: &GlobalOpts) -> Result<()> {
+    let path = Config::path()?;
+    if !confirm {
+        if !std::io::stdin().is_terminal() {
+            bail!(
+                "refusing to reset {} without confirmation; pass --confirm",
+                path.display()
+            );
+        }
+        let proceed = inquire::Confirm::new(&format!(
+            "Reset {} to defaults? This cannot be undone.",
+            path.display()
+        ))
+        .with_default(false)
+        .prompt()
+        .context("failed to read confirmation")?;
+        if !proceed {
+            println!("Aborted.");
+            return Ok(());
+        }
+    }
+    Config::default().save().context("failed to save config")?;
+    if !global.quiet {
+        println!("✓ Config reset to defaults ({})", path.display());
+    }
+    Ok(())
 }
 
 /// Runs a full diagnostic check and prints a human-readable report.
