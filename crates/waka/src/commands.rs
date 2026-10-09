@@ -1064,7 +1064,11 @@ fn completions(shell: CompletionShell) {
 async fn config(cmd: ConfigCommands, global: &GlobalOpts) -> Result<()> {
     match cmd {
         ConfigCommands::Get { key } => {
-            println!("{}", load_config()?.get_key(&key)?);
+            let config = load_config()?;
+            match key {
+                Some(key) => println!("{}", config.get_key(&key)?),
+                None => print!("{}", config.to_toml_string()?),
+            }
             Ok(())
         }
         ConfigCommands::Set { key, value } => {

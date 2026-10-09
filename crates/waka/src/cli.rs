@@ -454,10 +454,10 @@ pub struct PromptArgs {
 
 #[derive(Debug, Subcommand)]
 pub enum ConfigCommands {
-    /// Get the value of a config key.
+    /// Get the value of a config key, or print the whole config.
     Get {
-        /// Config key (e.g. `core.profile`).
-        key: String,
+        /// Dotted config key (e.g. `cache.ttl_seconds`). Omit to print all.
+        key: Option<String>,
     },
 
     /// Set the value of a config key.

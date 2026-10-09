@@ -275,6 +275,15 @@ impl Config {
         Ok(config)
     }
 
+    /// Serializes the configuration as pretty-printed TOML.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ConfigError::Serialize`] if serialization fails.
+    pub fn to_toml_string(&self) -> Result<String, ConfigError> {
+        Ok(toml::to_string_pretty(self)?)
+    }
+
     /// Saves the config to the platform default path, creating the directory
     /// if necessary.
     ///
