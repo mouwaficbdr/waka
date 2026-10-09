@@ -1,10 +1,17 @@
 name: CI
 
 on:
+  # Pushes to main, plus pull requests: a branch with an open PR is tested once
+  # (as a PR) instead of twice (push + pull_request).
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
     branches: [main]
+
+# Cancel superseded runs when a PR receives new commits; never cancel main.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   CARGO_TERM_COLOR: always
