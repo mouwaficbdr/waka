@@ -98,6 +98,11 @@ jobs:
     name: GitHub Release
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      # Required by actions/attest-build-provenance.
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -107,6 +112,18 @@ jobs:
         with:
           path: artifacts
           merge-multiple: true
+      # `waka update` refuses to install an archive whose digest is not listed
+      # here, so this file must be attached to every release.
+      - name: Generate SHA256SUMS
+        working-directory: artifacts
+        run: |
+          sha256sum -- * > SHA256SUMS
+          cat SHA256SUMS
+      # Signed SLSA provenance, verifiable with `gh attestation verify`.
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: "artifacts/*"
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
@@ -114,20 +131,31 @@ jobs:
           generate_release_notes: true
 
   # ────────────────────────────────────────────────
-  # Publish waka-api to crates.io (v1.x+)
+  # Publish waka-api to crates.io
+  # waka-api is versioned independently of the CLI: every release tries to
+  # publish it, and only "this version is already on crates.io" is tolerated.
   # ────────────────────────────────────────────────
   publish-crates:
     name: Publish to crates.io
     needs: release
     runs-on: ubuntu-latest
-    if: startsWith(github.ref_name, 'v1.')
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - name: Publish waka-api
-        run: cargo publish -p waka-api || true
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: |
+          if out=$(cargo publish -p waka-api 2>&1); then
+            echo "$out"
+            exit 0
+          fi
+          echo "$out"
+          if echo "$out" | grep -qiE "already (exists|uploaded)"; then
+            echo "waka-api $(cargo pkgid -p waka-api | sed 's/.*[#@]//') is already published, skipping."
+            exit 0
+          fi
+          exit 1
 
   # ────────────────────────────────────────────────
   # Update CHANGELOG.md and push

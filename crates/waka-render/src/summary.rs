@@ -13,6 +13,7 @@ use waka_api::{SummaryEntry, SummaryResponse};
 use crate::format::format_duration;
 use crate::options::{OutputFormat, RenderOptions};
 use crate::theme::Theme;
+use crate::utils::delimited_field;
 use crate::utils::humanize_duration;
 
 /// Width of the language-bar in the rich layout (columns).
@@ -421,7 +422,8 @@ impl SummaryRenderer {
                     out,
                     "{date}{s}{name}{s}{secs}{s}{time}{s}{pct:.1}",
                     s = sep,
-                    name = entry.name,
+                    date = delimited_field(date, sep),
+                    name = delimited_field(&entry.name, sep),
                     secs = secs_u64,
                     time = format_duration(secs_u64),
                     pct = pct,

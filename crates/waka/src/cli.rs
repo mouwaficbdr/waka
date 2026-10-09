@@ -445,19 +445,20 @@ pub enum PromptStyle {
 /// Shell prompt integration.
 #[derive(Debug, Args)]
 pub struct PromptArgs {
-    /// Output style.
+    /// Output style. (Not `--format`: that name belongs to the global
+    /// `--format` option, and reusing it made `waka prompt` panic.)
     #[arg(long, value_name = "STYLE", default_value = "simple")]
-    pub format: PromptStyle,
+    pub style: PromptStyle,
 }
 
 // ─── config ───────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Subcommand)]
 pub enum ConfigCommands {
-    /// Get the value of a config key.
+    /// Get the value of a config key, or print the whole config.
     Get {
-        /// Config key (e.g. `core.profile`).
-        key: String,
+        /// Dotted config key (e.g. `cache.ttl_seconds`). Omit to print all.
+        key: Option<String>,
     },
 
     /// Set the value of a config key.
@@ -519,4 +520,42 @@ pub enum CompletionShell {
     PowerShell,
     /// Elvish
     Elvish,
+}
+
+#[cfg(test)]
+mod tests {
+    use clap::CommandFactory as _;
+
+    use super::*;
+
+    /// Catches definition errors (duplicate flags, id clashes between global
+    /// and subcommand options, …) that clap otherwise only reports at runtime.
+    #[test]
+    fn cli_definition_is_valid() {
+        Cli::command().debug_assert();
+    }
+
+    #[test]
+    fn prompt_parses_with_and_without_style() {
+        let cli = Cli::try_parse_from(["waka", "prompt"]).expect("plain prompt parses");
+        assert!(matches!(
+            cli.command,
+            Commands::Prompt(PromptArgs {
+                style: PromptStyle::Simple
+            })
+        ));
+        let cli = Cli::try_parse_from(["waka", "prompt", "--style", "detailed"]).unwrap();
+        assert!(matches!(
+            cli.command,
+            Commands::Prompt(PromptArgs {
+                style: PromptStyle::Detailed
+            })
+        ));
+    }
+
+    #[test]
+    fn global_format_still_parses_with_subcommands() {
+        let cli = Cli::try_parse_from(["waka", "stats", "today", "--format", "json"]).unwrap();
+        assert!(matches!(cli.global.format, Some(OutputFormat::Json)));
+    }
 }

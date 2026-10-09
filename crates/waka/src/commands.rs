@@ -1,8 +1,12 @@
 //! Command handlers for `waka`.
 //!
-//! Each function corresponds to a leaf command in the CLI tree. Auth handlers
-//! and the stats handler are fully implemented; all others remain stubs to be
-//! filled in during later phases.
+//! Each function corresponds to a leaf command in the CLI tree. Larger
+//! commands live in submodules: [`report`] (report generation) and
+//! [`config_cmd`] (`waka config …`, including `doctor`). Self-update and the
+//! background update check live in [`crate::update`].
+
+mod config_cmd;
+mod report;
 
 use std::collections::HashMap;
 use std::io::IsTerminal as _;
@@ -14,6 +18,7 @@ use indicatif::ProgressBar;
 use waka_api::{StatsRange, SummaryEntry, SummaryParams, WakaClient};
 use waka_cache::CacheStore;
 use waka_config::{Config, CredentialStore, ProfileConfig};
+use waka_render::utils::{delimited_field, html_escape};
 use waka_render::{
     detect_output_format, should_use_color, BreakdownRenderer, GoalRenderer, LeaderboardRenderer,
     OutputFormat as RenderFormat, ProjectRenderer, RenderOptions, SummaryRenderer,
@@ -42,7 +47,10 @@ pub async fn dispatch(cmd: Commands, global: GlobalOpts) -> Result<()> {
     // On a cache hit (most runs) it completes in microseconds.
     // On a cache miss (first run of the day) it fetches GitHub with up to
     // 5 s network timeout — we wait at most 3 s for it here.
-    let update_handle = tokio::spawn(update_check_background(global.clone()));
+    // Not spawned at all when skipped: it opens the sled cache, whose
+    // exclusive lock would otherwise race with the command's own cache access.
+    let update_handle = (!skip_update)
+        .then(|| tokio::spawn(crate::update::update_check_background(global.clone())));
 
     let result = match cmd {
         Commands::Auth { cmd } => auth_cmd(cmd, global).await,
@@ -52,7 +60,7 @@ pub async fn dispatch(cmd: Commands, global: GlobalOpts) -> Result<()> {
         Commands::Editors { cmd } => editors(cmd, &global).await,
         Commands::Goals { cmd } => goals(cmd, &global).await,
         Commands::Leaderboard { cmd } => leaderboard(cmd, &global).await,
-        Commands::Report { cmd } => report(cmd, &global).await,
+        Commands::Report { cmd } => report::report(cmd, &global).await,
         Commands::Dashboard(args) => dashboard(args, &global).await,
         Commands::Prompt(args) => {
             prompt(args, &global);
@@ -62,15 +70,15 @@ pub async fn dispatch(cmd: Commands, global: GlobalOpts) -> Result<()> {
             completions(shell);
             Ok(())
         }
-        Commands::Config { cmd } => config(cmd, &global).await,
+        Commands::Config { cmd } => config_cmd::config(cmd, &global).await,
         Commands::Cache { cmd } => cache(cmd, &global),
-        Commands::Update => update_self(&global).await,
+        Commands::Update => crate::update::update_self(&global).await,
         Commands::Changelog => show_changelog(&global).await,
     };
 
     // After command output: wait briefly for the update notification.
-    if !skip_update {
-        let _ = tokio::time::timeout(Duration::from_secs(3), update_handle).await;
+    if let Some(handle) = update_handle {
+        let _ = tokio::time::timeout(Duration::from_secs(3), handle).await;
     }
 
     result
@@ -95,30 +103,10 @@ async fn auth_cmd(cmd: AuthCommands, global: GlobalOpts) -> Result<()> {
 /// Loads the config, retrieves credentials, optionally hits the local cache,
 /// fetches data from the `WakaTime` API, then renders the result.
 async fn stats(cmd: StatsCommands, global: &GlobalOpts) -> Result<()> {
-    // ── 1. Config + credentials ───────────────────────────────────────────────
-    let config = Config::load().unwrap_or_default();
-    let profile = stats_profile_name(global);
-    let api_url = config
-        .profiles
-        .get(&profile)
-        .map_or_else(|| ProfileConfig::default().api_url, |p| p.api_url.clone());
-
-    let store = CredentialStore::new(&profile);
-    let api_key = store.get_api_key().with_context(|| {
-        format!(
-            "No API key found for profile '{profile}'.\n\
-             Run `waka auth login` to authenticate."
-        )
-    })?;
-
-    // ── 2. Build client ───────────────────────────────────────────────────────
-    let api_url_normalized = if api_url.ends_with('/') {
-        api_url.clone()
-    } else {
-        format!("{api_url}/")
-    };
-    let client = WakaClient::with_base_url(api_key.expose(), &api_url_normalized)
-        .with_context(|| format!("invalid api_url in profile '{profile}': {api_url}"))?;
+    // ── 1. Config, profile, client ────────────────────────────────────────────
+    let config = load_config()?;
+    let profile = resolve_profile(global, &config);
+    let client = build_api_client(&profile, &config)?;
 
     // ── 3. Build params ───────────────────────────────────────────────────────
     let (params, label) = stats_build_params(cmd)?;
@@ -229,11 +217,6 @@ async fn stats(cmd: StatsCommands, global: &GlobalOpts) -> Result<()> {
     Ok(())
 }
 
-/// Extracts the active profile name from [`GlobalOpts`] or returns `"default"`.
-fn stats_profile_name(global: &GlobalOpts) -> String {
-    global.profile.as_deref().unwrap_or("default").to_owned()
-}
-
 /// Converts a [`StatsCommands`] variant into a [`SummaryParams`] and a
 /// human-readable label for spinner / error messages.
 ///
@@ -296,11 +279,14 @@ fn stats_build_params(cmd: StatsCommands) -> Result<(SummaryParams, &'static str
 /// Applies optional API-level filters to `params`.
 ///
 /// The `--language` filter is not supported by the summaries endpoint at API
-/// level and is silently ignored.
+/// level; it is ignored with a warning on stderr.
 // TODO(spec): the WakaTime summaries endpoint does not expose client-side
 // language filtering. --language is reserved for post-filtering once SPEC.md
 // §5.1 clarifies the intended behaviour.
 fn stats_apply_filters(params: SummaryParams, filters: &StatsFilterOpts) -> SummaryParams {
+    if filters.language.is_some() {
+        eprintln!("warning: --language is not supported yet and was ignored");
+    }
     if let Some(project) = &filters.project {
         params.project(project)
     } else {
@@ -313,24 +299,28 @@ fn stats_apply_filters(params: SummaryParams, filters: &StatsFilterOpts) -> Summ
 /// Priority: `--format` CLI flag > config `output.format` > `Table` default.
 /// When stdout is not a TTY the format is coerced to `Plain` regardless.
 fn stats_resolve_format(global: &GlobalOpts, config: &Config) -> RenderFormat {
+    // If stdout is piped / redirected, degrade to plain text.
+    detect_output_format(configured_format(global.format, &config.output.format))
+}
+
+/// Picks the requested format before TTY detection: an explicit `--format`
+/// always wins (including `--format table`), otherwise `output.format`.
+fn configured_format(cli: Option<CliFormat>, config: &waka_config::OutputFormat) -> RenderFormat {
     use waka_config::OutputFormat as CfgFmt;
 
-    // CLI flag takes precedence over config.
-    let configured = match global.format {
+    match cli {
         Some(CliFormat::Json) => RenderFormat::Json,
         Some(CliFormat::Csv) => RenderFormat::Csv,
         Some(CliFormat::Plain) => RenderFormat::Plain,
-        Some(CliFormat::Table) | None => match config.output.format {
+        Some(CliFormat::Table) => RenderFormat::Table,
+        None => match config {
             CfgFmt::Json => RenderFormat::Json,
             CfgFmt::Csv => RenderFormat::Csv,
             CfgFmt::Plain => RenderFormat::Plain,
             CfgFmt::Tsv => RenderFormat::Tsv,
             CfgFmt::Table => RenderFormat::Table,
         },
-    };
-
-    // If stdout is piped / redirected, degrade to plain text.
-    detect_output_format(configured)
+    }
 }
 
 /// Creates an indeterminate progress spinner for network operations.
@@ -351,10 +341,7 @@ fn stats_spinner(msg: &str) -> ProgressBar {
 ///
 /// Returns an error if no API key is found or if the base URL is invalid.
 fn build_api_client(profile: &str, config: &Config) -> Result<WakaClient> {
-    let api_url = config
-        .profiles
-        .get(profile)
-        .map_or_else(|| ProfileConfig::default().api_url, |p| p.api_url.clone());
+    let api_url = profile_api_url(config, profile);
 
     let store = CredentialStore::new(profile);
     let api_key = store.get_api_key().with_context(|| {
@@ -364,13 +351,46 @@ fn build_api_client(profile: &str, config: &Config) -> Result<WakaClient> {
         )
     })?;
 
-    let normalized = if api_url.ends_with('/') {
-        api_url.clone()
-    } else {
-        format!("{api_url}/")
-    };
-    WakaClient::with_base_url(api_key.expose(), &normalized)
+    WakaClient::with_base_url(api_key.expose(), &api_url)
         .with_context(|| format!("invalid api_url in profile '{profile}': {api_url}"))
+}
+
+/// Loads `config.toml`.
+///
+/// A malformed file is reported as an error rather than silently replaced by
+/// defaults, which could otherwise be written back over the user's file.
+///
+/// # Errors
+///
+/// Returns an error if the config directory cannot be resolved or the file
+/// cannot be read or parsed.
+pub(crate) fn load_config() -> Result<Config> {
+    let path =
+        Config::path().map_or_else(|_| "config.toml".to_owned(), |p| p.display().to_string());
+    Config::load().with_context(|| format!("could not load config file {path}"))
+}
+
+/// Resolves the active profile: `--profile` flag > `core.default_profile` >
+/// `"default"` (the default value of `core.default_profile`).
+pub(crate) fn resolve_profile(global: &GlobalOpts, config: &Config) -> String {
+    global
+        .profile
+        .clone()
+        .unwrap_or_else(|| config.core.default_profile.clone())
+}
+
+/// Returns the API base URL configured for `profile`, with a trailing slash so
+/// relative endpoint paths join correctly.
+pub(crate) fn profile_api_url(config: &Config, profile: &str) -> String {
+    let url = config
+        .profiles
+        .get(profile)
+        .map_or_else(|| ProfileConfig::default().api_url, |p| p.api_url.clone());
+    if url.ends_with('/') {
+        url
+    } else {
+        format!("{url}/")
+    }
 }
 
 /// Converts a [`crate::cli::Period`] (CLI value) to its [`StatsRange`] equivalent.
@@ -397,8 +417,8 @@ fn entries_from_stats(entries: &[SummaryEntry]) -> Vec<(String, f64)> {
 
 /// Handles `waka projects {list,top,show}`.
 async fn projects(cmd: ProjectsCommands, global: &GlobalOpts) -> Result<()> {
-    let config = Config::load().unwrap_or_default();
-    let profile = stats_profile_name(global);
+    let config = load_config()?;
+    let profile = resolve_profile(global, &config);
     let client = build_api_client(&profile, &config)?;
     let format = stats_resolve_format(global, &config);
     let color = !global.no_color && should_use_color();
@@ -486,8 +506,8 @@ async fn projects(cmd: ProjectsCommands, global: &GlobalOpts) -> Result<()> {
 
 /// Handles `waka languages {list,top}`.
 async fn languages(cmd: LanguagesCommands, global: &GlobalOpts) -> Result<()> {
-    let config = Config::load().unwrap_or_default();
-    let profile = stats_profile_name(global);
+    let config = load_config()?;
+    let profile = resolve_profile(global, &config);
     let client = build_api_client(&profile, &config)?;
     let format = stats_resolve_format(global, &config);
     let color = !global.no_color && should_use_color();
@@ -529,8 +549,8 @@ async fn languages(cmd: LanguagesCommands, global: &GlobalOpts) -> Result<()> {
 
 /// Handles `waka editors {list,top}`.
 async fn editors(cmd: EditorsCommands, global: &GlobalOpts) -> Result<()> {
-    let config = Config::load().unwrap_or_default();
-    let profile = stats_profile_name(global);
+    let config = load_config()?;
+    let profile = resolve_profile(global, &config);
     let client = build_api_client(&profile, &config)?;
     let format = stats_resolve_format(global, &config);
     let color = !global.no_color && should_use_color();
@@ -571,8 +591,8 @@ async fn editors(cmd: EditorsCommands, global: &GlobalOpts) -> Result<()> {
 // ─── goals ────────────────────────────────────────────────────────────────────
 
 async fn goals(cmd: GoalsCommands, global: &GlobalOpts) -> Result<()> {
-    let config = Config::load().unwrap_or_default();
-    let profile = stats_profile_name(global);
+    let config = load_config()?;
+    let profile = resolve_profile(global, &config);
     let client = build_api_client(&profile, &config)?;
     let format = stats_resolve_format(global, &config);
     let color = !global.no_color && should_use_color();
@@ -730,8 +750,8 @@ fn goals_notify_success(title: &str) {
 // ─── leaderboard ──────────────────────────────────────────────────────────────
 
 async fn leaderboard(cmd: LeaderboardCommands, global: &GlobalOpts) -> Result<()> {
-    let config = Config::load().unwrap_or_default();
-    let profile = stats_profile_name(global);
+    let config = load_config()?;
+    let profile = resolve_profile(global, &config);
     let client = build_api_client(&profile, &config)?;
     let format = stats_resolve_format(global, &config);
     let color = !global.no_color && should_use_color();
@@ -756,144 +776,11 @@ async fn leaderboard(cmd: LeaderboardCommands, global: &GlobalOpts) -> Result<()
     Ok(())
 }
 
-// ─── report ───────────────────────────────────────────────────────────────────
-
-// `needless_pass_by_value`: cmd is consumed by the match for exhaustive checking.
-#[allow(clippy::needless_pass_by_value)]
-async fn report(cmd: ReportCommands, global: &GlobalOpts) -> Result<()> {
-    match cmd {
-        ReportCommands::Generate {
-            from,
-            to,
-            output,
-            output_format,
-        } => report_generate(from, to, output, output_format, global).await,
-        ReportCommands::Summary { period } => report_summary(period, global).await,
-    }
-}
-
-/// Generates a productivity report for a date range.
-async fn report_generate(
-    from: String,
-    to: String,
-    output: Option<std::path::PathBuf>,
-    format: ReportFormat,
-    global: &GlobalOpts,
-) -> Result<()> {
-    use chrono::NaiveDate;
-
-    // Parse dates
-    let start_date = NaiveDate::parse_from_str(&from, "%Y-%m-%d")
-        .with_context(|| format!("invalid start date '{from}' (expected YYYY-MM-DD)"))?;
-    let end_date = NaiveDate::parse_from_str(&to, "%Y-%m-%d")
-        .with_context(|| format!("invalid end date '{to}' (expected YYYY-MM-DD)"))?;
-
-    if end_date < start_date {
-        bail!("end date must be after start date");
-    }
-
-    // Build client
-    let config = Config::load().unwrap_or_default();
-    let profile = stats_profile_name(global);
-    let client = build_api_client(&profile, &config)?;
-
-    // Fetch data for the period
-    let pb = stats_spinner("Fetching data for report...");
-    let params = waka_api::SummaryParams::for_range(start_date, end_date);
-    let summary = client.summaries(params).await?;
-
-    // Fetch goals (may fail if user has no goals - that's ok)
-    let goals = client.goals().await.ok();
-
-    pb.finish_and_clear();
-
-    // Generate report content
-    let content = match format {
-        ReportFormat::Md => {
-            generate_report_markdown(&summary, goals.as_ref(), start_date, end_date)
-        }
-        ReportFormat::Html => generate_report_html(&summary, goals.as_ref(), start_date, end_date),
-        ReportFormat::Json => generate_report_json(&summary, goals.as_ref(), start_date, end_date)?,
-        ReportFormat::Csv => generate_report_csv(&summary, start_date, end_date),
-    };
-
-    // Write output
-    if let Some(path) = output {
-        std::fs::write(&path, content)
-            .with_context(|| format!("failed to write report to {}", path.display()))?;
-        if !global.quiet {
-            eprintln!("Report written to {}", path.display());
-        }
-    } else {
-        print!("{content}");
-    }
-
-    Ok(())
-}
-
-/// Shows a brief productivity summary.
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::cast_precision_loss
-)]
-async fn report_summary(period: SummaryPeriod, global: &GlobalOpts) -> Result<()> {
-    let config = Config::load().unwrap_or_default();
-    let profile = stats_profile_name(global);
-    let client = build_api_client(&profile, &config)?;
-
-    let today = chrono::Local::now().date_naive();
-    let params = match period {
-        SummaryPeriod::Week => {
-            let start = today - chrono::Duration::days(6);
-            waka_api::SummaryParams::for_range(start, today)
-        }
-        SummaryPeriod::Month => {
-            let start = today - chrono::Duration::days(29);
-            waka_api::SummaryParams::for_range(start, today)
-        }
-    };
-
-    let pb = stats_spinner("Fetching summary...");
-    let summary = client.summaries(params).await?;
-    pb.finish_and_clear();
-
-    // Calculate totals
-    let total_seconds: f64 = summary
-        .data
-        .iter()
-        .map(|d| d.grand_total.total_seconds)
-        .sum();
-    let hours = (total_seconds / 3600.0).floor() as u64;
-    let minutes = ((total_seconds % 3600.0) / 60.0).floor() as u64;
-
-    let days = summary.data.len();
-    let avg_seconds = if days > 0 {
-        total_seconds / days as f64
-    } else {
-        0.0
-    };
-    let avg_hours = (avg_seconds / 3600.0).floor() as u64;
-    let avg_minutes = ((avg_seconds % 3600.0) / 60.0).floor() as u64;
-
-    let period_name = match period {
-        SummaryPeriod::Week => "Last 7 days",
-        SummaryPeriod::Month => "Last 30 days",
-    };
-
-    println!("\n{period_name} Summary\n");
-    println!("  Total:   {hours}h {minutes}m");
-    println!("  Average: {avg_hours}h {avg_minutes}m per day");
-    println!("  Days:    {days}\n");
-
-    Ok(())
-}
-
 // ─── dashboard ────────────────────────────────────────────────────────────────
 
 async fn dashboard(args: DashboardArgs, global: &GlobalOpts) -> Result<()> {
-    let config = Config::load().unwrap_or_default();
-    let profile = stats_profile_name(global);
+    let config = load_config()?;
+    let profile = resolve_profile(global, &config);
     let client = build_api_client(&profile, &config)?;
     let refresh_interval = std::time::Duration::from_secs(args.refresh);
 
@@ -911,8 +798,8 @@ async fn dashboard(args: DashboardArgs, global: &GlobalOpts) -> Result<()> {
 /// Reads today's total coding time from the local cache and prints a compact
 /// string suitable for embedding in a shell prompt or tmux status bar.
 ///
-/// **Never returns an error** — any failure (cache miss, expired entry,
-/// corrupted DB) results in empty output so that the caller's prompt is never
+/// **Never returns an error** — any failure (cache miss, corrupted entry)
+/// results in empty output so that the caller's prompt is never
 /// broken. The operation is cache-only: no network request is ever made.
 ///
 /// # Output formats
@@ -953,26 +840,30 @@ fn format_prompt_output(total_secs: u64, style: PromptStyle, top_project: Option
 }
 
 /// Core logic for [`prompt`]. Returns `None` on any failure (cache miss,
-/// expired entry, I/O error).  The 100ms budget is inherently satisfied
-/// because this function only reads from sled (no network I/O).
+/// I/O error).  The 100ms budget is inherently satisfied because this
+/// function only reads one small cache file (no network I/O).
 fn prompt_inner(args: &PromptArgs, global: &GlobalOpts) -> Option<String> {
-    let profile = global.profile.as_deref().unwrap_or("default");
+    // The prompt must never print errors, so a broken config falls back to
+    // defaults here (read-only: nothing is written back).
+    let config = Config::load().unwrap_or_default();
+    let profile = resolve_profile(global, &config);
 
     // Open the cache — silently skip on failure.
-    let store = CacheStore::open(profile).ok()?;
+    let store = CacheStore::open(&profile).ok()?;
 
     // Build the same cache key that `waka stats today` writes.
     let cache_key = SummaryParams::today().cache_key();
 
-    // Retrieve the entry. Miss or expired → silent empty output.
+    // Retrieve the entry. A miss → silent empty output.
+    //
+    // The TTL is deliberately ignored: it governs when `stats` refetches, but
+    // the key is scoped to today's date, so an older entry is still today's
+    // total as of its last fetch. Honouring the 5-minute TTL left the prompt
+    // empty almost all the time.
     let entry = store
         .get::<waka_api::SummaryResponse>(&cache_key)
         .ok()
         .flatten()?;
-
-    if entry.is_expired() {
-        return None;
-    }
 
     let response = &entry.value;
 
@@ -1007,7 +898,7 @@ fn prompt_inner(args: &PromptArgs, global: &GlobalOpts) -> Option<String> {
 
     Some(format_prompt_output(
         total_secs,
-        args.format,
+        args.style,
         top_project.as_deref(),
     ))
 }
@@ -1038,584 +929,7 @@ fn completions(shell: CompletionShell) {
     }
 }
 
-// ─── config ───────────────────────────────────────────────────────────────────
-
-// `needless_pass_by_value`: cmd is consumed by the match for exhaustive checking.
-#[allow(clippy::needless_pass_by_value)]
-async fn config(cmd: ConfigCommands, global: &GlobalOpts) -> Result<()> {
-    match cmd {
-        ConfigCommands::Get { .. } => bail!("not yet implemented: config get"),
-        ConfigCommands::Set { .. } => bail!("not yet implemented: config set"),
-        ConfigCommands::Edit => bail!("not yet implemented: config edit"),
-        ConfigCommands::Path => bail!("not yet implemented: config path"),
-        ConfigCommands::Reset { .. } => bail!("not yet implemented: config reset"),
-        ConfigCommands::Doctor => config_doctor(global).await,
-    }
-}
-
-/// Runs a full diagnostic check and prints a human-readable report.
-///
-/// Checks performed (in order):
-/// 1. Config file found at the platform-specific path
-/// 2. API key present in the credential priority chain
-/// 3. API key valid (calls `/users/current`)
-/// 4. API reachable (measures round-trip time)
-/// 5. Cache directory writable
-/// 6. Shell completions installed for the active shell
-/// 7. Update check (compares version with GitHub Releases)
-// The function has many sequential checks that are intentionally laid out in order.
-#[allow(clippy::too_many_lines)]
-async fn config_doctor(global: &GlobalOpts) -> Result<()> {
-    let use_color = !global.no_color && should_use_color();
-    let profile = global.profile.as_deref().unwrap_or("default");
-    let mut issues: u32 = 0;
-    let mut warnings: u32 = 0;
-
-    // ── colour helpers ───────────────────────────────────────────────────────
-    let ok_mark = if use_color {
-        console::style("✓").green().to_string()
-    } else {
-        "✓".to_owned()
-    };
-    let warn_mark = if use_color {
-        console::style("⚠").yellow().to_string()
-    } else {
-        "⚠".to_owned()
-    };
-    let fail_mark = if use_color {
-        console::style("✗").red().to_string()
-    } else {
-        "✗".to_owned()
-    };
-
-    // ── 1. Config file ───────────────────────────────────────────────────────
-    match waka_config::Config::path() {
-        Ok(path) => {
-            if path.exists() {
-                println!("  {ok_mark}  Config file found at {}", path.display());
-            } else {
-                println!(
-                    "  {warn_mark}  Config file not found at {} (using defaults)",
-                    path.display()
-                );
-                warnings += 1;
-            }
-        }
-        Err(e) => {
-            println!("  {fail_mark}  Could not determine config path: {e}");
-            issues += 1;
-        }
-    }
-
-    // ── 2. API key ───────────────────────────────────────────────────────────
-    let store = waka_config::CredentialStore::new(profile);
-    let api_key_result = store.get_api_key();
-    let api_key = if let Ok(key) = &api_key_result {
-        println!("  {ok_mark}  API key found in credential store");
-        Some(key.expose().to_owned())
-    } else {
-        println!("  {fail_mark}  No API key found — run `waka auth login` to authenticate");
-        issues += 1;
-        None
-    };
-
-    // ── 3 & 4. API key valid + reachability ──────────────────────────────────
-    if let Some(key) = api_key {
-        // Resolve API URL from config.
-        let config = waka_config::Config::load().unwrap_or_default();
-        let api_url = config.profiles.get(profile).map_or_else(
-            || waka_config::ProfileConfig::default().api_url,
-            |p| p.api_url.clone(),
-        );
-        let api_url_normalized = if api_url.ends_with('/') {
-            api_url.clone()
-        } else {
-            format!("{api_url}/")
-        };
-
-        match waka_api::WakaClient::with_base_url(&key, &api_url_normalized) {
-            Err(e) => {
-                println!("  {fail_mark}  Could not build API client: {e}");
-                issues += 1;
-            }
-            Ok(client) => {
-                let t0 = std::time::Instant::now();
-                match client.me().await {
-                    Ok(user_resp) => {
-                        let elapsed_ms = t0.elapsed().as_millis();
-                        let identity = user_resp.email.as_deref().unwrap_or(&user_resp.username);
-                        println!("  {ok_mark}  API key is valid (authenticated as {identity})");
-                        println!("  {ok_mark}  API reachable (ping: {elapsed_ms}ms)");
-                    }
-                    Err(waka_api::ApiError::Unauthorized) => {
-                        let elapsed_ms = t0.elapsed().as_millis();
-                        println!(
-                            "  {fail_mark}  API key is invalid or expired — run `waka auth login`"
-                        );
-                        // API IS reachable even if unauthorized.
-                        println!("  {ok_mark}  API reachable (ping: {elapsed_ms}ms)");
-                        issues += 1;
-                    }
-                    Err(e) => {
-                        println!("  {fail_mark}  API unreachable: {e}");
-                        println!("  {fail_mark}  Could not validate API key (network error)");
-                        issues += 1;
-                    }
-                }
-            }
-        }
-    } else {
-        // Skip reachability if we have no key.
-        println!("  {warn_mark}  API reachability check skipped (no API key)");
-        warnings += 1;
-    }
-
-    // ── 5. Cache directory ───────────────────────────────────────────────────
-    match waka_config::Config::cache_dir() {
-        Ok(cache_path) => {
-            // Try to create the directory if it does not exist.
-            if let Err(e) = std::fs::create_dir_all(&cache_path) {
-                println!(
-                    "  {fail_mark}  Cache directory not writable at {}: {e}",
-                    cache_path.display()
-                );
-                issues += 1;
-            } else {
-                // Quick writability probe: create then remove a temp file.
-                let probe = cache_path.join(".waka_write_probe");
-                match std::fs::write(&probe, b"") {
-                    Ok(()) => {
-                        let _ = std::fs::remove_file(&probe);
-                        println!(
-                            "  {ok_mark}  Cache directory writable at {}",
-                            cache_path.display()
-                        );
-                    }
-                    Err(e) => {
-                        println!(
-                            "  {fail_mark}  Cache directory not writable at {}: {e}",
-                            cache_path.display()
-                        );
-                        issues += 1;
-                    }
-                }
-            }
-        }
-        Err(e) => {
-            println!("  {fail_mark}  Could not determine cache directory: {e}");
-            issues += 1;
-        }
-    }
-
-    // ── 6. Shell completions ─────────────────────────────────────────────────
-    let detected_shell = std::env::var("SHELL").ok().and_then(|s| {
-        std::path::Path::new(&s)
-            .file_name()
-            .and_then(|n| n.to_str())
-            .map(std::string::ToString::to_string)
-    });
-
-    match detected_shell.as_deref() {
-        Some("zsh") => {
-            let zfunc = dirs_check_zsh_completions();
-            if zfunc {
-                println!("  {ok_mark}  Shell completions installed (zsh)");
-            } else {
-                println!(
-                    "  {warn_mark}  Shell completions not found for zsh — run `waka completions zsh`"
-                );
-                warnings += 1;
-            }
-        }
-        Some("bash") => {
-            let found = dirs_check_bash_completions();
-            if found {
-                println!("  {ok_mark}  Shell completions installed (bash)");
-            } else {
-                println!(
-                    "  {warn_mark}  Shell completions not found for bash — run `waka completions bash`"
-                );
-                warnings += 1;
-            }
-        }
-        Some("fish") => {
-            let fish_path = directories::BaseDirs::new()
-                .map(|d| d.home_dir().join(".config/fish/completions/waka.fish"));
-            if fish_path.as_ref().is_some_and(|p| p.exists()) {
-                println!("  {ok_mark}  Shell completions installed (fish)");
-            } else {
-                println!(
-                    "  {warn_mark}  Shell completions not found for fish — run `waka completions fish`"
-                );
-                warnings += 1;
-            }
-        }
-        Some(shell) => {
-            println!("  {warn_mark}  Shell completions check skipped (unsupported shell: {shell})");
-            warnings += 1;
-        }
-        None => {
-            println!("  {warn_mark}  Shell completions check skipped ($SHELL not set)");
-            warnings += 1;
-        }
-    }
-
-    // ── 7. Version / update check ────────────────────────────────────────────
-    let current = env!("CARGO_PKG_VERSION");
-    match check_latest_version().await {
-        Ok(Some(latest)) if latest != current && version_is_newer(&latest, current) => {
-            println!(
-                "  {warn_mark}  waka v{current} installed — v{latest} available (run: waka update)"
-            );
-            warnings += 1;
-        }
-        Ok(_) => {
-            println!("  {ok_mark}  waka v{current} is up to date");
-        }
-        Err(_) => {
-            // Update check failure is non-critical — silently skip.
-            println!("  {warn_mark}  Could not check for updates (network unavailable?)");
-            warnings += 1;
-        }
-    }
-
-    // ── Summary ──────────────────────────────────────────────────────────────
-    if issues == 0 && warnings == 0 {
-        println!("  {ok_mark}  No known issues");
-    } else if issues > 0 {
-        let label = if issues == 1 { "issue" } else { "issues" };
-        println!("  {fail_mark}  {issues} {label} found — check the output above");
-    }
-
-    Ok(())
-}
-
-/// Returns `true` if the zsh completion file exists in a standard `$fpath`
-/// location.
-fn dirs_check_zsh_completions() -> bool {
-    // Common user-level locations
-    let Some(base) = directories::BaseDirs::new() else {
-        return false;
-    };
-    let home = base.home_dir();
-    let candidates = [
-        home.join(".zfunc/_waka"),
-        home.join(".zfunc/waka.zsh"),
-        home.join(".local/share/zsh/site-functions/_waka"),
-        std::path::PathBuf::from("/usr/local/share/zsh/site-functions/_waka"),
-        std::path::PathBuf::from("/usr/share/zsh/site-functions/_waka"),
-    ];
-    candidates.iter().any(|p| p.exists())
-}
-
-/// Returns `true` if the bash completion file can be found.
-fn dirs_check_bash_completions() -> bool {
-    let Some(base) = directories::BaseDirs::new() else {
-        return false;
-    };
-    let home = base.home_dir();
-    let candidates = [
-        home.join(".local/share/bash-completion/completions/waka"),
-        home.join(".bash_completion.d/waka"),
-        std::path::PathBuf::from("/usr/local/share/bash-completion/completions/waka"),
-        std::path::PathBuf::from("/usr/share/bash-completion/completions/waka"),
-    ];
-    candidates.iter().any(|p| p.exists())
-}
-
-/// Fetches the latest release tag from the GitHub API.
-///
-/// Returns `None` if no releases exist yet, or an error on network failure.
-const GITHUB_API: &str = "https://api.github.com/repos/mouwaficbdr/waka/releases/latest";
-const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-async fn check_latest_version() -> anyhow::Result<Option<String>> {
-    // GitHub requires a User-Agent header.
-    let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(5))
-        .user_agent(concat!("waka/", env!("CARGO_PKG_VERSION")))
-        .build()?;
-
-    let resp = client.get(GITHUB_API).send().await?;
-
-    // 404 means no releases yet.
-    if resp.status() == reqwest::StatusCode::NOT_FOUND {
-        return Ok(None);
-    }
-
-    let json: serde_json::Value = resp.error_for_status()?.json().await?;
-    let tag = json["tag_name"]
-        .as_str()
-        .map(|t| t.trim_start_matches('v').to_owned());
-
-    Ok(tag)
-}
-
-/// Naive semver comparison: returns `true` when `candidate` is strictly newer
-/// than `current`. Both strings are expected in `MAJOR.MINOR.PATCH` format.
-///
-/// Returns `false` if parsing fails (safe default).
-fn version_is_newer(candidate: &str, current: &str) -> bool {
-    fn parse(s: &str) -> Option<(u64, u64, u64)> {
-        let mut it = s.splitn(3, '.').map(|p| p.parse::<u64>().ok());
-        let maj = it.next()??;
-        let min = it.next()??;
-        let pat = it.next()??;
-        Some((maj, min, pat))
-    }
-    match (parse(candidate), parse(current)) {
-        (Some(c), Some(cur)) => c > cur,
-        _ => false,
-    }
-}
-
-/// Background update check task.
-///
-/// Runs once per day (as determined by the cache TTL). Prints a one-line
-/// notice to **stderr** when a newer `waka` version is available.
-///
-/// All errors are swallowed — an update check must never break a command.
-async fn update_check_background(global: GlobalOpts) {
-    // Cache key stores the last-fetched latest version string.
-    // TTL = 24 h — so we hit GitHub at most once per day.
-    const UPDATE_CACHE_KEY: &str = "update_check:latest";
-    const CHECK_INTERVAL: Duration = Duration::from_secs(86_400);
-
-    // 1. Honour WAKA_NO_UPDATE_CHECK env var.
-    if std::env::var_os("WAKA_NO_UPDATE_CHECK").is_some() {
-        return;
-    }
-
-    // 2. Honour config flag.
-    let config = Config::load().unwrap_or_default();
-    if !config.core.update_check {
-        return;
-    }
-
-    let profile = global.profile.as_deref().unwrap_or("default");
-    let Ok(store) = CacheStore::open(profile) else {
-        return;
-    };
-
-    // 3. Determine if we need to fetch (cache miss or expired).
-    let cached = store.get::<String>(UPDATE_CACHE_KEY).ok().flatten();
-
-    let latest = if cached.as_ref().is_some_and(|e| !e.is_expired()) {
-        // Cache hit — use stored value immediately (no network).
-        cached.map(|e| e.value)
-    } else {
-        // Cache miss or expired — fetch from GitHub.
-        match check_latest_version().await {
-            Ok(Some(v)) => {
-                let _ = store.set(UPDATE_CACHE_KEY, &v, CHECK_INTERVAL);
-                Some(v)
-            }
-            // No releases yet or network error — skip silently.
-            _ => return,
-        }
-    };
-
-    let Some(latest) = latest else { return };
-    let current = env!("CARGO_PKG_VERSION");
-
-    if version_is_newer(&latest, current) {
-        eprintln!("\n  ⚠  waka v{current} installed — v{latest} available (run: waka update)");
-    }
-}
-
 // ─── update / changelog ───────────────────────────────────────────────────────
-
-/// Whether the binary lives under a Homebrew-managed path.
-fn is_homebrew_install() -> bool {
-    std::env::current_exe().is_ok_and(|exe| {
-        let p = exe.to_string_lossy();
-        p.contains("/Cellar/") || p.contains("/homebrew/")
-    })
-}
-
-/// Returns the release asset target triple and archive extension for the
-/// current platform, e.g. `("x86_64-unknown-linux-gnu", "tar.gz")`.
-fn platform_target() -> Result<(&'static str, &'static str)> {
-    match (std::env::consts::OS, std::env::consts::ARCH) {
-        ("linux", "x86_64") => Ok(("x86_64-unknown-linux-gnu", "tar.gz")),
-        ("linux", "aarch64") => Ok(("aarch64-unknown-linux-gnu", "tar.gz")),
-        ("macos", "x86_64") => Ok(("x86_64-apple-darwin", "tar.gz")),
-        ("macos", "aarch64") => Ok(("aarch64-apple-darwin", "tar.gz")),
-        ("windows", "x86_64") => Ok(("x86_64-pc-windows-msvc", "zip")),
-        (os, arch) => bail!(
-            "Unsupported platform {os}/{arch}. Update manually:\n\
-             https://github.com/mouwaficbdr/waka/releases"
-        ),
-    }
-}
-
-/// Extract the `waka` binary from a `.tar.gz` archive and atomically replace
-/// the running executable. Non-Windows only.
-#[cfg(not(target_os = "windows"))]
-fn extract_tar_gz_and_replace(archive_bytes: &[u8], current_exe: &std::path::Path) -> Result<()> {
-    use flate2::read::GzDecoder;
-    use tar::Archive;
-
-    let gz = GzDecoder::new(archive_bytes);
-    let mut archive = Archive::new(gz);
-
-    for entry in archive.entries().context("failed to read tar entries")? {
-        let mut entry = entry.context("corrupt tar entry")?;
-        let path = entry.path().context("invalid tar entry path")?;
-        let file_name = path
-            .file_name()
-            .map(|n| n.to_string_lossy().into_owned())
-            .unwrap_or_default();
-
-        if file_name == "waka" {
-            let temp_path = current_exe.with_extension("waka.tmp");
-            {
-                let mut dest =
-                    std::fs::File::create(&temp_path).context("cannot create temp file")?;
-                std::io::copy(&mut entry, &mut dest).context("failed to write new binary")?;
-
-                #[cfg(unix)]
-                {
-                    use std::os::unix::fs::PermissionsExt as _;
-                    let mut perms = dest
-                        .metadata()
-                        .context("cannot read temp file metadata")?
-                        .permissions();
-                    perms.set_mode(0o755);
-                    std::fs::set_permissions(&temp_path, perms)
-                        .context("cannot set executable permission")?;
-                }
-            }
-            std::fs::rename(&temp_path, current_exe)
-                .context("failed to replace binary — try with elevated privileges")?;
-            return Ok(());
-        }
-    }
-    bail!("Could not find 'waka' binary in the release archive")
-}
-
-/// Extract `waka.exe` from a `.zip` archive and replace the running binary.
-/// Windows only.
-#[cfg(target_os = "windows")]
-fn extract_zip_and_replace(archive_bytes: &[u8], current_exe: &std::path::Path) -> Result<()> {
-    use std::io::Cursor;
-    use zip::ZipArchive;
-
-    let cursor = Cursor::new(archive_bytes);
-    let mut archive = ZipArchive::new(cursor).context("failed to open zip archive")?;
-
-    for i in 0..archive.len() {
-        let mut file = archive.by_index(i).context("corrupt zip entry")?;
-        let name = file.name().to_owned();
-        if name == "waka.exe" || name.ends_with("/waka.exe") {
-            let temp_path = current_exe.with_extension("tmp.exe");
-            let mut dest = std::fs::File::create(&temp_path).context("cannot create temp file")?;
-            std::io::copy(&mut file, &mut dest).context("failed to write new binary")?;
-            drop(dest);
-            std::fs::rename(&temp_path, current_exe)
-                .context("failed to replace binary — try running as Administrator")?;
-            return Ok(());
-        }
-    }
-    bail!("Could not find 'waka.exe' in the release archive")
-}
-
-/// Implements `waka update`.
-///
-/// Downloads the latest release from GitHub Releases and atomically replaces
-/// the current binary.
-async fn update_self(global: &GlobalOpts) -> Result<()> {
-    // 1. Fetch latest version.
-    let pb = stats_spinner("Checking for updates…");
-    let latest = match check_latest_version().await {
-        Ok(Some(v)) => v,
-        Ok(None) => {
-            pb.finish_and_clear();
-            if !global.quiet {
-                println!("  ✓  No releases found — you are on the latest build.");
-            }
-            return Ok(());
-        }
-        Err(e) => {
-            pb.finish_and_clear();
-            bail!("Failed to check for updates: {e}");
-        }
-    };
-    pb.finish_and_clear();
-
-    // 2. Already up-to-date?
-    if !version_is_newer(&latest, CURRENT_VERSION) {
-        if !global.quiet {
-            println!("  ✓  Already on the latest version (v{latest})");
-        }
-        return Ok(());
-    }
-
-    // 3. Homebrew — defer to brew(1).
-    if is_homebrew_install() {
-        println!("  ℹ  Detected Homebrew installation. Run:\n\n       brew upgrade waka\n");
-        return Ok(());
-    }
-
-    if !global.quiet {
-        println!("  ⬆  Updating waka v{CURRENT_VERSION} → v{latest}");
-    }
-
-    // 4. Resolve platform asset.
-    let (target, ext) = platform_target()?;
-    let archive_name = format!("waka-v{latest}-{target}.{ext}");
-    let url =
-        format!("https://github.com/mouwaficbdr/waka/releases/download/v{latest}/{archive_name}");
-
-    // 5. Download.
-    let pb = stats_spinner(&format!("Downloading {archive_name}…"));
-    let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(120))
-        .user_agent(concat!("waka/", env!("CARGO_PKG_VERSION")))
-        .build()
-        .context("failed to build HTTP client")?;
-
-    let resp = client
-        .get(&url)
-        .send()
-        .await
-        .context("download request failed")?;
-
-    if !resp.status().is_success() {
-        pb.finish_and_clear();
-        bail!(
-            "Download failed (HTTP {}): {}\n\
-             Check release assets at: https://github.com/mouwaficbdr/waka/releases",
-            resp.status(),
-            url
-        );
-    }
-
-    let bytes = resp
-        .bytes()
-        .await
-        .context("failed to read download response")?;
-    pb.finish_and_clear();
-
-    // 6. Extract + atomically replace.
-    let pb = stats_spinner("Installing new binary…");
-    let current_exe =
-        std::env::current_exe().context("cannot determine current executable path")?;
-
-    #[cfg(target_os = "windows")]
-    extract_zip_and_replace(&bytes, &current_exe)?;
-
-    #[cfg(not(target_os = "windows"))]
-    extract_tar_gz_and_replace(&bytes, &current_exe)?;
-
-    pb.finish_and_clear();
-
-    if !global.quiet {
-        println!("  ✓  waka updated to v{latest} successfully!");
-    }
-
-    Ok(())
-}
 
 /// Implements `waka changelog`.
 ///
@@ -1754,7 +1068,9 @@ fn parse_duration(s: &str) -> Result<Duration> {
 // `needless_pass_by_value`: cmd is consumed by the match; GlobalOpts is needed for quiet/profile.
 #[allow(clippy::needless_pass_by_value)]
 fn cache(cmd: CacheCommands, global: &GlobalOpts) -> Result<()> {
-    let profile = global.profile.as_deref().unwrap_or("default");
+    let config = load_config()?;
+    let profile = resolve_profile(global, &config);
+    let profile = profile.as_str();
 
     match cmd {
         CacheCommands::Clear { older } => {
@@ -1829,565 +1145,6 @@ fn format_bytes(bytes: u64) -> String {
     } else {
         format!("{bytes} B")
     }
-}
-
-// ─── report generation ────────────────────────────────────────────────────────
-
-/// Generates a Markdown report.
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::cast_precision_loss,
-    clippy::too_many_lines,
-    clippy::redundant_closure_for_method_calls
-)]
-fn generate_report_markdown(
-    summary: &waka_api::SummaryResponse,
-    goals: Option<&waka_api::GoalsResponse>,
-    start_date: chrono::NaiveDate,
-    end_date: chrono::NaiveDate,
-) -> String {
-    use chrono::Datelike as _;
-    use std::fmt::Write as _;
-
-    let mut output = String::new();
-
-    // Header
-    output.push_str("# Productivity Report\n\n");
-    let _ = writeln!(output, "**Period:** {start_date} to {end_date}\n");
-
-    // Calculate totals
-    let total_seconds: f64 = summary
-        .data
-        .iter()
-        .map(|d| d.grand_total.total_seconds)
-        .sum();
-    let hours = (total_seconds / 3600.0).floor() as u64;
-    let minutes = ((total_seconds % 3600.0) / 60.0).floor() as u64;
-
-    let _ = writeln!(output, "**Total Time:** {hours}h {minutes}m\n");
-
-    let days_with_data = summary
-        .data
-        .iter()
-        .filter(|d| d.grand_total.total_seconds > 0.0)
-        .count();
-    if days_with_data > 0 {
-        let avg_seconds = total_seconds / days_with_data as f64;
-        let avg_hours = (avg_seconds / 3600.0).floor() as u64;
-        let avg_minutes = ((avg_seconds % 3600.0) / 60.0).floor() as u64;
-        let _ = writeln!(
-            output,
-            "**Average per day:** {avg_hours}h {avg_minutes}m (across {days_with_data} active days)\n"
-        );
-    }
-
-    output.push_str("---\n\n");
-
-    // Projects breakdown
-    output.push_str("## Projects\n\n");
-
-    let mut project_totals: std::collections::HashMap<String, f64> =
-        std::collections::HashMap::new();
-    for day in &summary.data {
-        for project in &day.projects {
-            *project_totals.entry(project.name.clone()).or_insert(0.0) += project.total_seconds;
-        }
-    }
-
-    if project_totals.is_empty() {
-        output.push_str("*No project data available.*\n\n");
-    } else {
-        let mut projects: Vec<_> = project_totals.into_iter().collect();
-        projects.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-
-        output.push_str("| Project | Time | Percentage |\n");
-        output.push_str("|---------|------|------------|\n");
-
-        for (name, secs) in projects.iter().take(10) {
-            let hrs = (secs / 3600.0).floor() as u64;
-            let mins = ((secs % 3600.0) / 60.0).floor() as u64;
-            let pct = if total_seconds > 0.0 {
-                (secs / total_seconds * 100.0).round() as u64
-            } else {
-                0
-            };
-            let _ = writeln!(output, "| {name} | {hrs}h {mins}m | {pct}% |");
-        }
-        output.push('\n');
-    }
-
-    // Languages breakdown
-    output.push_str("## Languages\n\n");
-
-    let mut language_totals: std::collections::HashMap<String, f64> =
-        std::collections::HashMap::new();
-    for day in &summary.data {
-        for lang in &day.languages {
-            *language_totals.entry(lang.name.clone()).or_insert(0.0) += lang.total_seconds;
-        }
-    }
-
-    if language_totals.is_empty() {
-        output.push_str("*No language data available.*\n\n");
-    } else {
-        let mut languages: Vec<_> = language_totals.into_iter().collect();
-        languages.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-
-        output.push_str("| Language | Time | Percentage |\n");
-        output.push_str("|----------|------|------------|\n");
-
-        for (name, secs) in languages.iter().take(10) {
-            let hrs = (secs / 3600.0).floor() as u64;
-            let mins = ((secs % 3600.0) / 60.0).floor() as u64;
-            let pct = if total_seconds > 0.0 {
-                (secs / total_seconds * 100.0).round() as u64
-            } else {
-                0
-            };
-            let _ = writeln!(output, "| {name} | {hrs}h {mins}m | {pct}% |");
-        }
-        output.push('\n');
-    }
-
-    // Editors breakdown
-    output.push_str("## Editors\n\n");
-
-    let mut editor_totals: std::collections::HashMap<String, f64> =
-        std::collections::HashMap::new();
-    for day in &summary.data {
-        for editor in &day.editors {
-            *editor_totals.entry(editor.name.clone()).or_insert(0.0) += editor.total_seconds;
-        }
-    }
-
-    if editor_totals.is_empty() {
-        output.push_str("*No editor data available.*\n\n");
-    } else {
-        let mut editors: Vec<_> = editor_totals.into_iter().collect();
-        editors.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-
-        output.push_str("| Editor | Time | Percentage |\n");
-        output.push_str("|--------|------|------------|\n");
-
-        for (name, secs) in &editors {
-            let hrs = (secs / 3600.0).floor() as u64;
-            let mins = ((secs % 3600.0) / 60.0).floor() as u64;
-            let pct = if total_seconds > 0.0 {
-                (secs / total_seconds * 100.0).round() as u64
-            } else {
-                0
-            };
-            let _ = writeln!(output, "| {name} | {hrs}h {mins}m | {pct}% |");
-        }
-        output.push('\n');
-    }
-
-    // Daily activity
-    output.push_str("## Daily Activity\n\n");
-    output.push_str("| Date | Day | Time |\n");
-    output.push_str("|------|-----|------|\n");
-
-    for day_data in &summary.data {
-        let date_str = day_data.range.date.as_deref().unwrap_or("N/A");
-        let date = chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d").ok();
-        let day_name = match date.as_ref().map(|d| d.weekday()) {
-            Some(chrono::Weekday::Mon) => "Mon",
-            Some(chrono::Weekday::Tue) => "Tue",
-            Some(chrono::Weekday::Wed) => "Wed",
-            Some(chrono::Weekday::Thu) => "Thu",
-            Some(chrono::Weekday::Fri) => "Fri",
-            Some(chrono::Weekday::Sat) => "Sat",
-            Some(chrono::Weekday::Sun) => "Sun",
-            None => "?",
-        };
-        let secs = day_data.grand_total.total_seconds;
-        let hrs = (secs / 3600.0).floor() as u64;
-        let mins = ((secs % 3600.0) / 60.0).floor() as u64;
-        let _ = writeln!(output, "| {date_str} | {day_name} | {hrs}h {mins}m |");
-    }
-    output.push('\n');
-
-    // Goals achieved
-    if let Some(goals_resp) = goals {
-        if !goals_resp.data.is_empty() {
-            output.push_str("## Goals\n\n");
-
-            for goal in &goals_resp.data {
-                let status = if goal.status == "success" {
-                    "✓ Achieved"
-                } else if goal.status == "pending" {
-                    "⋯ In Progress"
-                } else {
-                    "✗ Not Achieved"
-                };
-                let title = &goal.title;
-                let _ = writeln!(output, "- **{title}**: {status}");
-            }
-            output.push('\n');
-        }
-    }
-
-    output.push_str("---\n\n");
-    let now = chrono::Local::now().format("%Y-%m-%d %H:%M");
-    let _ = writeln!(output, "*Generated on {now} by waka*");
-
-    output
-}
-
-/// Generates an HTML report with inline CSS.
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::cast_precision_loss,
-    clippy::too_many_lines,
-    clippy::redundant_closure_for_method_calls
-)]
-fn generate_report_html(
-    summary: &waka_api::SummaryResponse,
-    goals: Option<&waka_api::GoalsResponse>,
-    start_date: chrono::NaiveDate,
-    end_date: chrono::NaiveDate,
-) -> String {
-    use chrono::Datelike as _;
-    use std::fmt::Write as _;
-
-    // Calculate totals
-    let total_seconds: f64 = summary
-        .data
-        .iter()
-        .map(|d| d.grand_total.total_seconds)
-        .sum();
-    let hours = (total_seconds / 3600.0).floor() as u64;
-    let minutes = ((total_seconds % 3600.0) / 60.0).floor() as u64;
-
-    let days_with_data = summary
-        .data
-        .iter()
-        .filter(|d| d.grand_total.total_seconds > 0.0)
-        .count();
-    let avg_display = if days_with_data > 0 {
-        let avg_seconds = total_seconds / days_with_data as f64;
-        let avg_hours = (avg_seconds / 3600.0).floor() as u64;
-        let avg_minutes = ((avg_seconds % 3600.0) / 60.0).floor() as u64;
-        format!("{avg_hours}h {avg_minutes}m (across {days_with_data} active days)")
-    } else {
-        "N/A".to_string()
-    };
-
-    let mut html = String::new();
-    html.push_str("<!DOCTYPE html>\n<html>\n<head>\n");
-    html.push_str("<meta charset=\"UTF-8\">\n");
-    html.push_str("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n");
-    html.push_str("<title>Productivity Report</title>\n");
-    html.push_str("<style>\n");
-    html.push_str("body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 900px; margin: 40px auto; padding: 20px; background: #f5f5f5; }\n");
-    html.push_str("h1 { color: #333; border-bottom: 3px solid #4CAF50; padding-bottom: 10px; }\n");
-    html.push_str("h2 { color: #555; margin-top: 40px; border-bottom: 2px solid #ddd; padding-bottom: 8px; }\n");
-    html.push_str(".header { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }\n");
-    html.push_str(".stat { font-size: 18px; margin: 10px 0; }\n");
-    html.push_str(".stat strong { color: #4CAF50; }\n");
-    html.push_str("table { width: 100%; border-collapse: collapse; background: white; margin: 20px 0; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\n");
-    html.push_str("th { background: #4CAF50; color: white; padding: 12px; text-align: left; }\n");
-    html.push_str("td { padding: 12px; border-bottom: 1px solid #ddd; }\n");
-    html.push_str("tr:last-child td { border-bottom: none; }\n");
-    html.push_str("tr:hover { background: #f9f9f9; }\n");
-    html.push_str(
-        ".footer { text-align: center; margin-top: 40px; color: #888; font-size: 14px; }\n",
-    );
-    html.push_str(".goal-list { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }\n");
-    html.push_str(".goal-item { padding: 10px 0; border-bottom: 1px solid #eee; }\n");
-    html.push_str(".goal-item:last-child { border-bottom: none; }\n");
-    html.push_str("</style>\n");
-    html.push_str("</head>\n<body>\n");
-
-    // Header
-    html.push_str("<div class=\"header\">\n");
-    html.push_str("<h1>Productivity Report</h1>\n");
-    let _ = writeln!(
-        html,
-        "<div class=\"stat\"><strong>Period:</strong> {start_date} to {end_date}</div>"
-    );
-    let _ = writeln!(
-        html,
-        "<div class=\"stat\"><strong>Total Time:</strong> {hours}h {minutes}m</div>"
-    );
-    let _ = writeln!(
-        html,
-        "<div class=\"stat\"><strong>Average per day:</strong> {avg_display}</div>"
-    );
-    html.push_str("</div>\n");
-
-    // Projects
-    html.push_str("<h2>Projects</h2>\n");
-    let mut project_totals: std::collections::HashMap<String, f64> =
-        std::collections::HashMap::new();
-    for day in &summary.data {
-        for project in &day.projects {
-            *project_totals.entry(project.name.clone()).or_insert(0.0) += project.total_seconds;
-        }
-    }
-
-    if project_totals.is_empty() {
-        html.push_str("<p><em>No project data available.</em></p>\n");
-    } else {
-        let mut projects: Vec<_> = project_totals.into_iter().collect();
-        projects.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-
-        html.push_str(
-            "<table>\n<thead><tr><th>Project</th><th>Time</th><th>Percentage</th></tr></thead>\n<tbody>\n",
-        );
-        for (name, secs) in projects.iter().take(10) {
-            let hrs = (secs / 3600.0).floor() as u64;
-            let mins = ((secs % 3600.0) / 60.0).floor() as u64;
-            let pct = if total_seconds > 0.0 {
-                (secs / total_seconds * 100.0).round() as u64
-            } else {
-                0
-            };
-            let _ = writeln!(
-                html,
-                "<tr><td>{name}</td><td>{hrs}h {mins}m</td><td>{pct}%</td></tr>"
-            );
-        }
-        html.push_str("</tbody>\n</table>\n");
-    }
-
-    // Languages
-    html.push_str("<h2>Languages</h2>\n");
-    let mut language_totals: std::collections::HashMap<String, f64> =
-        std::collections::HashMap::new();
-    for day in &summary.data {
-        for lang in &day.languages {
-            *language_totals.entry(lang.name.clone()).or_insert(0.0) += lang.total_seconds;
-        }
-    }
-
-    if language_totals.is_empty() {
-        html.push_str("<p><em>No language data available.</em></p>\n");
-    } else {
-        let mut languages: Vec<_> = language_totals.into_iter().collect();
-        languages.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-
-        html.push_str(
-            "<table>\n<thead><tr><th>Language</th><th>Time</th><th>Percentage</th></tr></thead>\n<tbody>\n",
-        );
-        for (name, secs) in languages.iter().take(10) {
-            let hrs = (secs / 3600.0).floor() as u64;
-            let mins = ((secs % 3600.0) / 60.0).floor() as u64;
-            let pct = if total_seconds > 0.0 {
-                (secs / total_seconds * 100.0).round() as u64
-            } else {
-                0
-            };
-            let _ = writeln!(
-                html,
-                "<tr><td>{name}</td><td>{hrs}h {mins}m</td><td>{pct}%</td></tr>"
-            );
-        }
-        html.push_str("</tbody>\n</table>\n");
-    }
-
-    // Editors
-    html.push_str("<h2>Editors</h2>\n");
-    let mut editor_totals: std::collections::HashMap<String, f64> =
-        std::collections::HashMap::new();
-    for day in &summary.data {
-        for editor in &day.editors {
-            *editor_totals.entry(editor.name.clone()).or_insert(0.0) += editor.total_seconds;
-        }
-    }
-
-    if editor_totals.is_empty() {
-        html.push_str("<p><em>No editor data available.</em></p>\n");
-    } else {
-        let mut editors: Vec<_> = editor_totals.into_iter().collect();
-        editors.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-
-        html.push_str(
-            "<table>\n<thead><tr><th>Editor</th><th>Time</th><th>Percentage</th></tr></thead>\n<tbody>\n",
-        );
-        for (name, secs) in &editors {
-            let hrs = (secs / 3600.0).floor() as u64;
-            let mins = ((secs % 3600.0) / 60.0).floor() as u64;
-            let pct = if total_seconds > 0.0 {
-                (secs / total_seconds * 100.0).round() as u64
-            } else {
-                0
-            };
-            let _ = writeln!(
-                html,
-                "<tr><td>{name}</td><td>{hrs}h {mins}m</td><td>{pct}%</td></tr>"
-            );
-        }
-        html.push_str("</tbody>\n</table>\n");
-    }
-
-    // Daily activity
-    html.push_str("<h2>Daily Activity</h2>\n");
-    html.push_str(
-        "<table>\n<thead><tr><th>Date</th><th>Day</th><th>Time</th></tr></thead>\n<tbody>\n",
-    );
-    for day_data in &summary.data {
-        let date_str = day_data.range.date.as_deref().unwrap_or("N/A");
-        let date = chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d").ok();
-        let day_name = match date.as_ref().map(|d| d.weekday()) {
-            Some(chrono::Weekday::Mon) => "Mon",
-            Some(chrono::Weekday::Tue) => "Tue",
-            Some(chrono::Weekday::Wed) => "Wed",
-            Some(chrono::Weekday::Thu) => "Thu",
-            Some(chrono::Weekday::Fri) => "Fri",
-            Some(chrono::Weekday::Sat) => "Sat",
-            Some(chrono::Weekday::Sun) => "Sun",
-            None => "?",
-        };
-        let secs = day_data.grand_total.total_seconds;
-        let hrs = (secs / 3600.0).floor() as u64;
-        let mins = ((secs % 3600.0) / 60.0).floor() as u64;
-        let _ = writeln!(
-            html,
-            "<tr><td>{date_str}</td><td>{day_name}</td><td>{hrs}h {mins}m</td></tr>"
-        );
-    }
-    html.push_str("</tbody>\n</table>\n");
-
-    // Goals
-    if let Some(goals_resp) = goals {
-        if !goals_resp.data.is_empty() {
-            html.push_str("<h2>Goals</h2>\n<div class=\"goal-list\">\n");
-            for goal in &goals_resp.data {
-                let status = if goal.status == "success" {
-                    "✓ Achieved"
-                } else if goal.status == "pending" {
-                    "⋯ In Progress"
-                } else {
-                    "✗ Not Achieved"
-                };
-                let title = &goal.title;
-                let _ = writeln!(
-                    html,
-                    "<div class=\"goal-item\"><strong>{title}:</strong> {status}</div>"
-                );
-            }
-            html.push_str("</div>\n");
-        }
-    }
-
-    // Footer
-    let now = chrono::Local::now().format("%Y-%m-%d %H:%M");
-    let _ = writeln!(
-        html,
-        "<div class=\"footer\">Generated on {now} by waka</div>"
-    );
-    html.push_str("</body>\n</html>");
-
-    html
-}
-
-/// Generates a JSON report.
-fn generate_report_json(
-    summary: &waka_api::SummaryResponse,
-    goals: Option<&waka_api::GoalsResponse>,
-    start_date: chrono::NaiveDate,
-    end_date: chrono::NaiveDate,
-) -> Result<String> {
-    let total_seconds: f64 = summary
-        .data
-        .iter()
-        .map(|d| d.grand_total.total_seconds)
-        .sum();
-
-    let report = serde_json::json!({
-        "period": {
-            "start": start_date.to_string(),
-            "end": end_date.to_string(),
-        },
-        "summary": {
-            "total_seconds": total_seconds,
-            "total_hours": (total_seconds / 3600.0).floor(),
-            "total_minutes": ((total_seconds % 3600.0) / 60.0).floor(),
-        },
-        "data": summary.data,
-        "goals": goals.map(|g| &g.data),
-    });
-
-    serde_json::to_string_pretty(&report).context("failed to serialize report to JSON")
-}
-
-/// Generates a CSV report.
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::cast_precision_loss,
-    clippy::redundant_closure_for_method_calls
-)]
-fn generate_report_csv(
-    summary: &waka_api::SummaryResponse,
-    _start_date: chrono::NaiveDate,
-    _end_date: chrono::NaiveDate,
-) -> String {
-    use chrono::Datelike as _;
-    use std::fmt::Write as _;
-
-    let mut output = String::new();
-
-    // Header
-    output.push_str("Date,Day,Total Time (hours),Projects,Languages,Editors\n");
-
-    // Daily rows
-    for day_data in &summary.data {
-        let date_str = day_data.range.date.as_deref().unwrap_or("N/A");
-        let date = chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d").ok();
-        let day_name = match date.as_ref().map(|d| d.weekday()) {
-            Some(chrono::Weekday::Mon) => "Mon",
-            Some(chrono::Weekday::Tue) => "Tue",
-            Some(chrono::Weekday::Wed) => "Wed",
-            Some(chrono::Weekday::Thu) => "Thu",
-            Some(chrono::Weekday::Fri) => "Fri",
-            Some(chrono::Weekday::Sat) => "Sat",
-            Some(chrono::Weekday::Sun) => "Sun",
-            None => "?",
-        };
-
-        let total_hours = day_data.grand_total.total_seconds / 3600.0;
-
-        let projects: Vec<String> = day_data
-            .projects
-            .iter()
-            .map(|p| {
-                let h = (p.total_seconds / 3600.0).round() as u64;
-                format!("{}({h}h)", p.name)
-            })
-            .collect();
-        let projects_str = projects.join("; ");
-
-        let languages: Vec<String> = day_data
-            .languages
-            .iter()
-            .map(|l| {
-                let h = (l.total_seconds / 3600.0).round() as u64;
-                format!("{}({h}h)", l.name)
-            })
-            .collect();
-        let languages_str = languages.join("; ");
-
-        let editors: Vec<String> = day_data
-            .editors
-            .iter()
-            .map(|e| {
-                let h = (e.total_seconds / 3600.0).round() as u64;
-                format!("{}({h}h)", e.name)
-            })
-            .collect();
-        let editors_str = editors.join("; ");
-
-        let _ = writeln!(
-            output,
-            "{date_str},{day_name},{total_hours:.2},\"{projects_str}\",\"{languages_str}\",\"{editors_str}\""
-        );
-    }
-
-    output
 }
 
 // ─── unit tests ───────────────────────────────────────────────────────────────
@@ -2474,57 +1231,63 @@ mod tests {
         assert!(err.to_string().contains("YYYY-MM-DD"));
     }
 
-    // ── stats_profile_name ────────────────────────────────────────────────────
+    // ── configured_format ─────────────────────────────────────────────────────
 
     #[test]
-    fn profile_name_defaults_to_default() {
+    fn explicit_table_flag_overrides_config_format() {
+        assert_eq!(
+            configured_format(Some(CliFormat::Table), &waka_config::OutputFormat::Json),
+            RenderFormat::Table
+        );
+    }
+
+    #[test]
+    fn config_format_used_without_flag() {
+        assert_eq!(
+            configured_format(None, &waka_config::OutputFormat::Tsv),
+            RenderFormat::Tsv
+        );
+    }
+
+    // ── resolve_profile ───────────────────────────────────────────────────────
+
+    #[test]
+    fn profile_defaults_to_config_default_profile() {
         let global = GlobalOpts {
             profile: None,
             ..GlobalOpts::default()
         };
-        assert_eq!(stats_profile_name(&global), "default");
+        assert_eq!(resolve_profile(&global, &Config::default()), "default");
+
+        let mut config = Config::default();
+        config.core.default_profile = "work".to_owned();
+        assert_eq!(resolve_profile(&global, &config), "work");
     }
 
     #[test]
-    fn profile_name_uses_explicit_value() {
+    fn profile_flag_overrides_config_default_profile() {
         let global = GlobalOpts {
-            profile: Some("work".to_owned()),
+            profile: Some("personal".to_owned()),
             ..GlobalOpts::default()
         };
-        assert_eq!(stats_profile_name(&global), "work");
-    }
-
-    // ── version_is_newer ──────────────────────────────────────────────────────
-
-    #[test]
-    fn version_is_newer_returns_true_for_higher_patch() {
-        assert!(version_is_newer("0.1.1", "0.1.0"));
+        let mut config = Config::default();
+        config.core.default_profile = "work".to_owned();
+        assert_eq!(resolve_profile(&global, &config), "personal");
     }
 
     #[test]
-    fn version_is_newer_returns_true_for_higher_minor() {
-        assert!(version_is_newer("0.2.0", "0.1.9"));
-    }
-
-    #[test]
-    fn version_is_newer_returns_true_for_higher_major() {
-        assert!(version_is_newer("1.0.0", "0.9.9"));
-    }
-
-    #[test]
-    fn version_is_newer_returns_false_for_equal() {
-        assert!(!version_is_newer("0.1.0", "0.1.0"));
-    }
-
-    #[test]
-    fn version_is_newer_returns_false_for_older() {
-        assert!(!version_is_newer("0.0.9", "0.1.0"));
-    }
-
-    #[test]
-    fn version_is_newer_returns_false_for_malformed_input() {
-        assert!(!version_is_newer("not-a-version", "0.1.0"));
-        assert!(!version_is_newer("0.1.0", "not-a-version"));
+    fn profile_api_url_adds_trailing_slash() {
+        let mut config = Config::default();
+        config
+            .profiles
+            .entry("self".to_owned())
+            .or_default()
+            .api_url = "https://wakapi.example.com/api/compat/wakatime/v1".to_owned();
+        assert_eq!(
+            profile_api_url(&config, "self"),
+            "https://wakapi.example.com/api/compat/wakatime/v1/"
+        );
+        assert!(profile_api_url(&config, "missing").ends_with('/'));
     }
 
     // ── format_prompt_output ──────────────────────────────────────────────────

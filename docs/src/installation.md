@@ -3,31 +3,28 @@
 ## Homebrew (macOS / Linux)
 
 ```sh
-brew install mouwaficbdr/tap/waka
-```
-
-## Cargo (all platforms)
-
-Requires Rust 1.82.0 or later.
-
-```sh
-cargo install waka
+brew tap mouwaficbdr/waka
+brew install waka
 ```
 
 ## Pre-built binaries
 
-Download the latest binary for your platform from the
-[GitHub Releases](https://github.com/mouwaficbdr/waka/releases) page.
+Download the archive for your platform from the
+[latest GitHub release](https://github.com/mouwaficbdr/waka/releases/latest).
+Asset names include the version, e.g. `waka-v2.0.2-x86_64-unknown-linux-gnu.tar.gz`.
 
-| Platform       | File                              |
-| -------------- | --------------------------------- |
-| Linux x86-64   | `waka-x86_64-unknown-linux-musl`  |
-| Linux ARM64    | `waka-aarch64-unknown-linux-musl` |
-| macOS x86-64   | `waka-x86_64-apple-darwin`        |
-| macOS ARM64    | `waka-aarch64-apple-darwin`       |
-| Windows x86-64 | `waka-x86_64-pc-windows-msvc.exe` |
+| Platform            | Archive                                   |
+| ------------------- | ----------------------------------------- |
+| Linux x86-64        | `waka-<version>-x86_64-unknown-linux-gnu.tar.gz`  |
+| Linux ARM64         | `waka-<version>-aarch64-unknown-linux-gnu.tar.gz` |
+| macOS Intel         | `waka-<version>-x86_64-apple-darwin.tar.gz`       |
+| macOS Apple Silicon | `waka-<version>-aarch64-apple-darwin.tar.gz`      |
+| Windows x86-64      | `waka-<version>-x86_64-pc-windows-msvc.zip`       |
 
-Extract and place the binary on your `$PATH`.
+Extract the archive and place the `waka` binary on your `$PATH`.
+
+> The `waka` binary is not published on crates.io, so `cargo install waka` does
+> not work. The `waka-api` library crate is published separately.
 
 ## Verify the installation
 

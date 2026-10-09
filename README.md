@@ -70,7 +70,7 @@ waka dashboard           # launch the interactive TUI
 | `auth show-key`         | Display the stored API key (masked by default)                             |
 | `auth switch <PROFILE>` | Switch to a different profile                                              |
 
-API keys are stored in the OS keychain (macOS Keychain, GNOME Keyring, Windows Credential Manager) with a `0600` plain-text fallback. Multi-profile support: use `-p work` or `-p personal` on any command.
+API keys are stored in the OS keychain (macOS Keychain, Windows Credential Manager, the Secret Service on Linux: GNOME Keyring, KWallet, …) with a per-profile `0600` file fallback when no keychain is available. Multi-profile support: use `-p work` or `-p personal` on any command.
 
 ### `waka stats` — Coding Statistics
 
@@ -83,7 +83,7 @@ API keys are stored in the OS keychain (macOS Keychain, GNOME Keyring, Windows C
 | `stats year`                        | Last 365 days                  |
 | `stats range --from DATE --to DATE` | Custom date range (YYYY-MM-DD) |
 
-All stats subcommands accept `--project <NAME>` and `--language <LANG>` filters.
+All stats subcommands accept a `--project <NAME>` filter. (`--language` is accepted but not supported yet.)
 
 ### `waka projects` — Projects
 
@@ -161,7 +161,7 @@ Live TUI dashboard powered by [ratatui](https://ratatui.rs/):
 ### `waka prompt` — Shell Prompt Integration
 
 ```bash
-waka prompt [--format simple|detailed]
+waka prompt [--style simple|detailed]
 ```
 
 Reads today's total from the local cache only — no network call, always fast.
@@ -208,7 +208,7 @@ Cache location by platform:
 | -------- | ---------------------------------- |
 | Linux    | `~/.cache/waka/<profile>/`         |
 | macOS    | `~/Library/Caches/waka/<profile>/` |
-| Windows  | `%LOCALAPPDATA%\waka\<profile>\`   |
+| Windows  | `%LOCALAPPDATA%\waka\cache\<profile>\` |
 
 ### `waka update` — Self-Update
 
@@ -216,7 +216,7 @@ Cache location by platform:
 waka update
 ```
 
-Updates waka to the latest release.
+Updates waka to the latest release. The archive is verified against the release's `SHA256SUMS` before it replaces the binary (Homebrew installs are pointed to `brew upgrade`).
 
 ### `waka changelog` — Changelog
 
@@ -266,7 +266,7 @@ Color output respects `NO_COLOR`, `TERM=dumb`, and `--no-color`.
 ```toml
 # ~/.config/starship.toml
 [custom.waka]
-command = "waka prompt --format simple 2>/dev/null"
+command = "waka prompt --style simple 2>/dev/null"
 when = "true"
 format = "[$output]($style) "
 style = "dimmed yellow"

@@ -8,33 +8,28 @@ Update `waka` to the latest released version.
 waka update
 ```
 
-`waka` automatically detects how it was installed and uses the appropriate update mechanism:
+`waka` checks the latest GitHub release and:
 
-| Install method         | Update command used                         |
-| ---------------------- | ------------------------------------------- |
-| Homebrew               | `brew upgrade waka`                         |
-| Snap                   | `sudo snap refresh waka`                    |
-| Flatpak                | `flatpak update io.github.mouwaficbdr.waka` |
-| `cargo install`        | `cargo install waka --force`                |
-| Manual binary download | Prints the releases URL for manual update   |
+| Install method         | Behaviour                                                        |
+| ---------------------- | ---------------------------------------------------------------- |
+| Homebrew               | Prints `brew upgrade waka` for you to run                        |
+| Pre-built binary       | Downloads the release archive, verifies it, and replaces the current binary |
 
-## Example
+## Integrity
+
+Every release publishes a `SHA256SUMS` file. `waka update` downloads it first and only installs
+the archive if its SHA-256 digest matches; otherwise nothing is changed. Releases also carry signed
+build provenance, which you can check for any downloaded archive with the GitHub CLI:
 
 ```sh
-waka update
+gh attestation verify waka-v2.1.0-x86_64-unknown-linux-gnu.tar.gz --repo mouwaficbdr/waka
 ```
 
-Output:
+If the binary lives in a directory you cannot write to (e.g. `/usr/local/bin`),
+run the command with the required privileges or reinstall manually.
 
-```
-Current version: 1.0.0
-Latest version:  1.1.0
-Updating via Homebrew...
-✓ waka updated to 1.1.0
-```
+## Update notifications
 
-If already up to date:
-
-```
-waka 1.0.0 is already the latest version.
-```
+Once a day, other commands check for a newer release in the background and
+print a one-line notice on stderr. Disable it with `waka config set
+core.update_check false` or the `WAKA_NO_UPDATE_CHECK` environment variable.

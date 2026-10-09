@@ -18,6 +18,19 @@ pub enum ConfigError {
     /// The config file could not be serialized to TOML.
     #[error("could not serialize config: {0}")]
     Serialize(#[from] toml::ser::Error),
+
+    /// The dotted key does not name a configuration value.
+    #[error("unknown config key '{0}'")]
+    UnknownKey(String),
+
+    /// The value cannot be stored under the given key.
+    #[error("invalid value for '{key}': {reason}")]
+    InvalidValue {
+        /// The dotted key being set.
+        key: String,
+        /// Why the value was rejected.
+        reason: String,
+    },
 }
 
 /// Errors that can occur while resolving or storing credentials.

@@ -116,7 +116,7 @@ pub struct CacheConfig {
     pub enabled: bool,
     /// Cache TTL in seconds.
     pub ttl_seconds: u64,
-    /// Override path for the `sled`-backed cache store.
+    /// Override path for the cache store.
     /// `None` means the platform default is used.
     pub path: Option<String>,
 }
@@ -275,6 +275,15 @@ impl Config {
         Ok(config)
     }
 
+    /// Serializes the configuration as pretty-printed TOML.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ConfigError::Serialize`] if serialization fails.
+    pub fn to_toml_string(&self) -> Result<String, ConfigError> {
+        Ok(toml::to_string_pretty(self)?)
+    }
+
     /// Saves the config to the platform default path, creating the directory
     /// if necessary.
     ///
@@ -300,6 +309,85 @@ impl Config {
         let toml = toml::to_string_pretty(self)?;
         std::fs::write(path, toml)?;
         Ok(())
+    }
+
+    /// Returns the value stored under a dotted `key` such as
+    /// `cache.ttl_seconds` or `profiles.work.api_url`, rendered as TOML.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ConfigError::UnknownKey`] if `key` does not name a value.
+    pub fn get_key(&self, key: &str) -> Result<String, ConfigError> {
+        let root = toml::Value::try_from(self)?;
+        let value = key
+            .split('.')
+            .try_fold(&root, |node, part| node.get(part))
+            .ok_or_else(|| ConfigError::UnknownKey(key.to_owned()))?;
+        Ok(match value {
+            toml::Value::String(s) => s.clone(),
+            other => other.to_string(),
+        })
+    }
+
+    /// Sets the scalar value under a dotted `key` from its textual form.
+    ///
+    /// The value is parsed according to the type of the existing entry
+    /// (string, boolean or integer) and the resulting configuration is
+    /// validated, so enum fields such as `output.format` only accept their
+    /// documented variants. `profiles.<name>.<field>` creates the profile
+    /// when it does not exist yet.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ConfigError::UnknownKey`] for an unknown key and
+    /// [`ConfigError::InvalidValue`] when the value does not fit the key.
+    pub fn set_key(&mut self, key: &str, raw: &str) -> Result<(), ConfigError> {
+        let invalid = |reason: String| ConfigError::InvalidValue {
+            key: key.to_owned(),
+            reason,
+        };
+        let unknown = || ConfigError::UnknownKey(key.to_owned());
+
+        // Setting a field of a new profile creates it with defaults first.
+        if let ["profiles", name, _] = key.split('.').collect::<Vec<_>>().as_slice() {
+            self.profiles.entry((*name).to_owned()).or_default();
+        }
+
+        let mut root = toml::Value::try_from(&*self)?;
+        let (parent_path, leaf) = key.rsplit_once('.').ok_or_else(unknown)?;
+        let parent = parent_path
+            .split('.')
+            .try_fold(&mut root, |node, part| node.get_mut(part))
+            .and_then(toml::Value::as_table_mut)
+            .ok_or_else(unknown)?;
+
+        let new_value = match parent.get(leaf) {
+            Some(toml::Value::String(_)) => toml::Value::String(raw.to_owned()),
+            Some(toml::Value::Boolean(_)) => raw
+                .parse::<bool>()
+                .map(toml::Value::Boolean)
+                .map_err(|_| invalid("expected `true` or `false`".to_owned()))?,
+            Some(toml::Value::Integer(_)) => raw
+                .parse::<i64>()
+                .map(toml::Value::Integer)
+                .map_err(|_| invalid("expected an integer".to_owned()))?,
+            Some(_) => return Err(invalid("only scalar values can be set".to_owned())),
+            // Optional fields (e.g. `cache.path`) are omitted when unset.
+            None if Self::is_optional_string_key(key) => toml::Value::String(raw.to_owned()),
+            None => return Err(unknown()),
+        };
+        parent.insert(leaf.to_owned(), new_value);
+
+        *self = root
+            .try_into()
+            .map_err(|e: toml::de::Error| invalid(e.message().to_owned()))?;
+        Ok(())
+    }
+
+    /// Keys whose value is an `Option<String>` and therefore absent from the
+    /// serialized TOML until set.
+    fn is_optional_string_key(key: &str) -> bool {
+        matches!(key, "cache.path")
     }
 
     /// Returns the [`ProfileConfig`] for the active profile (as defined in
@@ -356,6 +444,65 @@ mod tests {
     #[test]
     fn default_date_format() {
         assert_eq!(Config::default().output.date_format, "%Y-%m-%d");
+    }
+
+    #[test]
+    fn get_key_reads_nested_values() {
+        let cfg = Config::default();
+        assert_eq!(cfg.get_key("cache.ttl_seconds").unwrap(), "300");
+        assert_eq!(cfg.get_key("output.format").unwrap(), "table");
+        assert_eq!(
+            cfg.get_key("profiles.default.api_url").unwrap(),
+            "https://wakatime.com/api/v1"
+        );
+        assert!(matches!(
+            cfg.get_key("cache.nope"),
+            Err(ConfigError::UnknownKey(_))
+        ));
+    }
+
+    #[test]
+    fn set_key_parses_by_existing_type() {
+        let mut cfg = Config::default();
+        cfg.set_key("cache.ttl_seconds", "600").unwrap();
+        cfg.set_key("cache.enabled", "false").unwrap();
+        cfg.set_key("output.format", "json").unwrap();
+        assert_eq!(cfg.cache.ttl_seconds, 600);
+        assert!(!cfg.cache.enabled);
+        assert_eq!(cfg.output.format, OutputFormat::Json);
+    }
+
+    #[test]
+    fn set_key_rejects_bad_values_and_unknown_keys() {
+        let mut cfg = Config::default();
+        assert!(matches!(
+            cfg.set_key("cache.ttl_seconds", "soon"),
+            Err(ConfigError::InvalidValue { .. })
+        ));
+        assert!(matches!(
+            cfg.set_key("output.format", "yaml"),
+            Err(ConfigError::InvalidValue { .. })
+        ));
+        assert!(matches!(
+            cfg.set_key("cache.tll", "1"),
+            Err(ConfigError::UnknownKey(_))
+        ));
+        assert!(matches!(
+            cfg.set_key("profiles.default", "1"),
+            Err(ConfigError::InvalidValue { .. })
+        ));
+        // A failed set leaves the config unchanged.
+        assert_eq!(cfg, Config::default());
+    }
+
+    #[test]
+    fn set_key_creates_profile_and_optional_fields() {
+        let mut cfg = Config::default();
+        cfg.set_key("profiles.work.api_url", "https://wakapi.example/api")
+            .unwrap();
+        assert_eq!(cfg.profiles["work"].api_url, "https://wakapi.example/api");
+        cfg.set_key("cache.path", "/tmp/waka-cache").unwrap();
+        assert_eq!(cfg.cache.path.as_deref(), Some("/tmp/waka-cache"));
     }
 
     #[test]

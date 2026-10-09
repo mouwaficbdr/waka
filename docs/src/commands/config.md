@@ -1,38 +1,28 @@
 # waka config
 
-View and modify `waka`'s configuration.
+View and modify `waka`'s configuration. See [Configuration](../configuration.md)
+for every key and its effect.
 
 ## Subcommands
 
-| Subcommand                      | Description                           |
-| ------------------------------- | ------------------------------------- |
-| `waka config get [KEY]`         | Print one or all configuration values |
-| `waka config set <KEY> <VALUE>` | Set a configuration value             |
-| `waka config edit`              | Open the config file in `$EDITOR`     |
-| `waka config path`              | Print the path to the config file     |
-| `waka config reset`             | Reset all settings to defaults        |
+| Subcommand                      | Description                                        |
+| ------------------------------- | -------------------------------------------------- |
+| `waka config get [KEY]`         | Print one value, or the whole config without a key |
+| `waka config set <KEY> <VALUE>` | Set a value (validated before saving)              |
+| `waka config edit`              | Open the config file in `$VISUAL` / `$EDITOR`      |
+| `waka config path`              | Print the path to the config file                  |
+| `waka config reset [--confirm]` | Reset all settings to defaults                     |
+| `waka config doctor`            | Run a full diagnostic check                        |
 
 ## Examples
 
 ```sh
 waka config get
-waka config get ui.color
-waka config set ui.color always
-waka config set ui.table_style minimal
+waka config get cache.ttl_seconds
+waka config set cache.ttl_seconds 600
+waka config set output.format json
+waka config set profiles.work.api_url https://waka.example.com/api/v1
 waka config edit
 waka config path
+waka config reset --confirm
 ```
-
-## All configuration keys
-
-See the full [Configuration reference](../configuration.md) for acceptable values.
-
-| Key              | Default    | Description                   |
-| ---------------- | ---------- | ----------------------------- |
-| `ui.color`       | `auto`     | Color mode                    |
-| `ui.table_style` | `rounded`  | Table display style           |
-| `ui.format`      | `text`     | Default output format         |
-| `api.base_url`   | (wakatime) | API base URL                  |
-| `api.timeout`    | `10`       | Request timeout in seconds    |
-| `cache.enabled`  | `true`     | Enable local response caching |
-| `cache.ttl`      | `300`      | Cache TTL in seconds          |

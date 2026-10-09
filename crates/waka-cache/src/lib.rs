@@ -1,7 +1,12 @@
 //! Local cache abstraction for `waka`.
 //!
-//! Wraps [`sled`] to provide a typed, TTL-aware key-value store used by the
-//! `waka` CLI to cache `WakaTime` API responses and reduce network calls.
+//! A typed, TTL-aware key-value store used by the `waka` CLI to cache
+//! `WakaTime` API responses and reduce network calls.
+//!
+//! Each entry is a small JSON file written atomically (temporary file +
+//! rename), so any number of `waka` processes can read and write the cache at
+//! the same time without locks: a reader always sees either the previous or
+//! the new version of an entry.
 //!
 //! # Example
 //!
@@ -22,7 +27,8 @@
 #![deny(clippy::all, clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]
 
-use std::path::PathBuf;
+use std::io::ErrorKind;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
@@ -32,33 +38,29 @@ use tracing::warn;
 
 // ─── Error type ───────────────────────────────────────────────────────────────
 
-/// Errors that can occur when interacting with the cache store.
+/// Errors returned by [`CacheStore`].
 #[derive(Debug, thiserror::Error)]
 pub enum CacheError {
-    /// The platform cache directory could not be determined (unusual — sandbox).
+    /// The platform cache directory could not be determined.
     #[error("could not determine cache directory")]
     NoCacheDir,
 
-    /// The sled database could not be opened.
-    ///
-    /// This is returned only on the initial open; if the DB is corrupted after
-    /// opening, operations degrade gracefully and log warnings instead of
-    /// returning this error.
-    #[error("failed to open cache database at {path}: {source}")]
+    /// The cache directory could not be created.
+    #[error("failed to open cache directory at {path}: {source}")]
     DbOpen {
-        /// Path that was attempted.
+        /// Directory that could not be created.
         path: PathBuf,
-        /// Underlying sled error.
-        source: sled::Error,
+        /// Underlying I/O error.
+        source: std::io::Error,
     },
 
-    /// A serialization or deserialization failure.
+    /// An entry could not be serialized.
     #[error("cache serialization error: {0}")]
     Serde(#[from] serde_json::Error),
 
-    /// A low-level sled I/O error.
+    /// A filesystem operation failed.
     #[error("cache I/O error: {0}")]
-    Io(#[from] sled::Error),
+    Io(#[from] std::io::Error),
 }
 
 // ─── CacheEntry ───────────────────────────────────────────────────────────────
@@ -125,24 +127,18 @@ pub struct CacheInfo {
 
 // ─── CacheStore ───────────────────────────────────────────────────────────────
 
-/// A typed, TTL-aware local cache backed by [`sled`].
-///
-/// Each profile gets its own `sled` database under the platform cache directory:
-///
-/// | Platform | Path |
-/// |----------|------|
-/// | Linux   | `~/.cache/waka/<profile>/` |
-/// | macOS   | `~/Library/Caches/waka/<profile>/` |
-/// | Windows | `%LOCALAPPDATA%\waka\<profile>\` |
-///
-/// If the database is corrupted, read operations return `None` and write
-/// operations are silently skipped — the cache is best-effort, never fatal.
+/// A per-profile cache stored as one JSON file per key.
 #[derive(Debug, Clone)]
 pub struct CacheStore {
-    db: sled::Db,
-    /// Path to the sled database directory (used for [`CacheInfo::size_on_disk`]).
+    /// Directory holding the entry files.
+    entries: PathBuf,
+    /// Profile cache root (used for [`CacheInfo::size_on_disk`]).
     path: PathBuf,
 }
+
+/// Extension of entry files; temporary files use another one so they are
+/// never mistaken for entries.
+const ENTRY_EXT: &str = "json";
 
 impl CacheStore {
     /// Opens (or creates) the cache store for the named profile.
@@ -150,18 +146,30 @@ impl CacheStore {
     /// # Errors
     ///
     /// Returns [`CacheError::NoCacheDir`] if the platform cache directory
-    /// cannot be determined, or [`CacheError::DbOpen`] if sled fails to open.
+    /// cannot be determined, or [`CacheError::DbOpen`] if the directory
+    /// cannot be created.
     pub fn open(profile: &str) -> Result<Self, CacheError> {
-        let path = Self::db_path(profile)?;
-        std::fs::create_dir_all(&path).ok();
-
-        match sled::open(&path) {
-            Ok(db) => Ok(Self { db, path }),
-            Err(source) => Err(CacheError::DbOpen { path, source }),
-        }
+        Self::open_at(Self::db_path(profile)?)
     }
 
-    /// Returns the filesystem path used for the named profile's sled database.
+    /// Opens (or creates) a cache store rooted at an explicit directory.
+    ///
+    /// Data left there by the previous sled-based cache is removed.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CacheError::DbOpen`] if the directory cannot be created.
+    pub fn open_at(path: PathBuf) -> Result<Self, CacheError> {
+        let entries = path.join("entries");
+        std::fs::create_dir_all(&entries).map_err(|source| CacheError::DbOpen {
+            path: entries.clone(),
+            source,
+        })?;
+        remove_legacy_sled_files(&path);
+        Ok(Self { entries, path })
+    }
+
+    /// Returns the cache directory used for the named profile.
     ///
     /// # Errors
     ///
@@ -169,28 +177,30 @@ impl CacheStore {
     /// be determined.
     pub fn db_path(profile: &str) -> Result<PathBuf, CacheError> {
         let dirs = ProjectDirs::from("", "", "waka").ok_or(CacheError::NoCacheDir)?;
-        Ok(dirs.cache_dir().join(profile))
+        Ok(dirs.cache_dir().join(sanitize_profile(profile)))
     }
 
     /// Retrieves a cached value by key.
     ///
-    /// Returns `Ok(None)` on a cache miss, on corrupted data (with a warning),
-    /// or if the key does not exist.
+    /// Returns `Ok(None)` on a cache miss, or on a corrupted entry (which is
+    /// removed with a warning).
     ///
     /// # Errors
     ///
-    /// Returns [`CacheError::Io`] on a low-level sled failure.
+    /// Returns [`CacheError::Io`] if the entry exists but cannot be read.
     pub fn get<T: DeserializeOwned>(&self, key: &str) -> Result<Option<CacheEntry<T>>, CacheError> {
-        let Some(bytes) = self.db.get(key)? else {
-            return Ok(None);
+        let path = self.entry_path(key);
+        let bytes = match std::fs::read(&path) {
+            Ok(bytes) => bytes,
+            Err(e) if e.kind() == ErrorKind::NotFound => return Ok(None),
+            Err(e) => return Err(e.into()),
         };
 
         match serde_json::from_slice::<CacheEntry<T>>(&bytes) {
             Ok(entry) => Ok(Some(entry)),
             Err(err) => {
                 warn!(key, %err, "cache entry is corrupted — dropping");
-                // Remove corrupted entry to avoid repeated warnings.
-                let _ = self.db.remove(key);
+                let _ = std::fs::remove_file(&path);
                 Ok(None)
             }
         }
@@ -198,10 +208,13 @@ impl CacheStore {
 
     /// Stores a value under `key` with the given TTL.
     ///
+    /// The entry is written to a temporary file and renamed into place, so
+    /// concurrent readers never observe a partially written entry.
+    ///
     /// # Errors
     ///
     /// Returns [`CacheError::Serde`] if serialization fails, or
-    /// [`CacheError::Io`] on a sled write failure.
+    /// [`CacheError::Io`] if the file cannot be written.
     pub fn set<T: Serialize>(&self, key: &str, value: &T, ttl: Duration) -> Result<(), CacheError> {
         let entry = CacheEntry {
             value,
@@ -209,7 +222,17 @@ impl CacheStore {
             ttl,
         };
         let bytes = serde_json::to_vec(&entry)?;
-        self.db.insert(key, bytes)?;
+
+        let path = self.entry_path(key);
+        let tmp = path.with_extension(format!(
+            "tmp-{}-{}",
+            std::process::id(),
+            Utc::now().timestamp_nanos_opt().unwrap_or_default()
+        ));
+        std::fs::write(&tmp, bytes)?;
+        std::fs::rename(&tmp, &path).inspect_err(|_| {
+            let _ = std::fs::remove_file(&tmp);
+        })?;
         Ok(())
     }
 
@@ -219,90 +242,137 @@ impl CacheStore {
     ///
     /// # Errors
     ///
-    /// Returns [`CacheError::Io`] on a sled failure.
+    /// Returns [`CacheError::Io`] if the cache directory cannot be read.
     pub fn clear(&self) -> Result<usize, CacheError> {
-        let count = self.db.len();
-        self.db.clear()?;
-        Ok(count)
+        let mut removed = 0;
+        for path in self.entry_files()? {
+            if std::fs::remove_file(path).is_ok() {
+                removed += 1;
+            }
+        }
+        Ok(removed)
     }
 
     /// Removes entries that were inserted more than `older_than` ago.
     ///
-    /// Returns the number of entries removed.
+    /// Returns the number of entries removed. Unreadable entries are removed
+    /// as well.
     ///
     /// # Errors
     ///
-    /// Returns [`CacheError::Io`] on a sled failure.
+    /// Returns [`CacheError::Io`] if the cache directory cannot be read.
     pub fn clear_older_than(&self, older_than: Duration) -> Result<usize, CacheError> {
-        // Envelope used to decode only `inserted_at` without full deserialisation.
-        #[derive(Deserialize)]
-        struct Envelope {
-            inserted_at: DateTime<Utc>,
-        }
-
         let cutoff =
             Utc::now() - chrono::Duration::from_std(older_than).unwrap_or(chrono::Duration::zero());
 
-        let mut removed = 0usize;
-        for result in self.db.iter() {
-            let (k, v) = match result {
-                Ok(pair) => pair,
-                Err(err) => {
-                    warn!(%err, "error iterating cache entries — skipping");
-                    continue;
-                }
-            };
-
-            if let Ok(env) = serde_json::from_slice::<Envelope>(&v) {
-                if env.inserted_at < cutoff && self.db.remove(&k).is_ok() {
-                    removed += 1;
-                }
-            } else {
-                warn!(key = ?k, "cache entry has no inserted_at — removing");
-                if self.db.remove(&k).is_ok() {
-                    removed += 1;
-                }
+        let mut removed = 0;
+        for path in self.entry_files()? {
+            let stale = read_inserted_at(&path).is_none_or(|inserted_at| inserted_at < cutoff);
+            if stale && std::fs::remove_file(&path).is_ok() {
+                removed += 1;
             }
         }
-
         Ok(removed)
     }
 
-    /// Returns summary statistics about the cache store.
+    /// Returns statistics about the cache (entry count, disk usage, last write).
     #[must_use]
     pub fn info(&self) -> CacheInfo {
-        // Envelope used to decode only `inserted_at` without full deserialisation.
-        #[derive(Deserialize)]
-        struct Envelope {
-            inserted_at: DateTime<Utc>,
-        }
-
-        let entry_count = self.db.len();
-
-        // Approximate disk size: sum the sizes of all sled data files.
-        let size_on_disk = dir_size_bytes(&self.path);
-
-        // Find the most recently inserted entry.
-        let last_write = self
-            .db
-            .iter()
-            .filter_map(Result::ok)
-            .filter_map(|(_, v)| serde_json::from_slice::<Envelope>(&v).ok())
-            .map(|e| e.inserted_at)
-            .max();
-
+        let files = self.entry_files().unwrap_or_default();
         CacheInfo {
-            entry_count,
-            size_on_disk,
-            last_write,
+            entry_count: files.len(),
+            size_on_disk: dir_size_bytes(&self.path),
+            last_write: files.iter().filter_map(|p| read_inserted_at(p)).max(),
         }
+    }
+
+    /// Path of the file that stores `key`.
+    fn entry_path(&self, key: &str) -> PathBuf {
+        self.entries.join(entry_file_name(key))
+    }
+
+    /// All entry files currently in the store.
+    fn entry_files(&self) -> Result<Vec<PathBuf>, CacheError> {
+        Ok(std::fs::read_dir(&self.entries)?
+            .filter_map(Result::ok)
+            .map(|e| e.path())
+            .filter(|p| p.extension().is_some_and(|ext| ext == ENTRY_EXT))
+            .collect())
     }
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-/// Recursively sums the sizes of all files in `dir`.
-fn dir_size_bytes(dir: &PathBuf) -> u64 {
+/// Maps a cache key to a file name that is valid on every platform.
+///
+/// Characters outside `[A-Za-z0-9._-]` are percent-encoded, which keeps the
+/// mapping injective. Long keys are truncated and suffixed with a stable
+/// FNV-1a hash of the full key to stay well within file-name length limits.
+fn entry_file_name(key: &str) -> String {
+    use std::fmt::Write as _;
+
+    const MAX_STEM: usize = 150;
+    let mut stem = String::with_capacity(key.len());
+    for b in key.bytes() {
+        if b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.') {
+            stem.push(char::from(b));
+        } else {
+            let _ = write!(stem, "%{b:02X}");
+        }
+    }
+    if stem.len() > MAX_STEM {
+        let hash = key.bytes().fold(0xcbf2_9ce4_8422_2325_u64, |h, b| {
+            (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3)
+        });
+        stem.truncate(MAX_STEM - 17);
+        let _ = write!(stem, "-{hash:016x}");
+    }
+    format!("{stem}.{ENTRY_EXT}")
+}
+
+/// Replaces characters outside `[A-Za-z0-9_-]` so a profile name can never
+/// escape the cache directory (e.g. `--profile ../../x`).
+fn sanitize_profile(profile: &str) -> String {
+    profile
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect()
+}
+
+/// Reads only the `inserted_at` field of an entry file.
+fn read_inserted_at(path: &Path) -> Option<DateTime<Utc>> {
+    #[derive(Deserialize)]
+    struct Envelope {
+        inserted_at: DateTime<Utc>,
+    }
+    let bytes = std::fs::read(path).ok()?;
+    serde_json::from_slice::<Envelope>(&bytes)
+        .ok()
+        .map(|e| e.inserted_at)
+}
+
+/// Best-effort removal of the files the previous sled-based cache kept in the
+/// profile directory (`db`, `conf`, `snap.*`, `blobs/`).
+fn remove_legacy_sled_files(root: &Path) {
+    let _ = std::fs::remove_file(root.join("db"));
+    let _ = std::fs::remove_file(root.join("conf"));
+    let _ = std::fs::remove_dir_all(root.join("blobs"));
+    if let Ok(entries) = std::fs::read_dir(root) {
+        for entry in entries.filter_map(Result::ok) {
+            if entry.file_name().to_string_lossy().starts_with("snap.") {
+                let _ = std::fs::remove_file(entry.path());
+            }
+        }
+    }
+}
+
+fn dir_size_bytes(dir: &Path) -> u64 {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return 0;
     };
@@ -344,16 +414,31 @@ mod tests {
 
     use super::*;
 
-    /// Opens an in-memory sled database (requires no filesystem path).
-    fn in_memory_store() -> CacheStore {
-        let db = sled::Config::default()
-            .temporary(true)
-            .open()
-            .expect("in-memory sled must succeed");
-        CacheStore {
-            db,
-            path: PathBuf::from("/tmp/waka-test-cache"),
+    /// A store in a fresh temporary directory, removed when dropped.
+    struct TempStore {
+        store: CacheStore,
+        root: PathBuf,
+    }
+
+    impl std::ops::Deref for TempStore {
+        type Target = CacheStore;
+        fn deref(&self) -> &CacheStore {
+            &self.store
         }
+    }
+
+    impl Drop for TempStore {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.root);
+        }
+    }
+
+    fn temp_store() -> TempStore {
+        static COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+        let n = COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let root = std::env::temp_dir().join(format!("waka-cache-test-{}-{n}", std::process::id()));
+        let store = CacheStore::open_at(root.clone()).expect("open temp store");
+        TempStore { store, root }
     }
 
     // ── CacheEntry::is_expired ────────────────────────────────────────────────
@@ -440,7 +525,7 @@ mod tests {
 
     #[test]
     fn get_returns_none_for_missing_key() {
-        let store = in_memory_store();
+        let store = temp_store();
         let result = store
             .get::<String>("nonexistent")
             .expect("get must succeed");
@@ -449,7 +534,7 @@ mod tests {
 
     #[test]
     fn set_then_get_roundtrip() {
-        let store = in_memory_store();
+        let store = temp_store();
         store
             .set("key1", &"hello world", Duration::from_secs(60))
             .expect("set must succeed");
@@ -463,7 +548,7 @@ mod tests {
 
     #[test]
     fn set_overwrites_existing_entry() {
-        let store = in_memory_store();
+        let store = temp_store();
         store.set("k", &"first", Duration::from_secs(60)).unwrap();
         store.set("k", &"second", Duration::from_secs(60)).unwrap();
         let entry = store.get::<String>("k").unwrap().unwrap();
@@ -472,17 +557,14 @@ mod tests {
 
     #[test]
     fn get_returns_none_for_corrupted_entry() {
-        let store = in_memory_store();
-        // Insert raw garbage bytes directly.
-        store
-            .db
-            .insert("bad", b"not valid json at all".as_slice())
-            .unwrap();
+        let store = temp_store();
+        // Write raw garbage bytes directly.
+        std::fs::write(store.entry_path("bad"), b"not valid json at all").unwrap();
         let result = store.get::<String>("bad").expect("get must not error");
         assert!(result.is_none(), "corrupted entry should return None");
         // Entry should have been removed.
         assert!(
-            store.db.get("bad").unwrap().is_none(),
+            !store.entry_path("bad").exists(),
             "corrupted entry must be cleaned up"
         );
     }
@@ -491,18 +573,18 @@ mod tests {
 
     #[test]
     fn clear_removes_all_entries_and_returns_count() {
-        let store = in_memory_store();
+        let store = temp_store();
         store.set("a", &1u32, Duration::from_secs(60)).unwrap();
         store.set("b", &2u32, Duration::from_secs(60)).unwrap();
         store.set("c", &3u32, Duration::from_secs(60)).unwrap();
         let removed = store.clear().expect("clear must succeed");
         assert_eq!(removed, 3);
-        assert_eq!(store.db.len(), 0);
+        assert_eq!(store.info().entry_count, 0);
     }
 
     #[test]
     fn clear_on_empty_store_returns_zero() {
-        let store = in_memory_store();
+        let store = temp_store();
         let removed = store.clear().expect("clear must succeed");
         assert_eq!(removed, 0);
     }
@@ -511,7 +593,7 @@ mod tests {
 
     #[test]
     fn clear_older_than_removes_old_and_keeps_fresh() {
-        let store = in_memory_store();
+        let store = temp_store();
 
         // Insert a fresh entry.
         store.set("fresh", &"ok", Duration::from_secs(300)).unwrap();
@@ -523,7 +605,7 @@ mod tests {
             ttl: Duration::from_secs(300),
         };
         let bytes = serde_json::to_vec(&old_entry).unwrap();
-        store.db.insert("stale", bytes.as_slice()).unwrap();
+        std::fs::write(store.entry_path("stale"), bytes).unwrap();
 
         let removed = store
             .clear_older_than(Duration::from_secs(3_600))
@@ -538,7 +620,7 @@ mod tests {
 
     #[test]
     fn info_returns_correct_entry_count() {
-        let store = in_memory_store();
+        let store = temp_store();
         assert_eq!(store.info().entry_count, 0);
         store.set("x", &42u32, Duration::from_secs(60)).unwrap();
         assert_eq!(store.info().entry_count, 1);
@@ -546,7 +628,7 @@ mod tests {
 
     #[test]
     fn info_last_write_is_some_after_insert() {
-        let store = in_memory_store();
+        let store = temp_store();
         assert!(store.info().last_write.is_none());
         store.set("w", &"data", Duration::from_secs(60)).unwrap();
         assert!(store.info().last_write.is_some());
@@ -556,10 +638,57 @@ mod tests {
 
     #[test]
     fn duration_survives_serialisation_round_trip() {
-        let store = in_memory_store();
+        let store = temp_store();
         let ttl = Duration::from_secs(7200);
         store.set("dur", &"value", ttl).unwrap();
         let entry = store.get::<String>("dur").unwrap().unwrap();
         assert_eq!(entry.ttl, ttl);
+    }
+
+    // ── file store specifics ──────────────────────────────────────────────────
+
+    #[test]
+    fn keys_map_to_safe_distinct_file_names() {
+        let a = entry_file_name("summaries:2025-01-06:2025-01-12:project:my/saas");
+        let b = entry_file_name("summaries:2025-01-06:2025-01-12:project:my:saas");
+        assert_ne!(a, b);
+        assert!(!a.contains('/') && !a.contains(':'), "{a}");
+        // Very long keys stay within file-name limits and remain distinct.
+        let long1 = entry_file_name(&format!("k:{}", "x".repeat(500)));
+        let long2 = entry_file_name(&format!("k:{}y", "x".repeat(499)));
+        assert!(long1.len() < 200 && long2.len() < 200);
+        assert_ne!(long1, long2);
+    }
+
+    #[test]
+    fn two_handles_on_the_same_store_coexist() {
+        // sled held an exclusive lock: a second open failed (WouldBlock), which
+        // silently disabled the cache when two waka processes overlapped.
+        let first = temp_store();
+        let second = CacheStore::open_at(first.root.clone()).expect("second open must succeed");
+        first.set("k", &"v", Duration::from_secs(60)).unwrap();
+        assert_eq!(second.get::<String>("k").unwrap().unwrap().value, "v");
+    }
+
+    #[test]
+    fn open_removes_legacy_sled_files() {
+        let root = std::env::temp_dir().join(format!("waka-cache-legacy-{}", std::process::id()));
+        std::fs::create_dir_all(root.join("blobs")).unwrap();
+        std::fs::write(root.join("db"), b"sled").unwrap();
+        std::fs::write(root.join("conf"), b"sled").unwrap();
+        std::fs::write(root.join("snap.0000000000000001"), b"sled").unwrap();
+
+        let store = CacheStore::open_at(root.clone()).unwrap();
+        assert!(!root.join("db").exists() && !root.join("conf").exists());
+        assert!(!root.join("blobs").exists() && !root.join("snap.0000000000000001").exists());
+        assert_eq!(store.info().entry_count, 0);
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn profile_names_cannot_escape_the_cache_dir() {
+        assert_eq!(sanitize_profile("work"), "work");
+        let s = sanitize_profile("../../etc");
+        assert!(!s.contains('/') && !s.contains(".."), "{s}");
     }
 }

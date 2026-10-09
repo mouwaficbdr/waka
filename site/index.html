@@ -529,7 +529,7 @@ footer .disclaimer { color: var(--text); font-weight: 500; }
       <article class="card w3 reveal">
         <div class="ico"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></div>
         <h3>Stats for any period</h3>
-        <p>Today, yesterday, week, month, year or a custom <code>range</code>. Filter by <code>--project</code> or <code>--language</code>.</p>
+        <p>Today, yesterday, week, month, year or a custom <code>range</code>. Filter by <code>--project</code>.</p>
         <div class="chips"><span class="chip on">today</span><span class="chip">yesterday</span><span class="chip">week</span><span class="chip">month</span><span class="chip">year</span><span class="chip">range --from --to</span></div>
       </article>
       <article class="card w3 reveal">
@@ -730,7 +730,7 @@ style = <span class="tk-s">"dimmed yellow"</span></div>
       <div class="cmd"><h3><span>waka</span> config</h3><p>Tune it, or let it diagnose itself.</p><ul><li>get</li><li>set</li><li>edit</li><li>path</li><li>reset</li><li>doctor</li></ul></div>
       <div class="cmd"><h3><span>waka</span> cache</h3><p>Inspect and prune local cache.</p><ul><li>info</li><li>path</li><li>clear --older 7d</li></ul></div>
       <div class="cmd"><h3><span>waka</span> leaderboard</h3><p>See how you stack up.</p><ul><li>show --page N</li></ul></div>
-      <div class="cmd"><h3><span>waka</span> prompt · update · changelog</h3><p>Shell prompt, self-update, release notes.</p><ul><li>prompt --format detailed</li><li>update</li><li>changelog</li></ul></div>
+      <div class="cmd"><h3><span>waka</span> prompt · update · changelog</h3><p>Shell prompt, self-update, release notes.</p><ul><li>prompt --style detailed</li><li>update</li><li>changelog</li></ul></div>
     </div>
   </div>
 </section>
@@ -886,7 +886,7 @@ waka-api = <span class="tk-s">"1"</span></div>
     { label: 'stats today', cmd: 'waka stats today', out: () => statsBlock('Today · Mar 2, 2026', '6h 42m', TODAY, true) },
     { label: 'stats week', cmd: 'waka stats week', out: () => statsBlock('Last 7 Days · Feb 23 – Mar 2, 2026', '22h 38m', WEEK, false) },
     { label: 'pipe to jq', cmd: "waka stats today -f json | jq -r '.data[0].grand_total.text'", out: () => ['6 hrs 42 mins'] },
-    { label: 'prompt', cmd: 'waka prompt --format detailed', out: () => ['<span class="c-ye">⏱ 6h 42m | my-saas</span>'] },
+    { label: 'prompt', cmd: 'waka prompt --style detailed', out: () => ['<span class="c-ye">⏱ 6h 42m | my-saas</span>'] },
   ];
 
   /* ── Hero terminal player ── */

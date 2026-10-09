@@ -61,11 +61,20 @@ chrono = { version = "0.4", features = ["serde"] }
 directories = "5"
 toml = "0.8"
 
-# Credentials (macOS Keychain / Linux Secret Service / Windows Credential Manager)
-keyring = { version = "3", features = ["apple-native", "windows-native", "linux-native"] }
+# Credentials (macOS Keychain / Windows Credential Manager / Linux).
+# On Linux, `linux-native-async-persistent` keeps keys in the kernel keyring
+# (keyutils) as a cache backed by the Secret Service, so they survive reboots;
+# plain `linux-native` is in-memory only. The Secret Service client is pure
+# Rust (zbus): `async-io` avoids the documented tokio deadlock and
+# `crypto-rust` avoids linking OpenSSL.
+keyring = { version = "3", features = [
+    "apple-native",
+    "windows-native",
+    "linux-native-async-persistent",
+    "async-io",
+    "crypto-rust",
+] }
 
-# Embedded key-value cache
-sled = "0.34"
 
 # CLI
 clap = { version = "4", features = ["derive", "env", "wrap_help", "color"] }
@@ -85,6 +94,9 @@ owo-colors = { version = "4", features = ["supports-colors"] }
 
 # Archive extraction (used by waka update)
 flate2 = "1"
+# Self-update: digest verification and cross-platform binary replacement
+sha2 = "0.10"
+self-replace = "1"
 tar = "0.4"
 zip = "2"
 
@@ -92,7 +104,7 @@ zip = "2"
 supports-color = "3.0"
 chrono-humanize = "0.2"
 unicode-width = "0.2"
-inquire = { version = "0.7", features = ["crossterm"] }
+inquire = { version = "0.9", features = ["crossterm"] }
 
 # Credentials obfuscation
 base64 = "0.22"
