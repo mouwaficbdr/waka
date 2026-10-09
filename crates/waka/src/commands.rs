@@ -42,7 +42,10 @@ pub async fn dispatch(cmd: Commands, global: GlobalOpts) -> Result<()> {
     // On a cache hit (most runs) it completes in microseconds.
     // On a cache miss (first run of the day) it fetches GitHub with up to
     // 5 s network timeout — we wait at most 3 s for it here.
-    let update_handle = tokio::spawn(update_check_background(global.clone()));
+    // Not spawned at all when skipped: it opens the sled cache, whose
+    // exclusive lock would otherwise race with the command's own cache access.
+    let update_handle =
+        (!skip_update).then(|| tokio::spawn(update_check_background(global.clone())));
 
     let result = match cmd {
         Commands::Auth { cmd } => auth_cmd(cmd, global).await,
@@ -69,8 +72,8 @@ pub async fn dispatch(cmd: Commands, global: GlobalOpts) -> Result<()> {
     };
 
     // After command output: wait briefly for the update notification.
-    if !skip_update {
-        let _ = tokio::time::timeout(Duration::from_secs(3), update_handle).await;
+    if let Some(handle) = update_handle {
+        let _ = tokio::time::timeout(Duration::from_secs(3), handle).await;
     }
 
     result
@@ -271,11 +274,14 @@ fn stats_build_params(cmd: StatsCommands) -> Result<(SummaryParams, &'static str
 /// Applies optional API-level filters to `params`.
 ///
 /// The `--language` filter is not supported by the summaries endpoint at API
-/// level and is silently ignored.
+/// level; it is ignored with a warning on stderr.
 // TODO(spec): the WakaTime summaries endpoint does not expose client-side
 // language filtering. --language is reserved for post-filtering once SPEC.md
 // §5.1 clarifies the intended behaviour.
 fn stats_apply_filters(params: SummaryParams, filters: &StatsFilterOpts) -> SummaryParams {
+    if filters.language.is_some() {
+        eprintln!("warning: --language is not supported yet and was ignored");
+    }
     if let Some(project) = &filters.project {
         params.project(project)
     } else {
@@ -288,24 +294,28 @@ fn stats_apply_filters(params: SummaryParams, filters: &StatsFilterOpts) -> Summ
 /// Priority: `--format` CLI flag > config `output.format` > `Table` default.
 /// When stdout is not a TTY the format is coerced to `Plain` regardless.
 fn stats_resolve_format(global: &GlobalOpts, config: &Config) -> RenderFormat {
+    // If stdout is piped / redirected, degrade to plain text.
+    detect_output_format(configured_format(global.format, &config.output.format))
+}
+
+/// Picks the requested format before TTY detection: an explicit `--format`
+/// always wins (including `--format table`), otherwise `output.format`.
+fn configured_format(cli: Option<CliFormat>, config: &waka_config::OutputFormat) -> RenderFormat {
     use waka_config::OutputFormat as CfgFmt;
 
-    // CLI flag takes precedence over config.
-    let configured = match global.format {
+    match cli {
         Some(CliFormat::Json) => RenderFormat::Json,
         Some(CliFormat::Csv) => RenderFormat::Csv,
         Some(CliFormat::Plain) => RenderFormat::Plain,
-        Some(CliFormat::Table) | None => match config.output.format {
+        Some(CliFormat::Table) => RenderFormat::Table,
+        None => match config {
             CfgFmt::Json => RenderFormat::Json,
             CfgFmt::Csv => RenderFormat::Csv,
             CfgFmt::Plain => RenderFormat::Plain,
             CfgFmt::Tsv => RenderFormat::Tsv,
             CfgFmt::Table => RenderFormat::Table,
         },
-    };
-
-    // If stdout is piped / redirected, degrade to plain text.
-    detect_output_format(configured)
+    }
 }
 
 /// Creates an indeterminate progress spinner for network operations.
@@ -2482,6 +2492,24 @@ mod tests {
         })
         .expect_err("invalid date must fail");
         assert!(err.to_string().contains("YYYY-MM-DD"));
+    }
+
+    // ── configured_format ─────────────────────────────────────────────────────
+
+    #[test]
+    fn explicit_table_flag_overrides_config_format() {
+        assert_eq!(
+            configured_format(Some(CliFormat::Table), &waka_config::OutputFormat::Json),
+            RenderFormat::Table
+        );
+    }
+
+    #[test]
+    fn config_format_used_without_flag() {
+        assert_eq!(
+            configured_format(None, &waka_config::OutputFormat::Tsv),
+            RenderFormat::Tsv
+        );
     }
 
     // ── resolve_profile ───────────────────────────────────────────────────────
