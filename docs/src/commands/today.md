@@ -13,7 +13,7 @@ waka stats today [OPTIONS]
 | Flag                    | Description                                              |
 | ----------------------- | -------------------------------------------------------- |
 | `--project <name>`      | Filter to a specific project                             |
-| `--language <lang>`     | Filter to a specific language                            |
+| `--language <lang>`     | Not supported yet: ignored with a warning |
 | `-f, --format <FORMAT>` | Output format: `table` (default), `json`, `csv`, `plain` |
 | `--no-cache`            | Force a fresh API request                                |
 

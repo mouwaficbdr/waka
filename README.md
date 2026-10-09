@@ -70,7 +70,7 @@ waka dashboard           # launch the interactive TUI
 | `auth show-key`         | Display the stored API key (masked by default)                             |
 | `auth switch <PROFILE>` | Switch to a different profile                                              |
 
-API keys are stored in the OS keychain (macOS Keychain, GNOME Keyring, Windows Credential Manager) with a `0600` plain-text fallback. Multi-profile support: use `-p work` or `-p personal` on any command.
+API keys are stored in the OS keychain (macOS Keychain, Windows Credential Manager, the kernel keyring on Linux) with a `0600` file fallback. On Linux the kernel keyring is cleared on reboot; set `WAKATIME_API_KEY` to avoid logging in again. Multi-profile support: use `-p work` or `-p personal` on any command.
 
 ### `waka stats` — Coding Statistics
 
@@ -83,7 +83,7 @@ API keys are stored in the OS keychain (macOS Keychain, GNOME Keyring, Windows C
 | `stats year`                        | Last 365 days                  |
 | `stats range --from DATE --to DATE` | Custom date range (YYYY-MM-DD) |
 
-All stats subcommands accept `--project <NAME>` and `--language <LANG>` filters.
+All stats subcommands accept a `--project <NAME>` filter. (`--language` is accepted but not supported yet.)
 
 ### `waka projects` — Projects
 
