@@ -11,12 +11,10 @@ waka auth login
 ```
 
 You will be prompted for your API key. It is validated against the profile's API, then stored in
-your **system keychain**: macOS Keychain, Windows Credential Manager, or the kernel keyring
-(keyutils) on Linux. When the keychain is unavailable, the key is saved to a credentials file
-readable only by you (`0600`).
-
-> **Linux note:** the kernel keyring is kept in memory and cleared on reboot, so you may need to
-> run `waka auth login` again after restarting. Setting `WAKATIME_API_KEY` avoids this.
+your **system keychain**: macOS Keychain, Windows Credential Manager, or the Secret Service on
+Linux (GNOME Keyring, KWallet, …), cached in the kernel keyring. When no keychain is available
+(e.g. SSH sessions or headless servers), the key is saved to a per-profile credentials file
+readable only by you (`0600`), and `waka` reads it from there.
 
 ## Non-interactive / CI
 
@@ -54,13 +52,13 @@ API key: waka_****...****  (stored in system keychain)
 waka auth logout
 ```
 
-This removes the API key from the system keychain. Your WakaTime data is unaffected.
+This removes the API key from the system keychain and deletes the profile's fallback credentials
+file. Your WakaTime data is unaffected.
 
 ## Profiles
 
-Each profile has its own keychain entry (the `0600` fallback file is currently shared by all
-profiles). `waka auth switch work` makes `work` the default profile for every command;
-`--profile` overrides it for a single command.
+Each profile has its own keychain entry and its own fallback file. `waka auth switch work` makes
+`work` the default profile for every command; `--profile` overrides it for a single command.
 
 ## Security notes
 

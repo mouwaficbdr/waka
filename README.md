@@ -70,7 +70,7 @@ waka dashboard           # launch the interactive TUI
 | `auth show-key`         | Display the stored API key (masked by default)                             |
 | `auth switch <PROFILE>` | Switch to a different profile                                              |
 
-API keys are stored in the OS keychain (macOS Keychain, Windows Credential Manager, the kernel keyring on Linux) with a `0600` file fallback. On Linux the kernel keyring is cleared on reboot; set `WAKATIME_API_KEY` to avoid logging in again. Multi-profile support: use `-p work` or `-p personal` on any command.
+API keys are stored in the OS keychain (macOS Keychain, Windows Credential Manager, the Secret Service on Linux: GNOME Keyring, KWallet, …) with a per-profile `0600` file fallback when no keychain is available. Multi-profile support: use `-p work` or `-p personal` on any command.
 
 ### `waka stats` — Coding Statistics
 

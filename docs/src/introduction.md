@@ -22,7 +22,7 @@ waka stats today
 ## Features
 
 - **Fast** — native Rust binary, < 200 ms cold start
-- **Secure** — API key stored in the system keychain (macOS Keychain, Windows Credential Manager, Linux kernel keyring)
+- **Secure** — API key stored in the system keychain (macOS Keychain, Windows Credential Manager, GNOME Keyring / KWallet)
 - **Flexible output** — tables, plain text, JSON — auto-detected pipe mode
 - **Reports** — export to Markdown, HTML, JSON, or CSV
 - **Interactive TUI** — full-screen Ratatui dashboard (`waka dashboard`)

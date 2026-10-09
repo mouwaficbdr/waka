@@ -16,8 +16,8 @@ Rust gives `waka` a native binary with < 200 ms cold start, no runtime to instal
 In your **system keychain** by default:
 
 - macOS: macOS Keychain
-- Linux: the kernel keyring (keyutils), which is in memory and cleared on reboot (set `WAKATIME_API_KEY` to avoid logging in again)
-- If no keychain is available: a separate `credentials` file with `0600` permissions
+- Linux: the Secret Service (GNOME Keyring, KWallet, …), cached in the kernel keyring
+- If no keychain is available: a per-profile `credentials` file with `0600` permissions
 - Windows: Windows Credential Manager
 
 The key is **never** logged or echoed.
