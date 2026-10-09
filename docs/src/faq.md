@@ -6,14 +6,18 @@ Rust gives `waka` a native binary with < 200 ms cold start, no runtime to instal
 
 ## Does waka send data to any server besides WakaTime?
 
-No. `waka` only makes HTTPS requests to `https://wakatime.com/api/v1/` (or your configured `api.base_url`). It never phones home for analytics, telemetry, or update checks beyond what you explicitly request with `waka update`.
+`waka` sends no analytics or telemetry. Besides the WakaTime API (or the `api_url` configured for your profile), it contacts GitHub:
+
+- once a day, to check whether a newer release exists (`api.github.com`). Disable it with `waka config set core.update_check false` or `WAKA_NO_UPDATE_CHECK=1`;
+- when you run `waka update` or `waka changelog`.
 
 ## Where is my API key stored?
 
 In your **system keychain** by default:
 
 - macOS: macOS Keychain
-- Linux: GNOME Keyring / libsecret (falls back to plain-text `~/.config/waka/config.toml` with `0600` permissions if no keychain is available)
+- Linux: the kernel keyring (keyutils), which is in memory and cleared on reboot (set `WAKATIME_API_KEY` to avoid logging in again)
+- If no keychain is available: a separate `credentials` file with `0600` permissions
 - Windows: Windows Credential Manager
 
 The key is **never** logged or echoed.
@@ -23,7 +27,7 @@ The key is **never** logged or echoed.
 Set the `WAKA_API_KEY` environment variable:
 
 ```sh
-docker run --rm -e WAKA_API_KEY=waka_xxx my-image waka today
+docker run --rm -e WAKA_API_KEY=waka_xxx my-image waka stats today
 ```
 
 ## How is caching handled?

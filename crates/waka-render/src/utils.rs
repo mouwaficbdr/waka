@@ -13,6 +13,8 @@
 //! assert_eq!(utils::humanize_duration(3600 + 900), "1h 15m");
 //! ```
 
+use std::borrow::Cow;
+
 use chrono::{DateTime, Utc};
 use chrono_humanize::HumanTime;
 use unicode_width::UnicodeWidthStr as _;
@@ -177,6 +179,63 @@ pub fn humanize_relative(dt: &DateTime<Utc>) -> String {
 // ─────────────────────────────────────────────────────────────────────────────
 // Tests
 // ─────────────────────────────────────────────────────────────────────────────
+
+/// Escapes a single field for delimited output.
+///
+/// For CSV (`sep == ','`) this follows RFC 4180: a field containing the
+/// separator, a double quote or a line break is wrapped in double quotes and
+/// inner quotes are doubled. TSV has no quoting convention, so tabs and line
+/// breaks are replaced with spaces instead.
+///
+/// ```rust
+/// use waka_render::utils::delimited_field;
+///
+/// assert_eq!(delimited_field("my-saas", ','), "my-saas");
+/// assert_eq!(delimited_field("Code 2h, daily", ','), "\"Code 2h, daily\"");
+/// assert_eq!(delimited_field("say \"hi\"", ','), "\"say \"\"hi\"\"\"");
+/// assert_eq!(delimited_field("a\tb", '\t'), "a b");
+/// ```
+#[must_use]
+pub fn delimited_field(value: &str, sep: char) -> Cow<'_, str> {
+    if sep == '\t' {
+        if value.contains(['\t', '\n', '\r']) {
+            return Cow::Owned(value.replace(['\t', '\n', '\r'], " "));
+        }
+        return Cow::Borrowed(value);
+    }
+    if value.contains([sep, '"', '\n', '\r']) {
+        Cow::Owned(format!("\"{}\"", value.replace('"', "\"\"")))
+    } else {
+        Cow::Borrowed(value)
+    }
+}
+
+/// Escapes text for safe inclusion in HTML element content or attribute values.
+///
+/// ```rust
+/// use waka_render::utils::html_escape;
+///
+/// assert_eq!(html_escape("<b>a & b</b>"), "&lt;b&gt;a &amp; b&lt;/b&gt;");
+/// assert_eq!(html_escape("plain"), "plain");
+/// ```
+#[must_use]
+pub fn html_escape(value: &str) -> Cow<'_, str> {
+    if !value.contains(['&', '<', '>', '"', '\'']) {
+        return Cow::Borrowed(value);
+    }
+    let mut out = String::with_capacity(value.len() + 8);
+    for c in value.chars() {
+        match c {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&quot;"),
+            '\'' => out.push_str("&#39;"),
+            c => out.push(c),
+        }
+    }
+    Cow::Owned(out)
+}
 
 #[cfg(test)]
 mod tests {

@@ -14,6 +14,7 @@ use indicatif::ProgressBar;
 use waka_api::{StatsRange, SummaryEntry, SummaryParams, WakaClient};
 use waka_cache::CacheStore;
 use waka_config::{Config, CredentialStore, ProfileConfig};
+use waka_render::utils::{delimited_field, html_escape};
 use waka_render::{
     detect_output_format, should_use_color, BreakdownRenderer, GoalRenderer, LeaderboardRenderer,
     OutputFormat as RenderFormat, ProjectRenderer, RenderOptions, SummaryRenderer,
@@ -42,7 +43,10 @@ pub async fn dispatch(cmd: Commands, global: GlobalOpts) -> Result<()> {
     // On a cache hit (most runs) it completes in microseconds.
     // On a cache miss (first run of the day) it fetches GitHub with up to
     // 5 s network timeout — we wait at most 3 s for it here.
-    let update_handle = tokio::spawn(update_check_background(global.clone()));
+    // Not spawned at all when skipped: it opens the sled cache, whose
+    // exclusive lock would otherwise race with the command's own cache access.
+    let update_handle =
+        (!skip_update).then(|| tokio::spawn(update_check_background(global.clone())));
 
     let result = match cmd {
         Commands::Auth { cmd } => auth_cmd(cmd, global).await,
@@ -69,8 +73,8 @@ pub async fn dispatch(cmd: Commands, global: GlobalOpts) -> Result<()> {
     };
 
     // After command output: wait briefly for the update notification.
-    if !skip_update {
-        let _ = tokio::time::timeout(Duration::from_secs(3), update_handle).await;
+    if let Some(handle) = update_handle {
+        let _ = tokio::time::timeout(Duration::from_secs(3), handle).await;
     }
 
     result
@@ -95,30 +99,10 @@ async fn auth_cmd(cmd: AuthCommands, global: GlobalOpts) -> Result<()> {
 /// Loads the config, retrieves credentials, optionally hits the local cache,
 /// fetches data from the `WakaTime` API, then renders the result.
 async fn stats(cmd: StatsCommands, global: &GlobalOpts) -> Result<()> {
-    // ── 1. Config + credentials ───────────────────────────────────────────────
-    let config = Config::load().unwrap_or_default();
-    let profile = stats_profile_name(global);
-    let api_url = config
-        .profiles
-        .get(&profile)
-        .map_or_else(|| ProfileConfig::default().api_url, |p| p.api_url.clone());
-
-    let store = CredentialStore::new(&profile);
-    let api_key = store.get_api_key().with_context(|| {
-        format!(
-            "No API key found for profile '{profile}'.\n\
-             Run `waka auth login` to authenticate."
-        )
-    })?;
-
-    // ── 2. Build client ───────────────────────────────────────────────────────
-    let api_url_normalized = if api_url.ends_with('/') {
-        api_url.clone()
-    } else {
-        format!("{api_url}/")
-    };
-    let client = WakaClient::with_base_url(api_key.expose(), &api_url_normalized)
-        .with_context(|| format!("invalid api_url in profile '{profile}': {api_url}"))?;
+    // ── 1. Config, profile, client ────────────────────────────────────────────
+    let config = load_config()?;
+    let profile = resolve_profile(global, &config);
+    let client = build_api_client(&profile, &config)?;
 
     // ── 3. Build params ───────────────────────────────────────────────────────
     let (params, label) = stats_build_params(cmd)?;
@@ -229,11 +213,6 @@ async fn stats(cmd: StatsCommands, global: &GlobalOpts) -> Result<()> {
     Ok(())
 }
 
-/// Extracts the active profile name from [`GlobalOpts`] or returns `"default"`.
-fn stats_profile_name(global: &GlobalOpts) -> String {
-    global.profile.as_deref().unwrap_or("default").to_owned()
-}
-
 /// Converts a [`StatsCommands`] variant into a [`SummaryParams`] and a
 /// human-readable label for spinner / error messages.
 ///
@@ -296,11 +275,14 @@ fn stats_build_params(cmd: StatsCommands) -> Result<(SummaryParams, &'static str
 /// Applies optional API-level filters to `params`.
 ///
 /// The `--language` filter is not supported by the summaries endpoint at API
-/// level and is silently ignored.
+/// level; it is ignored with a warning on stderr.
 // TODO(spec): the WakaTime summaries endpoint does not expose client-side
 // language filtering. --language is reserved for post-filtering once SPEC.md
 // §5.1 clarifies the intended behaviour.
 fn stats_apply_filters(params: SummaryParams, filters: &StatsFilterOpts) -> SummaryParams {
+    if filters.language.is_some() {
+        eprintln!("warning: --language is not supported yet and was ignored");
+    }
     if let Some(project) = &filters.project {
         params.project(project)
     } else {
@@ -313,24 +295,28 @@ fn stats_apply_filters(params: SummaryParams, filters: &StatsFilterOpts) -> Summ
 /// Priority: `--format` CLI flag > config `output.format` > `Table` default.
 /// When stdout is not a TTY the format is coerced to `Plain` regardless.
 fn stats_resolve_format(global: &GlobalOpts, config: &Config) -> RenderFormat {
+    // If stdout is piped / redirected, degrade to plain text.
+    detect_output_format(configured_format(global.format, &config.output.format))
+}
+
+/// Picks the requested format before TTY detection: an explicit `--format`
+/// always wins (including `--format table`), otherwise `output.format`.
+fn configured_format(cli: Option<CliFormat>, config: &waka_config::OutputFormat) -> RenderFormat {
     use waka_config::OutputFormat as CfgFmt;
 
-    // CLI flag takes precedence over config.
-    let configured = match global.format {
+    match cli {
         Some(CliFormat::Json) => RenderFormat::Json,
         Some(CliFormat::Csv) => RenderFormat::Csv,
         Some(CliFormat::Plain) => RenderFormat::Plain,
-        Some(CliFormat::Table) | None => match config.output.format {
+        Some(CliFormat::Table) => RenderFormat::Table,
+        None => match config {
             CfgFmt::Json => RenderFormat::Json,
             CfgFmt::Csv => RenderFormat::Csv,
             CfgFmt::Plain => RenderFormat::Plain,
             CfgFmt::Tsv => RenderFormat::Tsv,
             CfgFmt::Table => RenderFormat::Table,
         },
-    };
-
-    // If stdout is piped / redirected, degrade to plain text.
-    detect_output_format(configured)
+    }
 }
 
 /// Creates an indeterminate progress spinner for network operations.
@@ -351,10 +337,7 @@ fn stats_spinner(msg: &str) -> ProgressBar {
 ///
 /// Returns an error if no API key is found or if the base URL is invalid.
 fn build_api_client(profile: &str, config: &Config) -> Result<WakaClient> {
-    let api_url = config
-        .profiles
-        .get(profile)
-        .map_or_else(|| ProfileConfig::default().api_url, |p| p.api_url.clone());
+    let api_url = profile_api_url(config, profile);
 
     let store = CredentialStore::new(profile);
     let api_key = store.get_api_key().with_context(|| {
@@ -364,13 +347,46 @@ fn build_api_client(profile: &str, config: &Config) -> Result<WakaClient> {
         )
     })?;
 
-    let normalized = if api_url.ends_with('/') {
-        api_url.clone()
-    } else {
-        format!("{api_url}/")
-    };
-    WakaClient::with_base_url(api_key.expose(), &normalized)
+    WakaClient::with_base_url(api_key.expose(), &api_url)
         .with_context(|| format!("invalid api_url in profile '{profile}': {api_url}"))
+}
+
+/// Loads `config.toml`.
+///
+/// A malformed file is reported as an error rather than silently replaced by
+/// defaults, which could otherwise be written back over the user's file.
+///
+/// # Errors
+///
+/// Returns an error if the config directory cannot be resolved or the file
+/// cannot be read or parsed.
+pub(crate) fn load_config() -> Result<Config> {
+    let path =
+        Config::path().map_or_else(|_| "config.toml".to_owned(), |p| p.display().to_string());
+    Config::load().with_context(|| format!("could not load config file {path}"))
+}
+
+/// Resolves the active profile: `--profile` flag > `core.default_profile` >
+/// `"default"` (the default value of `core.default_profile`).
+pub(crate) fn resolve_profile(global: &GlobalOpts, config: &Config) -> String {
+    global
+        .profile
+        .clone()
+        .unwrap_or_else(|| config.core.default_profile.clone())
+}
+
+/// Returns the API base URL configured for `profile`, with a trailing slash so
+/// relative endpoint paths join correctly.
+pub(crate) fn profile_api_url(config: &Config, profile: &str) -> String {
+    let url = config
+        .profiles
+        .get(profile)
+        .map_or_else(|| ProfileConfig::default().api_url, |p| p.api_url.clone());
+    if url.ends_with('/') {
+        url
+    } else {
+        format!("{url}/")
+    }
 }
 
 /// Converts a [`crate::cli::Period`] (CLI value) to its [`StatsRange`] equivalent.
@@ -397,8 +413,8 @@ fn entries_from_stats(entries: &[SummaryEntry]) -> Vec<(String, f64)> {
 
 /// Handles `waka projects {list,top,show}`.
 async fn projects(cmd: ProjectsCommands, global: &GlobalOpts) -> Result<()> {
-    let config = Config::load().unwrap_or_default();
-    let profile = stats_profile_name(global);
+    let config = load_config()?;
+    let profile = resolve_profile(global, &config);
     let client = build_api_client(&profile, &config)?;
     let format = stats_resolve_format(global, &config);
     let color = !global.no_color && should_use_color();
@@ -486,8 +502,8 @@ async fn projects(cmd: ProjectsCommands, global: &GlobalOpts) -> Result<()> {
 
 /// Handles `waka languages {list,top}`.
 async fn languages(cmd: LanguagesCommands, global: &GlobalOpts) -> Result<()> {
-    let config = Config::load().unwrap_or_default();
-    let profile = stats_profile_name(global);
+    let config = load_config()?;
+    let profile = resolve_profile(global, &config);
     let client = build_api_client(&profile, &config)?;
     let format = stats_resolve_format(global, &config);
     let color = !global.no_color && should_use_color();
@@ -529,8 +545,8 @@ async fn languages(cmd: LanguagesCommands, global: &GlobalOpts) -> Result<()> {
 
 /// Handles `waka editors {list,top}`.
 async fn editors(cmd: EditorsCommands, global: &GlobalOpts) -> Result<()> {
-    let config = Config::load().unwrap_or_default();
-    let profile = stats_profile_name(global);
+    let config = load_config()?;
+    let profile = resolve_profile(global, &config);
     let client = build_api_client(&profile, &config)?;
     let format = stats_resolve_format(global, &config);
     let color = !global.no_color && should_use_color();
@@ -571,8 +587,8 @@ async fn editors(cmd: EditorsCommands, global: &GlobalOpts) -> Result<()> {
 // ─── goals ────────────────────────────────────────────────────────────────────
 
 async fn goals(cmd: GoalsCommands, global: &GlobalOpts) -> Result<()> {
-    let config = Config::load().unwrap_or_default();
-    let profile = stats_profile_name(global);
+    let config = load_config()?;
+    let profile = resolve_profile(global, &config);
     let client = build_api_client(&profile, &config)?;
     let format = stats_resolve_format(global, &config);
     let color = !global.no_color && should_use_color();
@@ -730,8 +746,8 @@ fn goals_notify_success(title: &str) {
 // ─── leaderboard ──────────────────────────────────────────────────────────────
 
 async fn leaderboard(cmd: LeaderboardCommands, global: &GlobalOpts) -> Result<()> {
-    let config = Config::load().unwrap_or_default();
-    let profile = stats_profile_name(global);
+    let config = load_config()?;
+    let profile = resolve_profile(global, &config);
     let client = build_api_client(&profile, &config)?;
     let format = stats_resolve_format(global, &config);
     let color = !global.no_color && should_use_color();
@@ -793,8 +809,8 @@ async fn report_generate(
     }
 
     // Build client
-    let config = Config::load().unwrap_or_default();
-    let profile = stats_profile_name(global);
+    let config = load_config()?;
+    let profile = resolve_profile(global, &config);
     let client = build_api_client(&profile, &config)?;
 
     // Fetch data for the period
@@ -838,8 +854,8 @@ async fn report_generate(
     clippy::cast_precision_loss
 )]
 async fn report_summary(period: SummaryPeriod, global: &GlobalOpts) -> Result<()> {
-    let config = Config::load().unwrap_or_default();
-    let profile = stats_profile_name(global);
+    let config = load_config()?;
+    let profile = resolve_profile(global, &config);
     let client = build_api_client(&profile, &config)?;
 
     let today = chrono::Local::now().date_naive();
@@ -892,8 +908,8 @@ async fn report_summary(period: SummaryPeriod, global: &GlobalOpts) -> Result<()
 // ─── dashboard ────────────────────────────────────────────────────────────────
 
 async fn dashboard(args: DashboardArgs, global: &GlobalOpts) -> Result<()> {
-    let config = Config::load().unwrap_or_default();
-    let profile = stats_profile_name(global);
+    let config = load_config()?;
+    let profile = resolve_profile(global, &config);
     let client = build_api_client(&profile, &config)?;
     let refresh_interval = std::time::Duration::from_secs(args.refresh);
 
@@ -956,10 +972,13 @@ fn format_prompt_output(total_secs: u64, style: PromptStyle, top_project: Option
 /// expired entry, I/O error).  The 100ms budget is inherently satisfied
 /// because this function only reads from sled (no network I/O).
 fn prompt_inner(args: &PromptArgs, global: &GlobalOpts) -> Option<String> {
-    let profile = global.profile.as_deref().unwrap_or("default");
+    // The prompt must never print errors, so a broken config falls back to
+    // defaults here (read-only: nothing is written back).
+    let config = Config::load().unwrap_or_default();
+    let profile = resolve_profile(global, &config);
 
     // Open the cache — silently skip on failure.
-    let store = CacheStore::open(profile).ok()?;
+    let store = CacheStore::open(&profile).ok()?;
 
     // Build the same cache key that `waka stats today` writes.
     let cache_key = SummaryParams::today().cache_key();
@@ -1044,13 +1063,96 @@ fn completions(shell: CompletionShell) {
 #[allow(clippy::needless_pass_by_value)]
 async fn config(cmd: ConfigCommands, global: &GlobalOpts) -> Result<()> {
     match cmd {
-        ConfigCommands::Get { .. } => bail!("not yet implemented: config get"),
-        ConfigCommands::Set { .. } => bail!("not yet implemented: config set"),
-        ConfigCommands::Edit => bail!("not yet implemented: config edit"),
-        ConfigCommands::Path => bail!("not yet implemented: config path"),
-        ConfigCommands::Reset { .. } => bail!("not yet implemented: config reset"),
+        ConfigCommands::Get { key } => {
+            let config = load_config()?;
+            match key {
+                Some(key) => println!("{}", config.get_key(&key)?),
+                None => print!("{}", config.to_toml_string()?),
+            }
+            Ok(())
+        }
+        ConfigCommands::Set { key, value } => {
+            let mut config = load_config()?;
+            config.set_key(&key, &value)?;
+            config.save().context("failed to save config")?;
+            if !global.quiet {
+                println!("✓ {key} = {}", config.get_key(&key)?);
+            }
+            Ok(())
+        }
+        ConfigCommands::Edit => config_edit(),
+        ConfigCommands::Path => {
+            println!("{}", Config::path()?.display());
+            Ok(())
+        }
+        ConfigCommands::Reset { confirm } => config_reset(confirm, global),
         ConfigCommands::Doctor => config_doctor(global).await,
     }
+}
+
+/// Opens `config.toml` in `$VISUAL` / `$EDITOR` (falling back to `vi`, or
+/// `notepad` on Windows), creating it with defaults first if needed, then
+/// re-validates the file.
+fn config_edit() -> Result<()> {
+    let path = Config::path()?;
+    if !path.exists() {
+        Config::default()
+            .save()
+            .context("failed to create default config")?;
+    }
+
+    let editor = std::env::var("VISUAL")
+        .or_else(|_| std::env::var("EDITOR"))
+        .unwrap_or_else(|_| if cfg!(windows) { "notepad" } else { "vi" }.to_owned());
+    // Allow editors with arguments, e.g. EDITOR="code --wait".
+    let mut parts = editor.split_whitespace();
+    let program = parts.next().context("$EDITOR is empty")?;
+    let status = std::process::Command::new(program)
+        .args(parts)
+        .arg(&path)
+        .status()
+        .with_context(|| format!("failed to launch editor '{editor}'"))?;
+    if !status.success() {
+        bail!("editor '{editor}' exited with {status}");
+    }
+
+    if let Err(e) = Config::load() {
+        eprintln!(
+            "warning: {} is not valid anymore: {e}\n  Run `waka config edit` again to fix it.",
+            path.display()
+        );
+    }
+    Ok(())
+}
+
+/// Implements `waka config reset`: overwrites `config.toml` with defaults
+/// after confirmation (skipped with `--confirm`).
+fn config_reset(confirm: bool, global: &GlobalOpts) -> Result<()> {
+    let path = Config::path()?;
+    if !confirm {
+        if !std::io::stdin().is_terminal() {
+            bail!(
+                "refusing to reset {} without confirmation; pass --confirm",
+                path.display()
+            );
+        }
+        let proceed = inquire::Confirm::new(&format!(
+            "Reset {} to defaults? This cannot be undone.",
+            path.display()
+        ))
+        .with_default(false)
+        .prompt()
+        .context("failed to read confirmation")?;
+        if !proceed {
+            println!("Aborted.");
+            return Ok(());
+        }
+    }
+    Config::default().save().context("failed to save config")?;
+    if !global.quiet {
+        println!("✓ Config reset to defaults ({})", path.display());
+    }
+    Ok(())
 }
 
 /// Runs a full diagnostic check and prints a human-readable report.
@@ -1067,7 +1169,11 @@ async fn config(cmd: ConfigCommands, global: &GlobalOpts) -> Result<()> {
 #[allow(clippy::too_many_lines)]
 async fn config_doctor(global: &GlobalOpts) -> Result<()> {
     let use_color = !global.no_color && should_use_color();
-    let profile = global.profile.as_deref().unwrap_or("default");
+    // A broken config is reported as an issue below; diagnose with defaults.
+    let config_result = waka_config::Config::load();
+    let config = config_result.as_ref().cloned().unwrap_or_default();
+    let profile = resolve_profile(global, &config);
+    let profile = profile.as_str();
     let mut issues: u32 = 0;
     let mut warnings: u32 = 0;
 
@@ -1091,7 +1197,13 @@ async fn config_doctor(global: &GlobalOpts) -> Result<()> {
     // ── 1. Config file ───────────────────────────────────────────────────────
     match waka_config::Config::path() {
         Ok(path) => {
-            if path.exists() {
+            if let Err(e) = &config_result {
+                println!(
+                    "  {fail_mark}  Config file at {} is invalid: {e}",
+                    path.display()
+                );
+                issues += 1;
+            } else if path.exists() {
                 println!("  {ok_mark}  Config file found at {}", path.display());
             } else {
                 println!(
@@ -1121,18 +1233,7 @@ async fn config_doctor(global: &GlobalOpts) -> Result<()> {
 
     // ── 3 & 4. API key valid + reachability ──────────────────────────────────
     if let Some(key) = api_key {
-        // Resolve API URL from config.
-        let config = waka_config::Config::load().unwrap_or_default();
-        let api_url = config.profiles.get(profile).map_or_else(
-            || waka_config::ProfileConfig::default().api_url,
-            |p| p.api_url.clone(),
-        );
-        let api_url_normalized = if api_url.ends_with('/') {
-            api_url.clone()
-        } else {
-            format!("{api_url}/")
-        };
-
+        let api_url_normalized = profile_api_url(&config, profile);
         match waka_api::WakaClient::with_base_url(&key, &api_url_normalized) {
             Err(e) => {
                 println!("  {fail_mark}  Could not build API client: {e}");
@@ -1386,14 +1487,15 @@ async fn update_check_background(global: GlobalOpts) {
         return;
     }
 
-    // 2. Honour config flag.
+    // 2. Honour config flag. Errors are swallowed: an update check must never
+    // break a command (a broken config is reported by the command itself).
     let config = Config::load().unwrap_or_default();
     if !config.core.update_check {
         return;
     }
 
-    let profile = global.profile.as_deref().unwrap_or("default");
-    let Ok(store) = CacheStore::open(profile) else {
+    let profile = resolve_profile(&global, &config);
+    let Ok(store) = CacheStore::open(&profile) else {
         return;
     };
 
@@ -1754,7 +1856,9 @@ fn parse_duration(s: &str) -> Result<Duration> {
 // `needless_pass_by_value`: cmd is consumed by the match; GlobalOpts is needed for quiet/profile.
 #[allow(clippy::needless_pass_by_value)]
 fn cache(cmd: CacheCommands, global: &GlobalOpts) -> Result<()> {
-    let profile = global.profile.as_deref().unwrap_or("default");
+    let config = load_config()?;
+    let profile = resolve_profile(global, &config);
+    let profile = profile.as_str();
 
     match cmd {
         CacheCommands::Clear { older } => {
@@ -2147,7 +2251,8 @@ fn generate_report_html(
             };
             let _ = writeln!(
                 html,
-                "<tr><td>{name}</td><td>{hrs}h {mins}m</td><td>{pct}%</td></tr>"
+                "<tr><td>{}</td><td>{hrs}h {mins}m</td><td>{pct}%</td></tr>",
+                html_escape(name)
             );
         }
         html.push_str("</tbody>\n</table>\n");
@@ -2182,7 +2287,8 @@ fn generate_report_html(
             };
             let _ = writeln!(
                 html,
-                "<tr><td>{name}</td><td>{hrs}h {mins}m</td><td>{pct}%</td></tr>"
+                "<tr><td>{}</td><td>{hrs}h {mins}m</td><td>{pct}%</td></tr>",
+                html_escape(name)
             );
         }
         html.push_str("</tbody>\n</table>\n");
@@ -2217,7 +2323,8 @@ fn generate_report_html(
             };
             let _ = writeln!(
                 html,
-                "<tr><td>{name}</td><td>{hrs}h {mins}m</td><td>{pct}%</td></tr>"
+                "<tr><td>{}</td><td>{hrs}h {mins}m</td><td>{pct}%</td></tr>",
+                html_escape(name)
             );
         }
         html.push_str("</tbody>\n</table>\n");
@@ -2263,7 +2370,7 @@ fn generate_report_html(
                 } else {
                     "✗ Not Achieved"
                 };
-                let title = &goal.title;
+                let title = html_escape(&goal.title);
                 let _ = writeln!(
                     html,
                     "<div class=\"goal-item\"><strong>{title}:</strong> {status}</div>"
@@ -2354,36 +2461,31 @@ fn generate_report_csv(
         let projects: Vec<String> = day_data
             .projects
             .iter()
-            .map(|p| {
-                let h = (p.total_seconds / 3600.0).round() as u64;
-                format!("{}({h}h)", p.name)
-            })
+            .map(|p| format!("{}({:.1}h)", p.name, p.total_seconds / 3600.0))
             .collect();
         let projects_str = projects.join("; ");
 
         let languages: Vec<String> = day_data
             .languages
             .iter()
-            .map(|l| {
-                let h = (l.total_seconds / 3600.0).round() as u64;
-                format!("{}({h}h)", l.name)
-            })
+            .map(|l| format!("{}({:.1}h)", l.name, l.total_seconds / 3600.0))
             .collect();
         let languages_str = languages.join("; ");
 
         let editors: Vec<String> = day_data
             .editors
             .iter()
-            .map(|e| {
-                let h = (e.total_seconds / 3600.0).round() as u64;
-                format!("{}({h}h)", e.name)
-            })
+            .map(|e| format!("{}({:.1}h)", e.name, e.total_seconds / 3600.0))
             .collect();
         let editors_str = editors.join("; ");
 
         let _ = writeln!(
             output,
-            "{date_str},{day_name},{total_hours:.2},\"{projects_str}\",\"{languages_str}\",\"{editors_str}\""
+            "{},{day_name},{total_hours:.2},{},{},{}",
+            delimited_field(date_str, ','),
+            delimited_field(&projects_str, ','),
+            delimited_field(&languages_str, ','),
+            delimited_field(&editors_str, ','),
         );
     }
 
@@ -2474,24 +2576,95 @@ mod tests {
         assert!(err.to_string().contains("YYYY-MM-DD"));
     }
 
-    // ── stats_profile_name ────────────────────────────────────────────────────
+    // ── report escaping ───────────────────────────────────────────────────────
+
+    fn summary_with_hostile_names() -> waka_api::SummaryResponse {
+        let json = include_str!("../../../tests/fixtures/summaries_today.json");
+        let mut resp: waka_api::SummaryResponse =
+            serde_json::from_str(json).expect("fixture is valid JSON");
+        resp.data[0].projects[0].name = "<script>alert(1)</script>".to_owned();
+        resp.data[0].languages[0].name = "C, \"quoted\"".to_owned();
+        resp
+    }
 
     #[test]
-    fn profile_name_defaults_to_default() {
+    fn html_report_escapes_names() {
+        let resp = summary_with_hostile_names();
+        let day = chrono::NaiveDate::from_ymd_opt(2025, 1, 13).unwrap();
+        let html = generate_report_html(&resp, None, day, day);
+        assert!(!html.contains("<script>alert(1)</script>"));
+        assert!(html.contains("&lt;script&gt;alert(1)&lt;/script&gt;"));
+    }
+
+    #[test]
+    fn csv_report_quotes_fields_per_rfc4180() {
+        let resp = summary_with_hostile_names();
+        let day = chrono::NaiveDate::from_ymd_opt(2025, 1, 13).unwrap();
+        let csv = generate_report_csv(&resp, day, day);
+        let row = csv.lines().nth(1).expect("one data row");
+        // Inner quotes are doubled inside a quoted field.
+        assert!(row.contains("C, \"\"quoted\"\""), "row: {row}");
+        // Hours keep one decimal instead of rounding small entries to 0h.
+        assert!(!row.contains("(0h)"), "row: {row}");
+    }
+
+    // ── configured_format ─────────────────────────────────────────────────────
+
+    #[test]
+    fn explicit_table_flag_overrides_config_format() {
+        assert_eq!(
+            configured_format(Some(CliFormat::Table), &waka_config::OutputFormat::Json),
+            RenderFormat::Table
+        );
+    }
+
+    #[test]
+    fn config_format_used_without_flag() {
+        assert_eq!(
+            configured_format(None, &waka_config::OutputFormat::Tsv),
+            RenderFormat::Tsv
+        );
+    }
+
+    // ── resolve_profile ───────────────────────────────────────────────────────
+
+    #[test]
+    fn profile_defaults_to_config_default_profile() {
         let global = GlobalOpts {
             profile: None,
             ..GlobalOpts::default()
         };
-        assert_eq!(stats_profile_name(&global), "default");
+        assert_eq!(resolve_profile(&global, &Config::default()), "default");
+
+        let mut config = Config::default();
+        config.core.default_profile = "work".to_owned();
+        assert_eq!(resolve_profile(&global, &config), "work");
     }
 
     #[test]
-    fn profile_name_uses_explicit_value() {
+    fn profile_flag_overrides_config_default_profile() {
         let global = GlobalOpts {
-            profile: Some("work".to_owned()),
+            profile: Some("personal".to_owned()),
             ..GlobalOpts::default()
         };
-        assert_eq!(stats_profile_name(&global), "work");
+        let mut config = Config::default();
+        config.core.default_profile = "work".to_owned();
+        assert_eq!(resolve_profile(&global, &config), "personal");
+    }
+
+    #[test]
+    fn profile_api_url_adds_trailing_slash() {
+        let mut config = Config::default();
+        config
+            .profiles
+            .entry("self".to_owned())
+            .or_default()
+            .api_url = "https://wakapi.example.com/api/compat/wakatime/v1".to_owned();
+        assert_eq!(
+            profile_api_url(&config, "self"),
+            "https://wakapi.example.com/api/compat/wakatime/v1/"
+        );
+        assert!(profile_api_url(&config, "missing").ends_with('/'));
     }
 
     // ── version_is_newer ──────────────────────────────────────────────────────

@@ -288,15 +288,26 @@ pub(crate) fn write_credentials_file(path: &PathBuf, key: &str) -> Result<(), Cr
     }
     let encoded = B64.encode(key.as_bytes());
     let content = format!("api_key={encoded}\n");
-    std::fs::write(path, content)?;
 
-    // Set 0600 permissions on Unix so other users cannot read the file.
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create(true).truncate(true);
+    // Create the file as 0600 on Unix so the key is never readable by other
+    // users, not even between creation and a later chmod.
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt as _;
+        options.mode(0o600);
+    }
+    let mut file = options.open(path)?;
+
+    // `mode` only applies when the file is created: tighten a pre-existing
+    // file before writing the key into it.
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt as _;
-        let perms = std::fs::Permissions::from_mode(0o600);
-        std::fs::set_permissions(path, perms)?;
+        file.set_permissions(std::fs::Permissions::from_mode(0o600))?;
     }
+    std::io::Write::write_all(&mut file, content.as_bytes())?;
 
     Ok(())
 }
@@ -438,6 +449,21 @@ mod tests {
         let result = read_credentials_file(&path).expect("read should succeed");
         assert_eq!(result.as_deref(), Some("waka_rt_key"));
 
+        remove(&path);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn credentials_file_is_private_even_if_it_existed() {
+        use std::os::unix::fs::PermissionsExt as _;
+
+        let path = temp_path("perms");
+        std::fs::write(&path, "old").unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).unwrap();
+
+        write_credentials_file(&path, "waka_perm_key").expect("write should succeed");
+        let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600);
         remove(&path);
     }
 

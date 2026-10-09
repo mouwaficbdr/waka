@@ -10,6 +10,7 @@ use waka_api::LeaderboardResponse;
 
 use crate::format::format_duration;
 use crate::options::{OutputFormat, RenderOptions};
+use crate::utils::delimited_field;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -209,10 +210,10 @@ impl LeaderboardRenderer {
                 out,
                 "{}{sep}{}{sep}{}{sep}{}{sep}{}",
                 entry.rank.unwrap_or(0),
-                entry.user.display_name,
+                delimited_field(&entry.user.display_name, sep),
                 secs(entry.running_total.total_seconds),
                 secs(entry.running_total.daily_average),
-                top_lang,
+                delimited_field(top_lang, sep),
             )
             .unwrap_or_default();
         }
