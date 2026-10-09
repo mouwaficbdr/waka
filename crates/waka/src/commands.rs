@@ -14,6 +14,7 @@ use indicatif::ProgressBar;
 use waka_api::{StatsRange, SummaryEntry, SummaryParams, WakaClient};
 use waka_cache::CacheStore;
 use waka_config::{Config, CredentialStore, ProfileConfig};
+use waka_render::utils::{delimited_field, html_escape};
 use waka_render::{
     detect_output_format, should_use_color, BreakdownRenderer, GoalRenderer, LeaderboardRenderer,
     OutputFormat as RenderFormat, ProjectRenderer, RenderOptions, SummaryRenderer,
@@ -2167,7 +2168,8 @@ fn generate_report_html(
             };
             let _ = writeln!(
                 html,
-                "<tr><td>{name}</td><td>{hrs}h {mins}m</td><td>{pct}%</td></tr>"
+                "<tr><td>{}</td><td>{hrs}h {mins}m</td><td>{pct}%</td></tr>",
+                html_escape(name)
             );
         }
         html.push_str("</tbody>\n</table>\n");
@@ -2202,7 +2204,8 @@ fn generate_report_html(
             };
             let _ = writeln!(
                 html,
-                "<tr><td>{name}</td><td>{hrs}h {mins}m</td><td>{pct}%</td></tr>"
+                "<tr><td>{}</td><td>{hrs}h {mins}m</td><td>{pct}%</td></tr>",
+                html_escape(name)
             );
         }
         html.push_str("</tbody>\n</table>\n");
@@ -2237,7 +2240,8 @@ fn generate_report_html(
             };
             let _ = writeln!(
                 html,
-                "<tr><td>{name}</td><td>{hrs}h {mins}m</td><td>{pct}%</td></tr>"
+                "<tr><td>{}</td><td>{hrs}h {mins}m</td><td>{pct}%</td></tr>",
+                html_escape(name)
             );
         }
         html.push_str("</tbody>\n</table>\n");
@@ -2283,7 +2287,7 @@ fn generate_report_html(
                 } else {
                     "✗ Not Achieved"
                 };
-                let title = &goal.title;
+                let title = html_escape(&goal.title);
                 let _ = writeln!(
                     html,
                     "<div class=\"goal-item\"><strong>{title}:</strong> {status}</div>"
@@ -2374,36 +2378,31 @@ fn generate_report_csv(
         let projects: Vec<String> = day_data
             .projects
             .iter()
-            .map(|p| {
-                let h = (p.total_seconds / 3600.0).round() as u64;
-                format!("{}({h}h)", p.name)
-            })
+            .map(|p| format!("{}({:.1}h)", p.name, p.total_seconds / 3600.0))
             .collect();
         let projects_str = projects.join("; ");
 
         let languages: Vec<String> = day_data
             .languages
             .iter()
-            .map(|l| {
-                let h = (l.total_seconds / 3600.0).round() as u64;
-                format!("{}({h}h)", l.name)
-            })
+            .map(|l| format!("{}({:.1}h)", l.name, l.total_seconds / 3600.0))
             .collect();
         let languages_str = languages.join("; ");
 
         let editors: Vec<String> = day_data
             .editors
             .iter()
-            .map(|e| {
-                let h = (e.total_seconds / 3600.0).round() as u64;
-                format!("{}({h}h)", e.name)
-            })
+            .map(|e| format!("{}({:.1}h)", e.name, e.total_seconds / 3600.0))
             .collect();
         let editors_str = editors.join("; ");
 
         let _ = writeln!(
             output,
-            "{date_str},{day_name},{total_hours:.2},\"{projects_str}\",\"{languages_str}\",\"{editors_str}\""
+            "{},{day_name},{total_hours:.2},{},{},{}",
+            delimited_field(date_str, ','),
+            delimited_field(&projects_str, ','),
+            delimited_field(&languages_str, ','),
+            delimited_field(&editors_str, ','),
         );
     }
 
@@ -2492,6 +2491,38 @@ mod tests {
         })
         .expect_err("invalid date must fail");
         assert!(err.to_string().contains("YYYY-MM-DD"));
+    }
+
+    // ── report escaping ───────────────────────────────────────────────────────
+
+    fn summary_with_hostile_names() -> waka_api::SummaryResponse {
+        let json = include_str!("../../../tests/fixtures/summaries_today.json");
+        let mut resp: waka_api::SummaryResponse =
+            serde_json::from_str(json).expect("fixture is valid JSON");
+        resp.data[0].projects[0].name = "<script>alert(1)</script>".to_owned();
+        resp.data[0].languages[0].name = "C, \"quoted\"".to_owned();
+        resp
+    }
+
+    #[test]
+    fn html_report_escapes_names() {
+        let resp = summary_with_hostile_names();
+        let day = chrono::NaiveDate::from_ymd_opt(2025, 1, 13).unwrap();
+        let html = generate_report_html(&resp, None, day, day);
+        assert!(!html.contains("<script>alert(1)</script>"));
+        assert!(html.contains("&lt;script&gt;alert(1)&lt;/script&gt;"));
+    }
+
+    #[test]
+    fn csv_report_quotes_fields_per_rfc4180() {
+        let resp = summary_with_hostile_names();
+        let day = chrono::NaiveDate::from_ymd_opt(2025, 1, 13).unwrap();
+        let csv = generate_report_csv(&resp, day, day);
+        let row = csv.lines().nth(1).expect("one data row");
+        // Inner quotes are doubled inside a quoted field.
+        assert!(row.contains("C, \"\"quoted\"\""), "row: {row}");
+        // Hours keep one decimal instead of rounding small entries to 0h.
+        assert!(!row.contains("(0h)"), "row: {row}");
     }
 
     // ── configured_format ─────────────────────────────────────────────────────
