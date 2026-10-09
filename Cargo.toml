@@ -64,8 +64,6 @@ toml = "0.8"
 # Credentials (macOS Keychain / Linux Secret Service / Windows Credential Manager)
 keyring = { version = "3", features = ["apple-native", "windows-native", "linux-native"] }
 
-# Embedded key-value cache
-sled = "0.34"
 
 # CLI
 clap = { version = "4", features = ["derive", "env", "wrap_help", "color"] }
@@ -92,7 +90,7 @@ zip = "2"
 supports-color = "3.0"
 chrono-humanize = "0.2"
 unicode-width = "0.2"
-inquire = { version = "0.7", features = ["crossterm"] }
+inquire = { version = "0.9", features = ["crossterm"] }
 
 # Credentials obfuscation
 base64 = "0.22"

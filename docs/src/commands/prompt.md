@@ -8,32 +8,35 @@ This makes it safe to call from `$PROMPT_COMMAND` or equivalent without slowing 
 ## Usage
 
 ```sh
-waka prompt [OPTIONS]
+waka prompt [--style simple|detailed]
 ```
 
 ## Options
 
-| Flag                    | Description                                       |
-| ----------------------- | ------------------------------------------------- |
-| `-f, --format <FORMAT>` | Output format: `table` (default), `json`, `plain` |
-| `--quiet`               | Output nothing if no cached data is available     |
+| Flag              | Description                                          |
+| ----------------- | ---------------------------------------------------- |
+| `--style simple`  | Today's total, e.g. `⏱ 6h 42m` (default)             |
+| `--style detailed`| Total and top project, e.g. `⏱ 6h 42m \| my-saas`   |
+
+`waka prompt` prints nothing when there is no data for today, so it never clutters your prompt.
 
 ## Shell integration examples
 
 ```sh
 # Bash — add to ~/.bashrc
-PS1='[\u@\h \W $(waka prompt --quiet)] \$ '
+PS1='[\u@\h \W $(waka prompt)] \$ '
 
 # Zsh — add to ~/.zshrc
-RPROMPT='$(waka prompt --quiet)'
+RPROMPT='$(waka prompt)'
 
 # Fish — add to ~/.config/fish/config.fish
 function fish_right_prompt
-    waka prompt --quiet
+    waka prompt
 end
 ```
 
 ## Notes
 
-- If the cache is empty or stale, `waka prompt` outputs nothing (with `--quiet`) or a placeholder.
-- Run `waka stats today` first to populate the cache.
+- The value comes from the last `waka stats today` of the day, whatever its age: run
+  `waka stats today` (or schedule it, e.g. every 15 minutes) to refresh it.
+- Data from a previous day is never shown.

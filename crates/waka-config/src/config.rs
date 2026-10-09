@@ -116,7 +116,7 @@ pub struct CacheConfig {
     pub enabled: bool,
     /// Cache TTL in seconds.
     pub ttl_seconds: u64,
-    /// Override path for the `sled`-backed cache store.
+    /// Override path for the cache store.
     /// `None` means the platform default is used.
     pub path: Option<String>,
 }
