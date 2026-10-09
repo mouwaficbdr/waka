@@ -208,7 +208,7 @@ Cache location by platform:
 | -------- | ---------------------------------- |
 | Linux    | `~/.cache/waka/<profile>/`         |
 | macOS    | `~/Library/Caches/waka/<profile>/` |
-| Windows  | `%LOCALAPPDATA%\waka\<profile>\`   |
+| Windows  | `%LOCALAPPDATA%\waka\cache\<profile>\` |
 
 ### `waka update` — Self-Update
 
@@ -216,7 +216,7 @@ Cache location by platform:
 waka update
 ```
 
-Updates waka to the latest release.
+Updates waka to the latest release. The archive is verified against the release's `SHA256SUMS` before it replaces the binary (Homebrew installs are pointed to `brew upgrade`).
 
 ### `waka changelog` — Changelog
 

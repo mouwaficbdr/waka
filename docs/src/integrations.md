@@ -1,61 +1,67 @@
 # Integrations
 
-## Shell prompt integration
+## Shell prompt and status bars
 
-Display your daily coding total in your shell prompt.
-
-### Zsh (Powerlevel10k / custom)
-
-Add to your `.zshrc`:
+Use [`waka prompt`](./commands/prompt.md): it reads today's total from the local cache only, so it
+is safe to run on every prompt render (no network request, no API rate limit).
 
 ```sh
-waka_prompt() {
-    local total
-    total=$(waka stats today --format json 2>/dev/null \
-        | python3 -c "import sys,json; d=json.load(sys.stdin); \
-          print(d['data'][0]['grand_total']['text'])" 2>/dev/null)
-    [[ -n "$total" ]] && echo " %F{cyan}⌚ $total%f"
-}
-# Append $(waka_prompt) to your PROMPT or RPROMPT
+waka prompt                    # ⏱ 6h 42m
+waka prompt --style detailed   # ⏱ 6h 42m | my-saas
 ```
 
-### starship
+The cached value is refreshed whenever `waka stats today` runs. To keep it current without
+thinking about it, refresh it periodically, e.g. with cron:
 
-Add to `~/.config/starship.toml`:
+```sh
+*/15 * * * * waka stats today > /dev/null 2>&1
+```
+
+### Zsh
+
+```sh
+# ~/.zshrc
+RPROMPT='$(waka prompt 2>/dev/null)'
+```
+
+### Starship
 
 ```toml
+# ~/.config/starship.toml
 [custom.waka]
-command = "waka stats today --format json | python3 -c \"import sys,json; d=json.load(sys.stdin); print(d['data'][0]['grand_total']['text'])\" 2>/dev/null"
+command = "waka prompt 2>/dev/null"
 when = "true"
-format = "⌚ [$output]($style) "
-style = "cyan"
+format = "[$output]($style) "
+style = "dimmed yellow"
 ```
 
-## tmux status bar
-
-Add to `~/.tmux.conf`:
+### tmux
 
 ```sh
-set -g status-right "#(waka stats today --format json 2>/dev/null | python3 -c \"import sys,json; d=json.load(sys.stdin); print(d['data'][0]['grand_total']['text'])\" 2>/dev/null) | %H:%M"
-set -g status-interval 300   # refresh every 5 min
+# ~/.tmux.conf
+set -g status-right "#(waka prompt 2>/dev/null) | %H:%M"
 ```
 
 ## CI / GitHub Actions
 
-Use `WAKA_API_KEY` to authenticate in CI:
+Authenticate with the `WAKATIME_API_KEY` (or `WAKA_API_KEY`) environment variable:
 
 ```yaml
-- name: Export coding report
+- name: Export last week's coding report
   env:
-      WAKA_API_KEY: ${{ secrets.WAKA_API_KEY }}
-  run: waka report --range last_7_days --format json --output coding-report.json
+    WAKATIME_API_KEY: ${{ secrets.WAKATIME_API_KEY }}
+  run: |
+    waka report generate \
+      --from "$(date -d '7 days ago' +%F)" --to "$(date +%F)" \
+      -F json -o coding-report.json
 ```
 
 ## Piping output
 
-`waka` detects when stdout is piped and automatically switches to plain-text mode with no colors:
+When stdout is not a terminal, `waka` switches to plain text without colors. Use
+`--format json` (or `csv`) for machine-readable output:
 
 ```sh
-waka stats today --format json | jq '.data[0].grand_total.text'
-waka projects --format json | jq '.[].name'
+waka stats today --format json | jq -r '.data[0].grand_total.text'
+waka projects list --format json | jq -r '.data[].name'
 ```

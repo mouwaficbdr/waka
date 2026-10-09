@@ -32,7 +32,7 @@ docker run --rm -e WAKA_API_KEY=waka_xxx my-image waka stats today
 
 ## How is caching handled?
 
-`waka` caches API responses locally using `sled` (an embedded key-value store). The default TTL is 5 minutes. Disable with `waka config set cache.enabled false` or clear with `rm -rf ~/.cache/waka/`.
+`waka` caches API responses locally as small JSON files (one directory per profile). The default TTL is 5 minutes. Disable it with `waka config set cache.enabled false`, bypass it once with `--no-cache`, or clear it with `waka cache clear`.
 
 ## waka shows a spinner but my terminal looks garbled
 

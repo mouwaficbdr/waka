@@ -29,9 +29,12 @@ waka cache clear
 
 ## Notes
 
-- The default cache TTL is 5 minutes for most endpoints.
+- The default cache TTL is 5 minutes (`cache.ttl_seconds = 300` in the config file).
 - Use `--no-cache` on any command to bypass the cache for a single request without clearing it.
-- The cache is stored using an embedded key-value database (`sled`) in the platform cache directory:
-    - Linux: `~/.cache/waka/`
-    - macOS: `~/Library/Caches/waka/`
-    - Windows: `%LOCALAPPDATA%\waka\cache\`
+- `waka cache clear --older 24h` removes only entries older than the given duration.
+- Each entry is a small JSON file, written atomically (temporary file + rename), so several `waka`
+  processes (a shell prompt, a tmux status bar, a dashboard) can use the cache at the same time.
+- The cache lives in the platform cache directory, one sub-directory per profile:
+    - Linux: `~/.cache/waka/<profile>/`
+    - macOS: `~/Library/Caches/waka/<profile>/`
+    - Windows: `%LOCALAPPDATA%\waka\cache\<profile>\`
