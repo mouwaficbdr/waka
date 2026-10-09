@@ -11,7 +11,7 @@ Add to your `.zshrc`:
 ```sh
 waka_prompt() {
     local total
-    total=$(waka today --format json 2>/dev/null \
+    total=$(waka stats today --format json 2>/dev/null \
         | python3 -c "import sys,json; d=json.load(sys.stdin); \
           print(d['data'][0]['grand_total']['text'])" 2>/dev/null)
     [[ -n "$total" ]] && echo " %F{cyan}⌚ $total%f"
@@ -25,7 +25,7 @@ Add to `~/.config/starship.toml`:
 
 ```toml
 [custom.waka]
-command = "waka today --format json | python3 -c \"import sys,json; d=json.load(sys.stdin); print(d['data'][0]['grand_total']['text'])\" 2>/dev/null"
+command = "waka stats today --format json | python3 -c \"import sys,json; d=json.load(sys.stdin); print(d['data'][0]['grand_total']['text'])\" 2>/dev/null"
 when = "true"
 format = "⌚ [$output]($style) "
 style = "cyan"
@@ -36,7 +36,7 @@ style = "cyan"
 Add to `~/.tmux.conf`:
 
 ```sh
-set -g status-right "#(waka today --format json 2>/dev/null | python3 -c \"import sys,json; d=json.load(sys.stdin); print(d['data'][0]['grand_total']['text'])\" 2>/dev/null) | %H:%M"
+set -g status-right "#(waka stats today --format json 2>/dev/null | python3 -c \"import sys,json; d=json.load(sys.stdin); print(d['data'][0]['grand_total']['text'])\" 2>/dev/null) | %H:%M"
 set -g status-interval 300   # refresh every 5 min
 ```
 
@@ -56,6 +56,6 @@ Use `WAKA_API_KEY` to authenticate in CI:
 `waka` detects when stdout is piped and automatically switches to plain-text mode with no colors:
 
 ```sh
-waka today --format json | jq '.data[0].grand_total.text'
+waka stats today --format json | jq '.data[0].grand_total.text'
 waka projects --format json | jq '.[].name'
 ```

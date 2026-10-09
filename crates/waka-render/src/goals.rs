@@ -12,6 +12,7 @@ use waka_api::{Goal, GoalsResponse};
 use crate::format::{format_bar, format_duration};
 use crate::options::{OutputFormat, RenderOptions};
 use crate::theme::Theme;
+use crate::utils::delimited_field;
 use crate::utils::humanize_duration;
 
 /// Width of the Unicode progress bar in the rich visual layout.
@@ -327,12 +328,12 @@ impl GoalRenderer {
             writeln!(
                 out,
                 "{}{sep}{}{sep}{}{sep}{}{sep}{}{sep}{}",
-                goal.id,
-                goal.title,
-                goal.range_status.as_deref().unwrap_or(""),
+                delimited_field(&goal.id, sep),
+                delimited_field(&goal.title, sep),
+                delimited_field(goal.range_status.as_deref().unwrap_or(""), sep),
                 target_secs(goal),
-                goal.delta,
-                scope,
+                delimited_field(&goal.delta, sep),
+                delimited_field(&scope, sep),
             )
             .unwrap_or_default();
         }

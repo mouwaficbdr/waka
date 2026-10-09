@@ -10,6 +10,7 @@ use serde::Serialize;
 
 use crate::format::{format_bar, format_duration};
 use crate::options::{OutputFormat, RenderOptions};
+use crate::utils::delimited_field;
 
 /// Width (in Unicode characters) of the ASCII progress bar in the table.
 const BAR_WIDTH: u8 = 20;
@@ -206,6 +207,7 @@ impl BreakdownRenderer {
                 out,
                 "{rank}{s}{name}{s}{secs}{s}{time}{s}{pct:.1}",
                 s = sep,
+                name = delimited_field(name, sep),
                 rank = i + 1,
                 secs = secs_u64,
                 time = format_duration(secs_u64),
@@ -352,6 +354,23 @@ mod tests {
     }
 
     // ── CSV / TSV tests ────────────────────────────────────────────────────────
+
+    #[test]
+    fn render_csv_quotes_names_containing_separator() {
+        let entries = vec![("Rust, nightly".to_owned(), 3_600.0)];
+        let out = BreakdownRenderer::render_csv(&entries, "Language", None, false);
+        assert!(out.contains("1,\"Rust, nightly\",3600,"), "out: {out}");
+    }
+
+    #[test]
+    fn render_tsv_strips_tabs_from_names() {
+        let entries = vec![("a\tb".to_owned(), 60.0)];
+        let out = BreakdownRenderer::render_tsv(&entries, "Language", None);
+        assert!(
+            out.lines().nth(1).unwrap().starts_with("1\ta b\t"),
+            "out: {out}"
+        );
+    }
 
     #[test]
     fn render_csv_has_header_row() {

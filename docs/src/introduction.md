@@ -4,7 +4,7 @@
 It lets you query your coding stats, browse projects, track goals, and generate reports — entirely from your terminal.
 
 ```
-waka today
+waka stats today
 ```
 
 ```
@@ -22,7 +22,7 @@ waka today
 ## Features
 
 - **Fast** — native Rust binary, < 200 ms cold start
-- **Secure** — API key stored in system keychain (macOS Keychain, GNOME Keyring, Windows Credential Manager)
+- **Secure** — API key stored in the system keychain (macOS Keychain, Windows Credential Manager, GNOME Keyring / KWallet)
 - **Flexible output** — tables, plain text, JSON — auto-detected pipe mode
 - **Reports** — export to Markdown, HTML, JSON, or CSV
 - **Interactive TUI** — full-screen Ratatui dashboard (`waka dashboard`)
@@ -33,7 +33,7 @@ waka today
 
 1. [Install waka](./installation.md)
 2. [Authenticate](./authentication.md) with `waka auth login`
-3. Run `waka today` to view your coding activity
+3. Run `waka stats today` to view your coding activity
 
 ## License
 

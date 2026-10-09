@@ -19,7 +19,7 @@
 ## Usage in shell scripts
 
 ```sh
-waka today
+waka stats today
 case $? in
     0) echo "OK" ;;
     3) echo "Not authenticated — run: waka auth login" ;;

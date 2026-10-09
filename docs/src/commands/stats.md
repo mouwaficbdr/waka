@@ -26,7 +26,7 @@ These options apply to all `waka stats` subcommands:
 | Flag                    | Description                                              |
 | ----------------------- | -------------------------------------------------------- |
 | `--project <name>`      | Filter results to a specific project                     |
-| `--language <lang>`     | Filter results to a specific programming language        |
+| `--language <lang>`     | Not supported yet: ignored with a warning |
 | `-f, --format <FORMAT>` | Output format: `table` (default), `json`, `csv`, `plain` |
 | `--no-cache`            | Bypass the local cache and force a fresh API request     |
 

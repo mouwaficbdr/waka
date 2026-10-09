@@ -61,8 +61,19 @@ chrono = { version = "0.4", features = ["serde"] }
 directories = "5"
 toml = "0.8"
 
-# Credentials (macOS Keychain / Linux Secret Service / Windows Credential Manager)
-keyring = { version = "3", features = ["apple-native", "windows-native", "linux-native"] }
+# Credentials (macOS Keychain / Windows Credential Manager / Linux).
+# On Linux, `linux-native-async-persistent` keeps keys in the kernel keyring
+# (keyutils) as a cache backed by the Secret Service, so they survive reboots;
+# plain `linux-native` is in-memory only. The Secret Service client is pure
+# Rust (zbus): `async-io` avoids the documented tokio deadlock and
+# `crypto-rust` avoids linking OpenSSL.
+keyring = { version = "3", features = [
+    "apple-native",
+    "windows-native",
+    "linux-native-async-persistent",
+    "async-io",
+    "crypto-rust",
+] }
 
 # Embedded key-value cache
 sled = "0.34"
