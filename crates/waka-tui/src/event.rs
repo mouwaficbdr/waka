@@ -2,7 +2,9 @@
 
 use std::time::Duration;
 
-use crossterm::event::{self as crossterm_event, Event as CrosstermEvent, KeyCode, KeyEvent};
+use crossterm::event::{
+    self as crossterm_event, Event as CrosstermEvent, KeyCode, KeyEvent, KeyModifiers,
+};
 use tokio::sync::mpsc;
 use waka_api::{ApiError, GoalsResponse, SummaryResponse};
 
@@ -275,7 +277,12 @@ pub fn handle_key_event(
 ) {
     use KeyCode::{Char, Down, Esc, Tab, Up};
 
-    // Global keys (work in all contexts).
+    // Global keys (work in all contexts). Raw mode disables the terminal's
+    // SIGINT, so Ctrl+C has to be handled here to quit as users expect.
+    if key.code == Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
+        app.quit();
+        return;
+    }
     match key.code {
         Char('q') | Esc => {
             app.quit();
@@ -336,5 +343,59 @@ pub fn handle_key_event(
             app.list_down(max);
         }
         _ => {}
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::App;
+
+    fn app() -> (App, mpsc::Sender<Event>, waka_api::WakaClient) {
+        let client = waka_api::WakaClient::new("waka_test");
+        let (tx, _rx) = mpsc::channel(8);
+        (
+            App::new(client.clone(), Duration::from_secs(60)),
+            tx,
+            client,
+        )
+    }
+
+    #[tokio::test]
+    async fn ctrl_c_quits() {
+        let (mut app, tx, client) = app();
+        handle_key_event(
+            &mut app,
+            KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL),
+            &tx,
+            &client,
+        );
+        assert!(!app.running);
+    }
+
+    #[tokio::test]
+    async fn plain_c_does_not_quit() {
+        let (mut app, tx, client) = app();
+        handle_key_event(
+            &mut app,
+            KeyEvent::new(KeyCode::Char('c'), KeyModifiers::NONE),
+            &tx,
+            &client,
+        );
+        assert!(app.running);
+    }
+
+    #[tokio::test]
+    async fn q_and_esc_quit() {
+        for code in [KeyCode::Char('q'), KeyCode::Esc] {
+            let (mut app, tx, client) = app();
+            handle_key_event(
+                &mut app,
+                KeyEvent::new(code, KeyModifiers::NONE),
+                &tx,
+                &client,
+            );
+            assert!(!app.running, "{code:?} should quit");
+        }
     }
 }

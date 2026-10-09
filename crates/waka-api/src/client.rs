@@ -42,21 +42,26 @@ const MAX_ATTEMPTS: u32 = 3;
 /// # Ok(())
 /// # }
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct WakaClient {
     /// API key used to authenticate all requests.
     ///
-    /// Stored as a plain `String` internally; never printed via `Debug`
-    /// (the default derive is acceptable here because the struct is not
-    /// publicly printable in user-visible error paths — the credential store
-    /// wrapper in `waka-config` uses a `Sensitive` newtype).
-    // TODO(spec): consider moving to a Sensitive(String) newtype once
-    // waka-config's CredentialStore wraps requests at the call site.
+    /// Stored as a plain `String`; the manual `Debug` impl below redacts it.
     api_key: String,
     /// Base URL of the API (overridable for testing).
     base_url: Url,
     /// Underlying HTTP client (shared connection pool).
     http: reqwest::Client,
+}
+
+// Manual `Debug` so that `{:?}` (logs, panics, `dbg!`) never prints the API key.
+impl std::fmt::Debug for WakaClient {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("WakaClient")
+            .field("api_key", &"[REDACTED]")
+            .field("base_url", &self.base_url.as_str())
+            .finish_non_exhaustive()
+    }
 }
 
 impl WakaClient {

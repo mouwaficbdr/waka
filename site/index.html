@@ -23,6 +23,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 :root {
+  color-scheme: dark;
   --bg: #0b0c11;
   --bg-2: #101119;
   --panel: #1a1b25;
@@ -176,7 +177,7 @@ h1 .grad {
 .term-bar .dot:nth-child(1) { background: #ff5f57; }
 .term-bar .dot:nth-child(2) { background: #febc2e; }
 .term-bar .dot:nth-child(3) { background: #28c840; }
-.term-title { flex: 1; text-align: center; font: 500 12.5px/1 var(--mono); color: var(--dim); margin-right: 52px; }
+.term-title { flex: 1; text-align: center; font: 500 12.5px/1 var(--mono); color: var(--muted); margin-right: 52px; }
 .term-body {
   font: 400 14px/1.6 var(--mono); padding: 22px 24px 26px; color: #e6e6ef;
   white-space: pre; overflow-x: auto;
@@ -201,8 +202,8 @@ h1 .grad {
 }
 .scene-tabs { display: flex; justify-content: center; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
 .scene-tabs button {
-  font: 500 12.5px/1 var(--mono); color: var(--dim); background: none; border: 1px solid var(--line);
-  padding: 8px 12px; border-radius: 999px; cursor: pointer; transition: all .2s;
+  font: 500 12.5px/1 var(--mono); color: var(--muted); background: none; border: 1px solid var(--line);
+  padding: 8px 12px; border-radius: 999px; cursor: pointer; transition: color .2s, border-color .2s, background .2s;
 }
 .scene-tabs button:hover { color: var(--muted); }
 .scene-tabs button[aria-pressed="true"] { color: var(--text); border-color: rgba(92,225,230,.5); background: rgba(92,225,230,.07); }
@@ -236,17 +237,10 @@ h2 { font: 700 clamp(32px, 4.6vw, 54px)/1.04 var(--display); letter-spacing: -.0
   background: linear-gradient(180deg, var(--bg-2), rgba(16,17,25,.4));
   border: 1px solid var(--line); overflow: hidden;
 }
-.pillar .k { font: 700 13px/1 var(--mono); color: var(--dim); }
+.pillar .k { font: 700 13px/1 var(--mono); color: var(--muted); }
 .pillar h3 { font: 700 30px/1.1 var(--display); letter-spacing: -.03em; margin: 18px 0 10px; }
 .pillar p { color: var(--muted); margin: 0; font-size: 15.5px; }
 .pillar code { font-size: .9em; color: var(--text); background: rgba(255,255,255,.06); padding: 1px 6px; border-radius: 5px; }
-.pillar::after {
-  content: ""; position: absolute; inset: auto -40% -60% auto; width: 260px; height: 260px; border-radius: 50%;
-  filter: blur(60px); opacity: .18;
-}
-.pillar:nth-child(1)::after { background: var(--cyan); }
-.pillar:nth-child(2)::after { background: var(--green); }
-.pillar:nth-child(3)::after { background: var(--purple); }
 @media (max-width: 860px) { .pillars { grid-template-columns: 1fr; } }
 
 /* Bento features */
@@ -286,7 +280,7 @@ h2 { font: 700 clamp(32px, 4.6vw, 54px)/1.04 var(--display); letter-spacing: -.0
 .tui-tabs button {
   font: 500 13px/1 var(--mono); background: none; border: 0; color: var(--muted); padding: 7px 10px; cursor: pointer; border-radius: 4px;
 }
-.tui-tabs button .kn { color: var(--dim); margin-right: 6px; }
+.tui-tabs button .kn { color: var(--muted); margin-right: 6px; }
 .tui-tabs button[aria-selected="true"] { color: var(--bg); background: var(--cyan); font-weight: 700; }
 .tui-tabs button[aria-selected="true"] .kn { color: rgba(0,0,0,.45); }
 .tui-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 8px; }
@@ -334,7 +328,7 @@ kbd {
 .fmt-list button {
   width: 100%; text-align: left; display: grid; grid-template-columns: 80px 1fr; gap: 14px; align-items: baseline;
   padding: 14px 16px; border-radius: 12px; border: 1px solid transparent; background: none; color: var(--muted);
-  font: 400 15px/1.45 var(--body); cursor: pointer; transition: all .2s;
+  font: 400 15px/1.45 var(--body); cursor: pointer; transition: color .2s, border-color .2s, background .2s;
 }
 .fmt-list button code { color: var(--text); font-size: 14px; }
 .fmt-list button:hover { background: rgba(255,255,255,.025); }
@@ -359,8 +353,8 @@ kbd {
 @media (max-width: 600px) { .cmd-grid { grid-template-columns: 1fr; } }
 .cmd { background: var(--bg); padding: 26px 26px 28px; transition: background .25s; }
 .cmd:hover { background: var(--bg-2); }
-.cmd h4 { margin: 0; font: 700 16px/1 var(--mono); }
-.cmd h4 span { color: var(--dim); font-weight: 400; }
+.cmd h3 { margin: 0; font: 700 16px/1 var(--mono); }
+.cmd h3 span { color: var(--muted); font-weight: 400; }
 .cmd p { margin: 10px 0 16px; color: var(--muted); font-size: 14.5px; }
 .cmd ul { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .cmd li { font: 400 12.5px/1 var(--mono); padding: 6px 8px; border-radius: 6px; background: rgba(255,255,255,.04); color: #c8c9d6; }
@@ -377,7 +371,7 @@ kbd {
 }
 .code .copy {
   position: absolute; top: 12px; right: 12px; width: 34px; height: 34px; display: grid; place-items: center;
-  border-radius: 8px; border: 1px solid var(--line); background: var(--bg-2); color: var(--muted); cursor: pointer; transition: all .2s;
+  border-radius: 8px; border: 1px solid var(--line); background: var(--bg-2); color: var(--muted); cursor: pointer; transition: color .2s, border-color .2s;
 }
 .code .copy:hover { color: var(--text); }
 .code .copy.ok { color: var(--green); border-color: rgba(80,250,123,.4); }
@@ -420,6 +414,7 @@ footer { margin-top: 96px; border-top: 1px solid var(--line); padding: 36px 0 48
 footer .wrap { display: flex; flex-wrap: wrap; gap: 20px 32px; align-items: center; justify-content: space-between; }
 footer nav { display: flex; gap: 22px; flex-wrap: wrap; }
 footer a:hover { color: var(--text); }
+footer .disclaimer { color: var(--text); font-weight: 500; }
 
 /* Grid children must be allowed to shrink below their <pre> content width. */
 .split > *, .crate > *, .install > *, .integ > *, .bento > *, .pillars > *, .tui-grid > * { min-width: 0; }
@@ -433,9 +428,17 @@ footer a:hover { color: var(--text); }
   .caret, .logo .cur { animation: none; }
 }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.skip-link {
+  position: absolute; top: -48px; left: 12px; z-index: 100;
+  background: var(--text); color: var(--bg); font: 600 14px/1 var(--body);
+  padding: 10px 16px; border-radius: 8px; transition: top .2s;
+}
+.skip-link:focus { top: 12px; }
 </style>
 </head>
 <body>
+
+<a class="skip-link" href="#top">Skip to content</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
@@ -453,7 +456,7 @@ footer a:hover { color: var(--text); }
       <a href="#commands">Commands</a>
       <a href="#install">Install</a>
       <a href="docs/">Docs</a>
-      <a class="gh" href="https://github.com/mouwaficbdr/waka"><svg><use href="#i-gh"/></svg>GitHub</a>
+      <a class="gh" href="https://github.com/mouwaficbdr/waka"><svg aria-hidden="true"><use href="#i-gh"/></svg>GitHub</a>
     </nav>
   </div>
 </header>
@@ -472,9 +475,9 @@ footer a:hover { color: var(--text); }
       <div class="cta-row">
         <button class="copy-cmd" data-copy="brew tap mouwaficbdr/waka && brew install waka" aria-label="Copy Homebrew install command">
           <span class="t"><span class="p">$</span> brew install waka</span>
-          <span class="ic"><svg><use href="#i-copy"/></svg></span>
+          <span class="ic"><svg aria-hidden="true"><use href="#i-copy"/></svg></span>
         </button>
-        <a class="btn btn-ghost" href="https://github.com/mouwaficbdr/waka"><svg><use href="#i-gh"/></svg>Star on GitHub</a>
+        <a class="btn btn-ghost" href="https://github.com/mouwaficbdr/waka"><svg aria-hidden="true"><use href="#i-gh"/></svg>Star on GitHub</a>
       </div>
     </div>
 
@@ -524,29 +527,29 @@ footer a:hover { color: var(--text); }
 
     <div class="bento">
       <article class="card w3 reveal">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></div>
+        <div class="ico"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></div>
         <h3>Stats for any period</h3>
         <p>Today, yesterday, week, month, year or a custom <code>range</code>. Filter by <code>--project</code>.</p>
         <div class="chips"><span class="chip on">today</span><span class="chip">yesterday</span><span class="chip">week</span><span class="chip">month</span><span class="chip">year</span><span class="chip">range --from --to</span></div>
       </article>
       <article class="card w3 reveal">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        <div class="ico"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
         <h3>Keychain-first security</h3>
         <p>Your API key lives in macOS Keychain, GNOME Keyring or Windows Credential Manager, with a <code>0600</code> fallback. Switch between <code>work</code> and <code>personal</code> profiles with <code>-p</code>.</p>
       </article>
       <article class="card reveal">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg></div>
+        <div class="ico"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg></div>
         <h3>Reports</h3>
         <p>Export a productivity report to Markdown, HTML, JSON or CSV with <code>report generate</code>.</p>
         <div class="chips"><span class="chip">md</span><span class="chip">html</span><span class="chip">json</span><span class="chip">csv</span></div>
       </article>
       <article class="card reveal">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg></div>
+        <div class="ico"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg></div>
         <h3>Goals that ping you</h3>
         <p><code>goals watch --notify</code> refreshes in the background and sends a desktop notification when you hit a goal.</p>
       </article>
       <article class="card reveal">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg></div>
+        <div class="ico"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg></div>
         <h3>Self-maintaining</h3>
         <p><code>waka update</code> pulls the latest release, <code>config doctor</code> diagnoses your setup, <code>changelog</code> shows what's new.</p>
       </article>
@@ -566,11 +569,11 @@ footer a:hover { color: var(--text); }
         <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="term-title">waka dashboard</span></div>
         <div class="term-body">
           <div class="tui-tabs" role="tablist" aria-label="Dashboard views">
-            <button role="tab" aria-selected="true" data-view="0"><span class="kn">1</span>Main</button>
-            <button role="tab" aria-selected="false" data-view="1"><span class="kn">2</span>Projects</button>
-            <button role="tab" aria-selected="false" data-view="2"><span class="kn">3</span>Languages</button>
-            <button role="tab" aria-selected="false" data-view="3"><span class="kn">4</span>Goals</button>
-            <button role="tab" aria-selected="false" data-view="4"><span class="kn">5</span>Activity</button>
+            <button role="tab" aria-selected="true" tabindex="0" data-view="0"><span class="kn">1</span>Main</button>
+            <button role="tab" aria-selected="false" tabindex="-1" data-view="1"><span class="kn">2</span>Projects</button>
+            <button role="tab" aria-selected="false" tabindex="-1" data-view="2"><span class="kn">3</span>Languages</button>
+            <button role="tab" aria-selected="false" tabindex="-1" data-view="3"><span class="kn">4</span>Goals</button>
+            <button role="tab" aria-selected="false" tabindex="-1" data-view="4"><span class="kn">5</span>Activity</button>
           </div>
 
           <!-- Main -->
@@ -716,18 +719,18 @@ style = <span class="tk-s">"dimmed yellow"</span></div>
     <h2 class="reveal">Everything, at a glance.</h2>
     <p class="sec-lede reveal">Predictable verbs, consistent flags. Every tabular command accepts <code>--format</code>, <code>--profile</code> and <code>--no-cache</code>.</p>
     <div class="cmd-grid reveal">
-      <div class="cmd"><h4><span>waka</span> stats</h4><p>Coding activity for any period.</p><ul><li>today</li><li>yesterday</li><li>week</li><li>month</li><li>year</li><li>range</li></ul></div>
-      <div class="cmd"><h4><span>waka</span> projects</h4><p>Where your time actually goes.</p><ul><li>list</li><li>top</li><li>show &lt;PROJECT&gt;</li></ul></div>
-      <div class="cmd"><h4><span>waka</span> languages</h4><p>Your stack, ranked.</p><ul><li>list</li><li>top</li></ul></div>
-      <div class="cmd"><h4><span>waka</span> editors</h4><p>Which tools you really use.</p><ul><li>list</li><li>top</li></ul></div>
-      <div class="cmd"><h4><span>waka</span> goals</h4><p>Track and get notified.</p><ul><li>list</li><li>show &lt;ID&gt;</li><li>watch --notify</li></ul></div>
-      <div class="cmd"><h4><span>waka</span> report</h4><p>Shareable productivity reports.</p><ul><li>generate</li><li>summary</li></ul></div>
-      <div class="cmd"><h4><span>waka</span> dashboard</h4><p>Full-screen interactive TUI.</p><ul><li>--refresh SECS</li></ul></div>
-      <div class="cmd"><h4><span>waka</span> auth</h4><p>Keychain-backed, multi-profile.</p><ul><li>login</li><li>logout</li><li>status</li><li>show-key</li><li>switch</li></ul></div>
-      <div class="cmd"><h4><span>waka</span> config</h4><p>Tune it, or let it diagnose itself.</p><ul><li>get</li><li>set</li><li>edit</li><li>path</li><li>reset</li><li>doctor</li></ul></div>
-      <div class="cmd"><h4><span>waka</span> cache</h4><p>Inspect and prune local cache.</p><ul><li>info</li><li>path</li><li>clear --older 7d</li></ul></div>
-      <div class="cmd"><h4><span>waka</span> leaderboard</h4><p>See how you stack up.</p><ul><li>show --page N</li></ul></div>
-      <div class="cmd"><h4><span>waka</span> prompt · update · changelog</h4><p>Shell prompt, self-update, release notes.</p><ul><li>prompt --format detailed</li><li>update</li><li>changelog</li></ul></div>
+      <div class="cmd"><h3><span>waka</span> stats</h3><p>Coding activity for any period.</p><ul><li>today</li><li>yesterday</li><li>week</li><li>month</li><li>year</li><li>range</li></ul></div>
+      <div class="cmd"><h3><span>waka</span> projects</h3><p>Where your time actually goes.</p><ul><li>list</li><li>top</li><li>show &lt;PROJECT&gt;</li></ul></div>
+      <div class="cmd"><h3><span>waka</span> languages</h3><p>Your stack, ranked.</p><ul><li>list</li><li>top</li></ul></div>
+      <div class="cmd"><h3><span>waka</span> editors</h3><p>Which tools you really use.</p><ul><li>list</li><li>top</li></ul></div>
+      <div class="cmd"><h3><span>waka</span> goals</h3><p>Track and get notified.</p><ul><li>list</li><li>show &lt;ID&gt;</li><li>watch --notify</li></ul></div>
+      <div class="cmd"><h3><span>waka</span> report</h3><p>Shareable productivity reports.</p><ul><li>generate</li><li>summary</li></ul></div>
+      <div class="cmd"><h3><span>waka</span> dashboard</h3><p>Full-screen interactive TUI.</p><ul><li>--refresh SECS</li></ul></div>
+      <div class="cmd"><h3><span>waka</span> auth</h3><p>Keychain-backed, multi-profile.</p><ul><li>login</li><li>logout</li><li>status</li><li>show-key</li><li>switch</li></ul></div>
+      <div class="cmd"><h3><span>waka</span> config</h3><p>Tune it, or let it diagnose itself.</p><ul><li>get</li><li>set</li><li>edit</li><li>path</li><li>reset</li><li>doctor</li></ul></div>
+      <div class="cmd"><h3><span>waka</span> cache</h3><p>Inspect and prune local cache.</p><ul><li>info</li><li>path</li><li>clear --older 7d</li></ul></div>
+      <div class="cmd"><h3><span>waka</span> leaderboard</h3><p>See how you stack up.</p><ul><li>show --page N</li></ul></div>
+      <div class="cmd"><h3><span>waka</span> prompt · update · changelog</h3><p>Shell prompt, self-update, release notes.</p><ul><li>prompt --format detailed</li><li>update</li><li>changelog</li></ul></div>
     </div>
   </div>
 </section>
@@ -745,11 +748,11 @@ style = <span class="tk-s">"dimmed yellow"</span></div>
           <button role="tab" aria-selected="false" data-tab="bin">Binary</button>
         </div>
         <div class="code" data-pane="brew"><span class="c-cy">$</span> brew tap mouwaficbdr/waka
-<span class="c-cy">$</span> brew install waka<button class="copy" data-copy="brew tap mouwaficbdr/waka && brew install waka" aria-label="Copy"><svg><use href="#i-copy"/></svg></button></div>
+<span class="c-cy">$</span> brew install waka<button class="copy" data-copy="brew tap mouwaficbdr/waka && brew install waka" aria-label="Copy Homebrew install command"><svg aria-hidden="true"><use href="#i-copy"/></svg></button></div>
         <div class="code" data-pane="linux" hidden><span class="c-cy">$</span> curl -sSfL https://github.com/mouwaficbdr/waka/releases/latest/download/waka-v2.0.2-x86_64-unknown-linux-gnu.tar.gz \
-    | tar -xz && sudo mv waka /usr/local/bin/<button class="copy" data-copy="curl -sSfL https://github.com/mouwaficbdr/waka/releases/latest/download/waka-v2.0.2-x86_64-unknown-linux-gnu.tar.gz | tar -xz && sudo mv waka /usr/local/bin/" aria-label="Copy"><svg><use href="#i-copy"/></svg></button></div>
+    | tar -xz && sudo mv waka /usr/local/bin/<button class="copy" data-copy="curl -sSfL https://github.com/mouwaficbdr/waka/releases/latest/download/waka-v2.0.2-x86_64-unknown-linux-gnu.tar.gz | tar -xz && sudo mv waka /usr/local/bin/" aria-label="Copy Linux install command"><svg aria-hidden="true"><use href="#i-copy"/></svg></button></div>
         <div class="code" data-pane="bin" hidden><span class="c-di"># Grab the archive for your platform from</span>
-<span class="c-cy">https://github.com/mouwaficbdr/waka/releases/latest</span><button class="copy" data-copy="https://github.com/mouwaficbdr/waka/releases/latest" aria-label="Copy"><svg><use href="#i-copy"/></svg></button></div>
+<span class="c-cy">https://github.com/mouwaficbdr/waka/releases/latest</span><button class="copy" data-copy="https://github.com/mouwaficbdr/waka/releases/latest" aria-label="Copy releases page link"><svg aria-hidden="true"><use href="#i-copy"/></svg></button></div>
         <p class="note">The <code>waka</code> binary isn't published via <code>cargo install</code>; use Homebrew or a prebuilt release.</p>
 
         <ol class="steps">
@@ -777,8 +780,8 @@ style = <span class="tk-s">"dimmed yellow"</span></div>
       <h2 class="reveal">Build on <code style="font-family:var(--mono);font-size:.82em;color:var(--cyan)">waka-api</code>.</h2>
       <p class="sec-lede reveal">The HTTP client behind waka ships as a standalone, typed crate. Write your own WakaTime integrations without reinventing the API layer.</p>
       <div class="links-row reveal">
-        <a class="arrow-link" href="https://docs.rs/waka-api">docs.rs/waka-api <svg width="16" height="16"><use href="#i-arrow"/></svg></a>
-        <a class="arrow-link" href="https://crates.io/crates/waka-api">crates.io <svg width="16" height="16"><use href="#i-arrow"/></svg></a>
+        <a class="arrow-link" href="https://docs.rs/waka-api">docs.rs/waka-api <svg aria-hidden="true" width="16" height="16"><use href="#i-arrow"/></svg></a>
+        <a class="arrow-link" href="https://crates.io/crates/waka-api">crates.io <svg aria-hidden="true" width="16" height="16"><use href="#i-arrow"/></svg></a>
       </div>
     </div>
     <div class="reveal">
@@ -804,9 +807,9 @@ waka-api = <span class="tk-s">"1"</span></div>
     <div class="cta-row">
       <button class="copy-cmd" data-copy="brew tap mouwaficbdr/waka && brew install waka" aria-label="Copy Homebrew install command">
         <span class="t"><span class="p">$</span> brew install waka</span>
-        <span class="ic"><svg><use href="#i-copy"/></svg></span>
+        <span class="ic"><svg aria-hidden="true"><use href="#i-copy"/></svg></span>
       </button>
-      <a class="btn btn-primary" href="https://github.com/mouwaficbdr/waka"><svg><use href="#i-gh"/></svg>View on GitHub</a>
+      <a class="btn btn-primary" href="https://github.com/mouwaficbdr/waka"><svg aria-hidden="true"><use href="#i-gh"/></svg>View on GitHub</a>
     </div>
   </div>
 </section>
@@ -822,7 +825,7 @@ waka-api = <span class="tk-s">"1"</span></div>
       <a href="https://github.com/mouwaficbdr/waka/releases">Releases</a>
       <a href="https://github.com/mouwaficbdr/waka/blob/main/LICENSE">MIT License</a>
     </nav>
-    <span>Not affiliated with WakaTime.</span>
+    <span class="disclaimer">Not affiliated with WakaTime.</span>
   </div>
 </footer>
 
@@ -994,12 +997,26 @@ waka-api = <span class="tk-s">"1"</span></div>
   const panels = $$('.tui-panel');
   let view = 0;
   function setView(v) {
+    const focusWasInTabs = tuiTabs.includes(document.activeElement);
     view = (v + panels.length) % panels.length;
-    tuiTabs.forEach((t, i) => t.setAttribute('aria-selected', String(i === view)));
+    tuiTabs.forEach((t, i) => {
+      t.setAttribute('aria-selected', String(i === view));
+      t.setAttribute('tabindex', i === view ? '0' : '-1');
+    });
     panels.forEach((p, i) => { p.hidden = i !== view; });
     animatePanel(panels[view]);
+    // Only steal focus if it was already on a tab (keyboard/click tab switch),
+    // never when the view changes from the page-wide 1-5 shortcut elsewhere.
+    if (focusWasInTabs) tuiTabs[view].focus();
   }
   tuiTabs.forEach((t, i) => t.addEventListener('click', () => setView(i)));
+  $('.tui-tabs').addEventListener('keydown', e => {
+    if (!/^Arrow(Left|Right)$|^(Home|End)$/.test(e.key)) return;
+    e.preventDefault();
+    if (e.key === 'Home') setView(0);
+    else if (e.key === 'End') setView(panels.length - 1);
+    else setView(view + (e.key === 'ArrowRight' ? 1 : -1));
+  });
   const dash = $('#dashboard');
   let dashVisible = false;
   new IntersectionObserver(([e]) => {

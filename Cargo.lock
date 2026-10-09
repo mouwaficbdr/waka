@@ -4212,7 +4212,7 @@ dependencies = [
 
 [[package]]
 name = "waka-api"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "chrono",
  "insta",

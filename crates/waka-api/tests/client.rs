@@ -476,3 +476,11 @@ async fn leaderboard_sends_page_query_param() {
     assert_eq!(resp.total_pages, 5);
     assert!(resp.data.is_empty());
 }
+
+#[test]
+fn debug_output_redacts_api_key() {
+    let client = WakaClient::new("waka_super_secret_key");
+    let debug = format!("{client:?}");
+    assert!(!debug.contains("waka_super_secret_key"), "{debug}");
+    assert!(debug.contains("[REDACTED]"), "{debug}");
+}
