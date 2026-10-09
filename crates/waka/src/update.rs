@@ -11,13 +11,121 @@ use anyhow::{bail, Context as _, Result};
 use sha2::{Digest as _, Sha256};
 
 use crate::cli::GlobalOpts;
-use crate::commands::{check_latest_version, version_is_newer, CURRENT_VERSION};
+use waka_cache::CacheStore;
+use waka_config::Config;
+
+use crate::commands::resolve_profile;
 use crate::spinner::make_spinner;
 
 const RELEASES_URL: &str = "https://github.com/mouwaficbdr/waka/releases";
 
 /// Name of the checksum file attached to every release.
 const CHECKSUMS_FILE: &str = "SHA256SUMS";
+
+// ─── version check ────────────────────────────────────────────────────────────
+
+/// Fetches the latest release tag from the GitHub API.
+///
+/// Returns `None` if no releases exist yet, or an error on network failure.
+const GITHUB_API: &str = "https://api.github.com/repos/mouwaficbdr/waka/releases/latest";
+pub(crate) const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+pub(crate) async fn check_latest_version() -> anyhow::Result<Option<String>> {
+    // GitHub requires a User-Agent header.
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .user_agent(concat!("waka/", env!("CARGO_PKG_VERSION")))
+        .build()?;
+
+    let resp = client.get(GITHUB_API).send().await?;
+
+    // 404 means no releases yet.
+    if resp.status() == reqwest::StatusCode::NOT_FOUND {
+        return Ok(None);
+    }
+
+    let json: serde_json::Value = resp.error_for_status()?.json().await?;
+    let tag = json["tag_name"]
+        .as_str()
+        .map(|t| t.trim_start_matches('v').to_owned());
+
+    Ok(tag)
+}
+
+/// Naive semver comparison: returns `true` when `candidate` is strictly newer
+/// than `current`. Both strings are expected in `MAJOR.MINOR.PATCH` format.
+///
+/// Returns `false` if parsing fails (safe default).
+pub(crate) fn version_is_newer(candidate: &str, current: &str) -> bool {
+    fn parse(s: &str) -> Option<(u64, u64, u64)> {
+        let mut it = s.splitn(3, '.').map(|p| p.parse::<u64>().ok());
+        let maj = it.next()??;
+        let min = it.next()??;
+        let pat = it.next()??;
+        Some((maj, min, pat))
+    }
+    match (parse(candidate), parse(current)) {
+        (Some(c), Some(cur)) => c > cur,
+        _ => false,
+    }
+}
+
+/// Background update check task.
+///
+/// Runs once per day (as determined by the cache TTL). Prints a one-line
+/// notice to **stderr** when a newer `waka` version is available.
+///
+/// All errors are swallowed — an update check must never break a command.
+pub(crate) async fn update_check_background(global: GlobalOpts) {
+    // Cache key stores the last-fetched latest version string.
+    // TTL = 24 h — so we hit GitHub at most once per day.
+    const UPDATE_CACHE_KEY: &str = "update_check:latest";
+    const CHECK_INTERVAL: Duration = Duration::from_secs(86_400);
+
+    // 1. Honour WAKA_NO_UPDATE_CHECK env var.
+    if std::env::var_os("WAKA_NO_UPDATE_CHECK").is_some() {
+        return;
+    }
+
+    // 2. Honour config flag. Errors are swallowed: an update check must never
+    // break a command (a broken config is reported by the command itself).
+    let config = Config::load().unwrap_or_default();
+    if !config.core.update_check {
+        return;
+    }
+
+    let profile = resolve_profile(&global, &config);
+    let Ok(store) = CacheStore::open(&profile) else {
+        return;
+    };
+
+    // 3. Determine if we need to fetch (cache miss or expired).
+    let cached = store.get::<String>(UPDATE_CACHE_KEY).ok().flatten();
+
+    let latest = if cached.as_ref().is_some_and(|e| !e.is_expired()) {
+        // Cache hit — use stored value immediately (no network).
+        cached.map(|e| e.value)
+    } else {
+        // Cache miss or expired — fetch from GitHub.
+        match check_latest_version().await {
+            Ok(Some(v)) => {
+                let _ = store.set(UPDATE_CACHE_KEY, &v, CHECK_INTERVAL);
+                Some(v)
+            }
+            // No releases yet or network error — skip silently.
+            _ => return,
+        }
+    };
+
+    let Some(latest) = latest else { return };
+    let current = env!("CARGO_PKG_VERSION");
+
+    if version_is_newer(&latest, current) {
+        eprintln!("\n  ⚠  waka v{current} installed — v{latest} available (run: waka update)");
+    }
+}
+
+// ─── waka update ──────────────────────────────────────────────────────────────
 
 /// Implements `waka update`.
 ///
@@ -252,6 +360,39 @@ fn install_binary(binary: &[u8]) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ── version_is_newer ──────────────────────────────────────────────────────
+
+    #[test]
+    fn version_is_newer_returns_true_for_higher_patch() {
+        assert!(version_is_newer("0.1.1", "0.1.0"));
+    }
+
+    #[test]
+    fn version_is_newer_returns_true_for_higher_minor() {
+        assert!(version_is_newer("0.2.0", "0.1.9"));
+    }
+
+    #[test]
+    fn version_is_newer_returns_true_for_higher_major() {
+        assert!(version_is_newer("1.0.0", "0.9.9"));
+    }
+
+    #[test]
+    fn version_is_newer_returns_false_for_equal() {
+        assert!(!version_is_newer("0.1.0", "0.1.0"));
+    }
+
+    #[test]
+    fn version_is_newer_returns_false_for_older() {
+        assert!(!version_is_newer("0.0.9", "0.1.0"));
+    }
+
+    #[test]
+    fn version_is_newer_returns_false_for_malformed_input() {
+        assert!(!version_is_newer("not-a-version", "0.1.0"));
+        assert!(!version_is_newer("0.1.0", "not-a-version"));
+    }
 
     const SUMS: &str = "\
 d2a84f4b8b650937ec8f73cd8be2c74add5a911ba64df27458ed8229da804a26  waka-v2.1.0-x86_64-unknown-linux-gnu.tar.gz
