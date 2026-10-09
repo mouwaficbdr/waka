@@ -98,6 +98,11 @@ jobs:
     name: GitHub Release
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      # Required by actions/attest-build-provenance.
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -107,6 +112,18 @@ jobs:
         with:
           path: artifacts
           merge-multiple: true
+      # `waka update` refuses to install an archive whose digest is not listed
+      # here, so this file must be attached to every release.
+      - name: Generate SHA256SUMS
+        working-directory: artifacts
+        run: |
+          sha256sum -- * > SHA256SUMS
+          cat SHA256SUMS
+      # Signed SLSA provenance, verifiable with `gh attestation verify`.
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: "artifacts/*"
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
