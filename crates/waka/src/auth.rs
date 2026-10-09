@@ -10,6 +10,7 @@ use waka_api::WakaClient;
 use waka_config::{Config, CredentialError, CredentialStore};
 
 use crate::cli::{AuthLoginArgs, GlobalOpts};
+use crate::commands::{load_config, profile_api_url, resolve_profile};
 use crate::spinner::make_spinner;
 
 // ─── Public handlers ──────────────────────────────────────────────────────────
@@ -22,7 +23,8 @@ use crate::spinner::make_spinner;
 /// In both modes the key is validated against the `WakaTime` API before being
 /// saved to the system keychain (or the credentials file as fallback).
 pub async fn login(args: AuthLoginArgs, global: &GlobalOpts) -> Result<()> {
-    let profile = profile_name(args.profile.as_deref(), global);
+    let config = load_config()?;
+    let profile = profile_name(args.profile.as_deref(), global, &config);
 
     let api_key = if let Some(key) = args.api_key {
         // Non-interactive path.
@@ -69,7 +71,12 @@ pub async fn login(args: AuthLoginArgs, global: &GlobalOpts) -> Result<()> {
 
     // Validate the key against the API before saving it.
     let pb = make_spinner("Validating API key …");
-    let result = WakaClient::new(&api_key).me().await;
+    // Validate against the profile's API (self-hosted instances such as Wakapi
+    // use a custom `api_url`).
+    let api_url = profile_api_url(&config, &profile);
+    let client = WakaClient::with_base_url(&api_key, &api_url)
+        .with_context(|| format!("invalid api_url in profile '{profile}': {api_url}"))?;
+    let result = client.me().await;
     pb.finish_and_clear();
 
     let user = result.with_context(|| {
@@ -117,7 +124,8 @@ pub async fn login(args: AuthLoginArgs, global: &GlobalOpts) -> Result<()> {
 // call-site signature in commands.rs is uniform across all auth handlers.
 #[allow(clippy::unused_async)]
 pub async fn logout(profile: Option<String>, global: &GlobalOpts) -> Result<()> {
-    let profile = profile_name(profile.as_deref(), global);
+    let config = load_config()?;
+    let profile = profile_name(profile.as_deref(), global, &config);
     let store = CredentialStore::new(&profile);
 
     store
@@ -136,14 +144,18 @@ pub async fn logout(profile: Option<String>, global: &GlobalOpts) -> Result<()> 
 /// Reports whether the active profile has a valid API key, showing the
 /// username if authenticated. Never displays the raw key.
 pub async fn status(global: &GlobalOpts) -> Result<()> {
-    let profile = profile_name(None, global);
+    let config = load_config()?;
+    let profile = profile_name(None, global, &config);
     let store = CredentialStore::new(&profile);
 
     match store.get_api_key() {
         Ok(key) => {
             // Verify the stored key is still accepted by the API.
             let pb = make_spinner("Checking WakaTime connection …");
-            let result = WakaClient::new(key.expose()).me().await;
+            let api_url = profile_api_url(&config, &profile);
+            let client = WakaClient::with_base_url(key.expose(), &api_url)
+                .with_context(|| format!("invalid api_url in profile '{profile}': {api_url}"))?;
+            let result = client.me().await;
             pb.finish_and_clear();
 
             match result {
@@ -210,7 +222,8 @@ pub async fn status(global: &GlobalOpts) -> Result<()> {
 // `unused_async`: show_key has no async I/O; kept async for handler uniformity.
 #[allow(clippy::unused_async)]
 pub async fn show_key(global: &GlobalOpts) -> Result<()> {
-    let profile = profile_name(None, global);
+    let config = load_config()?;
+    let profile = profile_name(None, global, &config);
     let store = CredentialStore::new(&profile);
 
     match store.get_api_key() {
@@ -245,7 +258,9 @@ pub async fn switch(profile_name: &str, global: &GlobalOpts) -> Result<()> {
         bail!("profile name cannot be empty");
     }
 
-    let mut config = Config::load().unwrap_or_default();
+    // Never fall back to defaults here: the config is written back below, and
+    // a parse error would otherwise wipe the user's file.
+    let mut config = load_config()?;
 
     if config.core.default_profile == profile_name {
         if !global.quiet {
@@ -273,12 +288,10 @@ pub async fn switch(profile_name: &str, global: &GlobalOpts) -> Result<()> {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-/// global `--profile` flag > `"default"`.
-fn profile_name(explicit: Option<&str>, global: &GlobalOpts) -> String {
-    explicit
-        .or(global.profile.as_deref())
-        .unwrap_or("default")
-        .to_owned()
+/// Resolves the profile for an auth command: subcommand `--profile` >
+/// global `--profile` flag > `core.default_profile` > `"default"`.
+fn profile_name(explicit: Option<&str>, global: &GlobalOpts, config: &Config) -> String {
+    explicit.map_or_else(|| resolve_profile(global, config), ToOwned::to_owned)
 }
 
 /// Returns a masked representation of the API key safe for display.
@@ -342,7 +355,10 @@ mod tests {
             profile: Some("global_prof".to_owned()),
             ..default_global()
         };
-        assert_eq!(profile_name(Some("cli_prof"), &global), "cli_prof");
+        assert_eq!(
+            profile_name(Some("cli_prof"), &global, &Config::default()),
+            "cli_prof"
+        );
     }
 
     #[test]
@@ -351,13 +367,24 @@ mod tests {
             profile: Some("my_profile".to_owned()),
             ..default_global()
         };
-        assert_eq!(profile_name(None, &global), "my_profile");
+        assert_eq!(
+            profile_name(None, &global, &Config::default()),
+            "my_profile"
+        );
     }
 
     #[test]
     fn profile_name_defaults_to_default() {
         let global = default_global();
-        assert_eq!(profile_name(None, &global), "default");
+        assert_eq!(profile_name(None, &global, &Config::default()), "default");
+    }
+
+    #[test]
+    fn profile_name_uses_switched_default_profile() {
+        let global = default_global();
+        let mut config = Config::default();
+        config.core.default_profile = "work".to_owned();
+        assert_eq!(profile_name(None, &global, &config), "work");
     }
 
     // ── mask_key ─────────────────────────────────────────────────────────────

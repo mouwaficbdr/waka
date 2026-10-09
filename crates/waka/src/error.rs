@@ -101,7 +101,7 @@ pub fn format_error(err: &anyhow::Error) -> String {
             }
             AppError::Auth(msg) => {
                 format!(
-                    "  Error: Authentication failed\n\n  Reason: {msg}\n\n  Try:\n    · Run `waka login` to set up your API key\n    · Check your API key at https://wakatime.com/settings/api-key\n    · Verify your credentials with `waka config doctor`\n\n  If the problem persists: {SUPPORT_URL}"
+                    "  Error: Authentication failed\n\n  Reason: {msg}\n\n  Try:\n    · Run `waka auth login` to set up your API key\n    · Check your API key at https://wakatime.com/settings/api-key\n    · Verify your credentials with `waka config doctor`\n\n  If the problem persists: {SUPPORT_URL}"
                 )
             }
             AppError::Network(msg) => {
@@ -111,7 +111,7 @@ pub fn format_error(err: &anyhow::Error) -> String {
             }
             AppError::Config(msg) => {
                 format!(
-                    "  Error: Configuration error\n\n  Reason: {msg}\n\n  Try:\n    · Check your config file at ~/.config/waka/config.toml\n    · Run `waka config doctor` to validate your configuration\n    · Delete the config file and run `waka login` to start fresh\n\n  If the problem persists: {SUPPORT_URL}"
+                    "  Error: Configuration error\n\n  Reason: {msg}\n\n  Try:\n    · Check your config file at ~/.config/waka/config.toml\n    · Run `waka config doctor` to validate your configuration\n    · Delete the config file and run `waka auth login` to start fresh\n\n  If the problem persists: {SUPPORT_URL}"
                 )
             }
             AppError::NotFound(msg) => {
@@ -122,7 +122,7 @@ pub fn format_error(err: &anyhow::Error) -> String {
         }
     } else if let Some(cred_err) = err.downcast_ref::<waka_config::CredentialError>() {
         format!(
-            "  Error: Credential storage error\n\n  Reason: {cred_err}\n\n  Try:\n    · Run `waka login` to set up your API key\n    · Check file permissions on ~/.config/waka/\n    · Verify your keyring/keychain is accessible\n\n  If the problem persists: {SUPPORT_URL}"
+            "  Error: Credential storage error\n\n  Reason: {cred_err}\n\n  Try:\n    · Run `waka auth login` to set up your API key\n    · Check file permissions on ~/.config/waka/\n    · Verify your keyring/keychain is accessible\n\n  If the problem persists: {SUPPORT_URL}"
         )
     } else if let Some(api_err) = err.downcast_ref::<waka_api::ApiError>() {
         format!(
@@ -130,7 +130,7 @@ pub fn format_error(err: &anyhow::Error) -> String {
         )
     } else if let Some(cfg_err) = err.downcast_ref::<waka_config::ConfigError>() {
         format!(
-            "  Error: Configuration error\n\n  Reason: {cfg_err}\n\n  Try:\n    · Check your config file at ~/.config/waka/config.toml\n    · Run `waka config doctor` to validate configuration\n    · Delete the config and start fresh with `waka login`\n\n  If the problem persists: {SUPPORT_URL}"
+            "  Error: Configuration error\n\n  Reason: {cfg_err}\n\n  Try:\n    · Check your config file at ~/.config/waka/config.toml\n    · Run `waka config doctor` to validate configuration\n    · Delete the config and start fresh with `waka auth login`\n\n  If the problem persists: {SUPPORT_URL}"
         )
     } else {
         // Generic error format for unknown error types
