@@ -730,7 +730,7 @@ style = <span class="tk-s">"dimmed yellow"</span></div>
       <div class="cmd"><h3><span>waka</span> config</h3><p>Tune it, or let it diagnose itself.</p><ul><li>get</li><li>set</li><li>edit</li><li>path</li><li>reset</li><li>doctor</li></ul></div>
       <div class="cmd"><h3><span>waka</span> cache</h3><p>Inspect and prune local cache.</p><ul><li>info</li><li>path</li><li>clear --older 7d</li></ul></div>
       <div class="cmd"><h3><span>waka</span> leaderboard</h3><p>See how you stack up.</p><ul><li>show --page N</li></ul></div>
-      <div class="cmd"><h3><span>waka</span> prompt · update · changelog</h3><p>Shell prompt, self-update, release notes.</p><ul><li>prompt --format detailed</li><li>update</li><li>changelog</li></ul></div>
+      <div class="cmd"><h3><span>waka</span> prompt · update · changelog</h3><p>Shell prompt, self-update, release notes.</p><ul><li>prompt --style detailed</li><li>update</li><li>changelog</li></ul></div>
     </div>
   </div>
 </section>
@@ -886,7 +886,7 @@ waka-api = <span class="tk-s">"1"</span></div>
     { label: 'stats today', cmd: 'waka stats today', out: () => statsBlock('Today · Mar 2, 2026', '6h 42m', TODAY, true) },
     { label: 'stats week', cmd: 'waka stats week', out: () => statsBlock('Last 7 Days · Feb 23 – Mar 2, 2026', '22h 38m', WEEK, false) },
     { label: 'pipe to jq', cmd: "waka stats today -f json | jq -r '.data[0].grand_total.text'", out: () => ['6 hrs 42 mins'] },
-    { label: 'prompt', cmd: 'waka prompt --format detailed', out: () => ['<span class="c-ye">⏱ 6h 42m | my-saas</span>'] },
+    { label: 'prompt', cmd: 'waka prompt --style detailed', out: () => ['<span class="c-ye">⏱ 6h 42m | my-saas</span>'] },
   ];
 
   /* ── Hero terminal player ── */

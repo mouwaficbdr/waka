@@ -161,7 +161,7 @@ Live TUI dashboard powered by [ratatui](https://ratatui.rs/):
 ### `waka prompt` — Shell Prompt Integration
 
 ```bash
-waka prompt [--format simple|detailed]
+waka prompt [--style simple|detailed]
 ```
 
 Reads today's total from the local cache only — no network call, always fast.
@@ -266,7 +266,7 @@ Color output respects `NO_COLOR`, `TERM=dumb`, and `--no-color`.
 ```toml
 # ~/.config/starship.toml
 [custom.waka]
-command = "waka prompt --format simple 2>/dev/null"
+command = "waka prompt --style simple 2>/dev/null"
 when = "true"
 format = "[$output]($style) "
 style = "dimmed yellow"

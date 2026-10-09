@@ -927,8 +927,8 @@ async fn dashboard(args: DashboardArgs, global: &GlobalOpts) -> Result<()> {
 /// Reads today's total coding time from the local cache and prints a compact
 /// string suitable for embedding in a shell prompt or tmux status bar.
 ///
-/// **Never returns an error** — any failure (cache miss, expired entry,
-/// corrupted DB) results in empty output so that the caller's prompt is never
+/// **Never returns an error** — any failure (cache miss, corrupted entry)
+/// results in empty output so that the caller's prompt is never
 /// broken. The operation is cache-only: no network request is ever made.
 ///
 /// # Output formats
@@ -969,8 +969,8 @@ fn format_prompt_output(total_secs: u64, style: PromptStyle, top_project: Option
 }
 
 /// Core logic for [`prompt`]. Returns `None` on any failure (cache miss,
-/// expired entry, I/O error).  The 100ms budget is inherently satisfied
-/// because this function only reads from sled (no network I/O).
+/// I/O error).  The 100ms budget is inherently satisfied because this
+/// function only reads one small cache file (no network I/O).
 fn prompt_inner(args: &PromptArgs, global: &GlobalOpts) -> Option<String> {
     // The prompt must never print errors, so a broken config falls back to
     // defaults here (read-only: nothing is written back).
@@ -983,15 +983,16 @@ fn prompt_inner(args: &PromptArgs, global: &GlobalOpts) -> Option<String> {
     // Build the same cache key that `waka stats today` writes.
     let cache_key = SummaryParams::today().cache_key();
 
-    // Retrieve the entry. Miss or expired → silent empty output.
+    // Retrieve the entry. A miss → silent empty output.
+    //
+    // The TTL is deliberately ignored: it governs when `stats` refetches, but
+    // the key is scoped to today's date, so an older entry is still today's
+    // total as of its last fetch. Honouring the 5-minute TTL left the prompt
+    // empty almost all the time.
     let entry = store
         .get::<waka_api::SummaryResponse>(&cache_key)
         .ok()
         .flatten()?;
-
-    if entry.is_expired() {
-        return None;
-    }
 
     let response = &entry.value;
 
@@ -1026,7 +1027,7 @@ fn prompt_inner(args: &PromptArgs, global: &GlobalOpts) -> Option<String> {
 
     Some(format_prompt_output(
         total_secs,
-        args.format,
+        args.style,
         top_project.as_deref(),
     ))
 }
